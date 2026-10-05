@@ -13,13 +13,13 @@ class Spinner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox.square(
-        dimension: size,
-        child: CircularProgressIndicator(
-          strokeWidth: size < 20 ? 2 : 3,
-          color: color ?? AppPalette.accent,
-          backgroundColor: color == null ? AppPalette.of(context).surface2 : null,
-        ),
-      );
+    dimension: size,
+    child: CircularProgressIndicator(
+      strokeWidth: size < 20 ? 2 : 3,
+      color: color ?? AppPalette.accent,
+      backgroundColor: color == null ? AppPalette.of(context).surface2 : null,
+    ),
+  );
 }
 
 class LoadingView extends StatelessWidget {
@@ -27,8 +27,8 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Center(
-        child: Padding(padding: EdgeInsets.all(32), child: Spinner(size: 28)),
-      );
+    child: Padding(padding: EdgeInsets.all(32), child: Spinner(size: 28)),
+  );
 }
 
 /// Centered icon + title + text + optional action. Used for empty states.
@@ -53,7 +53,10 @@ class EmptyView extends StatelessWidget {
     final p = AppPalette.of(context);
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24, vertical: compact ? 24 : 64),
+        padding: EdgeInsets.symmetric(
+          horizontal: 24,
+          vertical: compact ? 24 : 64,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -61,7 +64,10 @@ class EmptyView extends StatelessWidget {
               Container(
                 width: 64,
                 height: 64,
-                decoration: BoxDecoration(color: p.surface, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  shape: BoxShape.circle,
+                ),
                 child: Icon(icon, size: 30, color: p.muted),
               ),
               const SizedBox(height: 16),
@@ -73,7 +79,11 @@ class EmptyView extends StatelessWidget {
             ),
             if (text != null) ...[
               const SizedBox(height: 8),
-              Text(text!, textAlign: TextAlign.center, style: TextStyle(color: p.muted, height: 1.4)),
+              Text(
+                text!,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: p.muted, height: 1.4),
+              ),
             ],
             if (action != null) ...[const SizedBox(height: 20), action!],
           ],
@@ -85,7 +95,12 @@ class EmptyView extends StatelessWidget {
 
 /// Error message with a retry button.
 class ErrorView extends StatelessWidget {
-  const ErrorView({super.key, required this.error, this.onRetry, this.compact = false});
+  const ErrorView({
+    super.key,
+    required this.error,
+    this.onRetry,
+    this.compact = false,
+  });
 
   final Object error;
   final VoidCallback? onRetry;
@@ -93,22 +108,27 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => EmptyView(
-        icon: Icons.cloud_off_rounded,
-        title: errorMessage(error),
-        compact: compact,
-        action: onRetry == null
-            ? null
-            : FilledButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                label: const Text(S.retry),
-              ),
-      );
+    icon: Icons.cloud_off_rounded,
+    title: errorMessage(error),
+    compact: compact,
+    action: onRetry == null
+        ? null
+        : FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            label: const Text(S.retry),
+          ),
+  );
 }
 
 /// Shown on tabs that need an account (create, notifications, profile).
 class LoginPrompt extends StatelessWidget {
-  const LoginPrompt({super.key, required this.text, required this.from, this.icon});
+  const LoginPrompt({
+    super.key,
+    required this.text,
+    required this.from,
+    this.icon,
+  });
 
   final String text;
   final String from;
@@ -116,29 +136,36 @@ class LoginPrompt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => EmptyView(
-        icon: icon ?? Icons.lock_outline_rounded,
-        title: S.loginPromptTitle,
-        text: text,
-        action: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FilledButton(
-              onPressed: () => context.push('/login?from=${Uri.encodeComponent(from)}'),
-              child: const Text(S.loginAction),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () => context.push('/register?from=${Uri.encodeComponent(from)}'),
-              child: const Text(S.createAccount),
-            ),
-          ],
+    icon: icon ?? Icons.lock_outline_rounded,
+    title: S.loginPromptTitle,
+    text: text,
+    action: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FilledButton(
+          onPressed: () =>
+              context.push('/login?from=${Uri.encodeComponent(from)}'),
+          child: const Text(S.loginAction),
         ),
-      );
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () =>
+              context.push('/register?from=${Uri.encodeComponent(from)}'),
+          child: const Text(S.createAccount),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Shimmering placeholder block.
 class Skeleton extends StatefulWidget {
-  const Skeleton({super.key, this.height, this.width, this.radius = AppPalette.radius});
+  const Skeleton({
+    super.key,
+    this.height,
+    this.width,
+    this.radius = AppPalette.radius,
+  });
 
   final double? height;
   final double? width;
@@ -148,9 +175,12 @@ class Skeleton extends StatefulWidget {
   State<Skeleton> createState() => _SkeletonState();
 }
 
-class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1300))..repeat();
+class _SkeletonState extends State<Skeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1300),
+  )..repeat();
 
   @override
   void dispose() {
@@ -192,20 +222,23 @@ class LogoMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: size,
-        height: size,
-        alignment: Alignment.center,
-        decoration: const BoxDecoration(color: AppPalette.accent, shape: BoxShape.circle),
-        child: Text(
-          'M',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: size * 0.52,
-            height: 1,
-          ),
-        ),
-      );
+    width: size,
+    height: size,
+    alignment: Alignment.center,
+    decoration: const BoxDecoration(
+      color: AppPalette.accent,
+      shape: BoxShape.circle,
+    ),
+    child: Text(
+      'M',
+      style: TextStyle(
+        color: Colors.white,
+        fontWeight: FontWeight.w800,
+        fontSize: size * 0.52,
+        height: 1,
+      ),
+    ),
+  );
 }
 
 /// Yes/no dialog. Returns true when confirmed.
@@ -229,7 +262,9 @@ Future<bool> confirmDialog(
         ),
         FilledButton(
           onPressed: () => Navigator.of(ctx).pop(true),
-          style: danger ? FilledButton.styleFrom(backgroundColor: AppPalette.danger) : null,
+          style: danger
+              ? FilledButton.styleFrom(backgroundColor: AppPalette.danger)
+              : null,
           child: Text(confirm),
         ),
       ],
@@ -255,19 +290,19 @@ class RoundIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Tooltip(
-        message: tooltip,
-        child: Material(
-          color: Colors.white.withValues(alpha: 0.92),
-          shape: const CircleBorder(),
-          elevation: 1,
-          child: InkWell(
-            customBorder: const CircleBorder(),
-            onTap: onPressed,
-            child: SizedBox.square(
-              dimension: size,
-              child: Icon(icon, color: const Color(0xFF111111), size: size * 0.55),
-            ),
-          ),
+    message: tooltip,
+    child: Material(
+      color: Colors.white.withValues(alpha: 0.92),
+      shape: const CircleBorder(),
+      elevation: 1,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox.square(
+          dimension: size,
+          child: Icon(icon, color: const Color(0xFF111111), size: size * 0.55),
         ),
-      );
+      ),
+    ),
+  );
 }

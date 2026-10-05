@@ -10,11 +10,18 @@ void showSnack(String message, {bool error = false}) {
   final m = rootMessengerKey.currentState;
   if (m == null) return;
   m.hideCurrentSnackBar();
-  m.showSnackBar(SnackBar(
-    content: Text(message, style: error ? const TextStyle(color: Colors.white, fontWeight: FontWeight.w600) : null),
-    backgroundColor: error ? AppPalette.errorToast : null,
-    duration: const Duration(milliseconds: 3500),
-  ));
+  m.showSnackBar(
+    SnackBar(
+      content: Text(
+        message,
+        style: error
+            ? const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)
+            : null,
+      ),
+      backgroundColor: error ? AppPalette.errorToast : null,
+      duration: const Duration(milliseconds: 3500),
+    ),
+  );
 }
 
 /// Shows the Turkmen message of an API error.

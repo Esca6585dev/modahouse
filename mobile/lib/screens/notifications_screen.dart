@@ -133,7 +133,9 @@ class _NotificationsListState extends ConsumerState<_NotificationsList> {
   }
 
   Widget _footer() {
-    if (_items.loading) return const SizedBox(height: 56, child: Center(child: Spinner()));
+    if (_items.loading) {
+      return const SizedBox(height: 56, child: Center(child: Spinner()));
+    }
     if (_items.error != null) {
       return Center(
         child: TextButton(
@@ -159,26 +161,40 @@ class _NotificationTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: n.read ? Colors.transparent : AppPalette.accent.withValues(alpha: 0.08),
+        color: n.read
+            ? Colors.transparent
+            : AppPalette.accent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => context.push(pin != null ? '/pin/${pin.id}' : profilePath),
+          onTap: () =>
+              context.push(pin != null ? '/pin/${pin.id}' : profilePath),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                UserAvatar(user: n.actor, size: 44, onTap: () => context.push(profilePath)),
+                UserAvatar(
+                  user: n.actor,
+                  size: 44,
+                  onTap: () => context.push(profilePath),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text.rich(
-                        TextSpan(children: [
-                          TextSpan(text: n.actor.displayName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                          TextSpan(text: ' ${notificationText(n.type)}'),
-                        ]),
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: n.actor.displayName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            TextSpan(text: ' ${notificationText(n.type)}'),
+                          ],
+                        ),
                         style: const TextStyle(fontSize: 15, height: 1.3),
                       ),
                       if (pin != null && pin.title.isNotEmpty)
@@ -189,7 +205,10 @@ class _NotificationTile extends StatelessWidget {
                           style: TextStyle(color: p.muted, fontSize: 14),
                         ),
                       const SizedBox(height: 2),
-                      Text(timeAgo(n.createdAt), style: TextStyle(color: p.muted, fontSize: 13)),
+                      Text(
+                        timeAgo(n.createdAt),
+                        style: TextStyle(color: p.muted, fontSize: 13),
+                      ),
                     ],
                   ),
                 ),
@@ -197,7 +216,10 @@ class _NotificationTile extends StatelessWidget {
                   const SizedBox(width: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: SizedBox.square(dimension: 56, child: AppImage(pin.imageUrl)),
+                    child: SizedBox.square(
+                      dimension: 56,
+                      child: AppImage(pin.imageUrl),
+                    ),
                   ),
                 ],
               ],

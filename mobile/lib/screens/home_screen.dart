@@ -30,7 +30,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final repo = ref.read(pinsRepositoryProvider);
     final category = _category;
     final following = _following;
-    return PagedController((page) => repo.list(category: category, following: following, page: page));
+    return PagedController(
+      (page) => repo.list(category: category, following: following, page: page),
+    );
   }
 
   void _reset() {
@@ -55,7 +57,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (next == null) _following = false;
       _reset();
     });
-    ref.listen(pinUpdatesProvider.select((u) => u.created), (_, _) => _feed.refresh());
+    ref.listen(
+      pinUpdatesProvider.select((u) => u.created),
+      (_, _) => _feed.refresh(),
+    );
     final loggedIn = ref.watch(authProvider.select((s) => s.isLoggedIn));
     final p = AppPalette.of(context);
 
@@ -65,7 +70,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: RefreshIndicator(
           color: AppPalette.accent,
           onRefresh: () {
-            if (ref.read(categoriesProvider).hasError) ref.invalidate(categoriesProvider);
+            if (ref.read(categoriesProvider).hasError) {
+              ref.invalidate(categoriesProvider);
+            }
             return _feed.refresh();
           },
           child: CustomScrollView(
@@ -74,7 +81,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 12, AppPalette.gutter, 12),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppPalette.gutter,
+                    12,
+                    AppPalette.gutter,
+                    12,
+                  ),
                   child: Row(
                     children: [
                       const LogoMark(),
@@ -111,7 +123,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               if (loggedIn)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 12, AppPalette.gutter, 0),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppPalette.gutter,
+                      12,
+                      AppPalette.gutter,
+                      0,
+                    ),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: FeedToggle(
@@ -157,7 +174,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
 /// "Saňa" / "Yzarlanýanlar" segmented switch.
 class FeedToggle extends StatelessWidget {
-  const FeedToggle({super.key, required this.following, required this.onChanged});
+  const FeedToggle({
+    super.key,
+    required this.following,
+    required this.onChanged,
+  });
 
   final bool following;
   final ValueChanged<bool> onChanged;
@@ -166,37 +187,46 @@ class FeedToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     Widget item(String label, bool active, VoidCallback onTap) => Semantics(
-          button: true,
-          selected: active,
-          child: GestureDetector(
-            onTap: onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: active ? p.bg : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: active
-                    ? const [BoxShadow(color: Color(0x1F000000), blurRadius: 4, offset: Offset(0, 1))]
-                    : null,
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: active ? p.text : p.muted,
-                ),
-              ),
+      button: true,
+      selected: active,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: active ? p.bg : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: active
+                ? const [
+                    BoxShadow(
+                      color: Color(0x1F000000),
+                      blurRadius: 4,
+                      offset: Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: active ? p.text : p.muted,
             ),
           ),
-        );
+        ),
+      ),
+    );
 
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(24)),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(24),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

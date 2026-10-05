@@ -69,13 +69,20 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
   Future<void> _save() async {
     final f = _fields;
     final pin = _pin;
-    if (f == null || pin == null || _busy || !_formKey.currentState!.validate()) return;
+    if (f == null ||
+        pin == null ||
+        _busy ||
+        !_formKey.currentState!.validate()) {
+      return;
+    }
     setState(() {
       _busy = true;
       _formError = null;
     });
     try {
-      final updated = await ref.read(pinsRepositoryProvider).update(
+      final updated = await ref
+          .read(pinsRepositoryProvider)
+          .update(
             pin.id,
             title: f.title.text.trim(),
             description: f.description.text.trim(),
@@ -106,12 +113,21 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
     } else if (pin == null || f == null) {
       body = const LoadingView();
     } else if (me == null || me.id != pin.author.id) {
-      body = const EmptyView(icon: Icons.lock_outline_rounded, title: S.forbidden, text: S.onlyOwnPins);
+      body = const EmptyView(
+        icon: Icons.lock_outline_rounded,
+        title: S.forbidden,
+        text: S.onlyOwnPins,
+      );
     } else {
       body = Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 8, AppPalette.gutter, 32),
+          padding: const EdgeInsets.fromLTRB(
+            AppPalette.gutter,
+            8,
+            AppPalette.gutter,
+            32,
+          ),
           children: [
             Center(
               child: ClipRRect(
@@ -120,7 +136,10 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
                   height: 220,
                   child: AspectRatio(
                     aspectRatio: pin.aspectRatio,
-                    child: AppImage(pin.imageUrl, placeholder: parseHexColor(pin.color, p.surface)),
+                    child: AppImage(
+                      pin.imageUrl,
+                      placeholder: parseHexColor(pin.color, p.surface),
+                    ),
                   ),
                 ),
               ),

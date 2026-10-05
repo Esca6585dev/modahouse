@@ -15,17 +15,24 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final letterSource = user.name.isNotEmpty ? user.name : user.username;
-    final letter = letterSource.isEmpty ? '?' : letterSource.characters.first.toUpperCase();
+    final letter = letterSource.isEmpty
+        ? '?'
+        : letterSource.characters.first.toUpperCase();
     final Widget circle = user.avatarUrl.isNotEmpty
         ? ClipOval(
-            child: SizedBox.square(dimension: size, child: AppImage(user.avatarUrl)),
+            child: SizedBox.square(
+              dimension: size,
+              child: AppImage(user.avatarUrl),
+            ),
           )
         : Container(
             width: size,
             height: size,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: colorFor(user.username.isNotEmpty ? user.username : user.name),
+              color: colorFor(
+                user.username.isNotEmpty ? user.username : user.name,
+              ),
               shape: BoxShape.circle,
             ),
             child: Text(
@@ -38,8 +45,16 @@ class UserAvatar extends StatelessWidget {
               ),
             ),
           );
-    final avatar = Semantics(image: true, label: user.displayName, child: ExcludeSemantics(child: circle));
+    final avatar = Semantics(
+      image: true,
+      label: user.displayName,
+      child: ExcludeSemantics(child: circle),
+    );
     if (onTap == null) return avatar;
-    return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: avatar);
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: avatar,
+    );
   }
 }

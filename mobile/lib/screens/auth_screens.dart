@@ -14,9 +14,13 @@ final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
 /// Only allow in-app paths as "return to" targets.
 String? safeFrom(String? from) =>
-    from != null && from.startsWith('/') && !from.startsWith('//') && !from.startsWith('/login') && !from.startsWith('/register')
-        ? from
-        : null;
+    from != null &&
+        from.startsWith('/') &&
+        !from.startsWith('//') &&
+        !from.startsWith('/login') &&
+        !from.startsWith('/register')
+    ? from
+    : null;
 
 /// After login/registration go back to the screen that asked for it.
 void _finish(BuildContext context, String? from) {
@@ -33,7 +37,11 @@ String _query(String? from) {
 }
 
 class _AuthScaffold extends StatelessWidget {
-  const _AuthScaffold({required this.title, required this.subtitle, required this.child});
+  const _AuthScaffold({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
 
   final String title;
   final String subtitle;
@@ -59,10 +67,18 @@ class _AuthScaffold extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1.2),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  Text(subtitle, textAlign: TextAlign.center, style: TextStyle(color: p.muted)),
+                  Text(
+                    subtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: p.muted),
+                  ),
                   const SizedBox(height: 24),
                   child,
                 ],
@@ -104,24 +120,26 @@ class _PasswordFieldState extends State<PasswordField> {
 
   @override
   Widget build(BuildContext context) => TextFormField(
-        controller: widget.controller,
-        enabled: widget.enabled,
-        obscureText: _obscure,
-        autocorrect: false,
-        enableSuggestions: false,
-        textInputAction: widget.textInputAction,
-        autofillHints: widget.autofillHints,
-        onFieldSubmitted: widget.onSubmitted,
-        validator: widget.validator,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          suffixIcon: IconButton(
-            tooltip: _obscure ? S.showPassword : S.hidePassword,
-            onPressed: () => setState(() => _obscure = !_obscure),
-            icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-          ),
+    controller: widget.controller,
+    enabled: widget.enabled,
+    obscureText: _obscure,
+    autocorrect: false,
+    enableSuggestions: false,
+    textInputAction: widget.textInputAction,
+    autofillHints: widget.autofillHints,
+    onFieldSubmitted: widget.onSubmitted,
+    validator: widget.validator,
+    decoration: InputDecoration(
+      labelText: widget.label,
+      suffixIcon: IconButton(
+        tooltip: _obscure ? S.showPassword : S.hidePassword,
+        onPressed: () => setState(() => _obscure = !_obscure),
+        icon: Icon(
+          _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 /// Login form (username or email + password). [onSuccess] runs after login.
@@ -183,7 +201,8 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               textInputAction: TextInputAction.next,
               autofillHints: const [AutofillHints.username],
               decoration: const InputDecoration(labelText: S.loginField),
-              validator: (v) => (v ?? '').trim().isEmpty ? S.loginRequired : null,
+              validator: (v) =>
+                  (v ?? '').trim().isEmpty ? S.loginRequired : null,
             ),
             const SizedBox(height: 16),
             PasswordField(
@@ -219,16 +238,29 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                         _password.text = parts.last;
                       },
                 child: Ink(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(16)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: p.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: ExcludeSemantics(
                     child: Column(
                       children: [
-                        Text(S.demoTitle, style: TextStyle(color: p.muted, fontSize: 14)),
+                        Text(
+                          S.demoTitle,
+                          style: TextStyle(color: p.muted, fontSize: 14),
+                        ),
                         const SizedBox(height: 2),
                         const Text(
                           S.demoHint,
-                          style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 14),
+                          style: TextStyle(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                       ],
                     ),
@@ -242,7 +274,10 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(S.noAccount, style: TextStyle(color: p.muted)),
-                  TextButton(onPressed: widget.onRegister, child: const Text(S.register)),
+                  TextButton(
+                    onPressed: widget.onRegister,
+                    child: const Text(S.register),
+                  ),
                 ],
               ),
             ],
@@ -260,13 +295,13 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _AuthScaffold(
-        title: S.welcome,
-        subtitle: S.loginSubtitle,
-        child: LoginForm(
-          onSuccess: () => _finish(context, from),
-          onRegister: () => context.pushReplacement('/register${_query(from)}'),
-        ),
-      );
+    title: S.welcome,
+    subtitle: S.loginSubtitle,
+    child: LoginForm(
+      onSuccess: () => _finish(context, from),
+      onRegister: () => context.pushReplacement('/register${_query(from)}'),
+    ),
+  );
 }
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -303,7 +338,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _error = null;
     });
     try {
-      await ref.read(authProvider.notifier).register(
+      await ref
+          .read(authProvider.notifier)
+          .register(
             username: _username.text.trim().toLowerCase(),
             name: _name.text,
             email: _email.text,
@@ -336,8 +373,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 textInputAction: TextInputAction.next,
                 textCapitalization: TextCapitalization.words,
                 autofillHints: const [AutofillHints.name],
-                decoration: const InputDecoration(labelText: S.name, hintText: S.nameHint),
-                validator: (v) => (v ?? '').trim().isEmpty ? S.nameRequired : null,
+                decoration: const InputDecoration(
+                  labelText: S.name,
+                  hintText: S.nameHint,
+                ),
+                validator: (v) =>
+                    (v ?? '').trim().isEmpty ? S.nameRequired : null,
               ),
               gap,
               TextFormField(
@@ -346,8 +387,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 autocorrect: false,
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.newUsername],
-                decoration: const InputDecoration(labelText: S.username, helperText: S.usernameHelp),
-                validator: (v) => _usernameRe.hasMatch((v ?? '').trim().toLowerCase()) ? null : S.usernameInvalid,
+                decoration: const InputDecoration(
+                  labelText: S.username,
+                  helperText: S.usernameHelp,
+                ),
+                validator: (v) =>
+                    _usernameRe.hasMatch((v ?? '').trim().toLowerCase())
+                    ? null
+                    : S.usernameInvalid,
               ),
               gap,
               TextFormField(
@@ -358,7 +405,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 textInputAction: TextInputAction.next,
                 autofillHints: const [AutofillHints.email],
                 decoration: const InputDecoration(labelText: S.email),
-                validator: (v) => _emailRe.hasMatch((v ?? '').trim()) ? null : S.emailInvalid,
+                validator: (v) =>
+                    _emailRe.hasMatch((v ?? '').trim()) ? null : S.emailInvalid,
               ),
               gap,
               PasswordField(
@@ -369,10 +417,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onSubmitted: (_) => _submit(),
                 validator: (v) => (v ?? '').length < 6 ? S.passwordShort : null,
               ),
-              if (_error != null) ...[
-                gap,
-                FormErrorBox(message: _error!),
-              ],
+              if (_error != null) ...[gap, FormErrorBox(message: _error!)],
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: _busy ? null : _submit,
@@ -384,7 +429,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 children: [
                   Text(S.haveAccount, style: TextStyle(color: p.muted)),
                   TextButton(
-                    onPressed: _busy ? null : () => context.pushReplacement('/login${_query(widget.from)}'),
+                    onPressed: _busy
+                        ? null
+                        : () => context.pushReplacement(
+                            '/login${_query(widget.from)}',
+                          ),
                     child: const Text(S.loginAction),
                   ),
                 ],

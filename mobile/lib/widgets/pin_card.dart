@@ -31,7 +31,8 @@ class PinCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
-    final current = ref.watch(pinUpdatesProvider.select((u) => u.updated[pin.id])) ?? pin;
+    final current =
+        ref.watch(pinUpdatesProvider.select((u) => u.updated[pin.id])) ?? pin;
     final placeholder = parseHexColor(current.color, p.surface);
 
     return Column(
@@ -52,7 +53,8 @@ class PinCard extends ConsumerWidget {
                   fit: StackFit.expand,
                   children: [
                     AppImage(current.imageUrl, placeholder: placeholder),
-                    if (action != null) Positioned(top: 8, right: 8, child: action!),
+                    if (action != null)
+                      Positioned(top: 8, right: 8, child: action!),
                   ],
                 ),
               ),
@@ -67,7 +69,12 @@ class PinCard extends ConsumerWidget {
                 current.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: p.text, height: 1.3),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: p.text,
+                  height: 1.3,
+                ),
               ),
             ),
           ),

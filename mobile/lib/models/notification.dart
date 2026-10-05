@@ -20,13 +20,17 @@ NotificationType notificationTypeFrom(String v) {
 
 /// The small pin preview attached to like/comment/save notifications.
 class NotificationPin {
-  const NotificationPin({required this.id, required this.title, this.imageUrl = ''});
+  const NotificationPin({
+    required this.id,
+    required this.title,
+    this.imageUrl = '',
+  });
 
   factory NotificationPin.fromJson(Json j) => NotificationPin(
-        id: asInt(j['id']),
-        title: asString(j['title']),
-        imageUrl: asString(j['imageUrl']),
-      );
+    id: asInt(j['id']),
+    title: asString(j['title']),
+    imageUrl: asString(j['imageUrl']),
+  );
 
   final int id;
   final String title;
@@ -46,13 +50,13 @@ class Notification {
   });
 
   factory Notification.fromJson(Json j) => Notification(
-        id: asInt(j['id']),
-        type: notificationTypeFrom(asString(j['type'])),
-        read: asBool(j['read']),
-        actor: UserBrief.fromJson(asJson(j['actor'])),
-        pin: j['pin'] is Map ? NotificationPin.fromJson(asJson(j['pin'])) : null,
-        createdAt: asDate(j['createdAt']),
-      );
+    id: asInt(j['id']),
+    type: notificationTypeFrom(asString(j['type'])),
+    read: asBool(j['read']),
+    actor: UserBrief.fromJson(asJson(j['actor'])),
+    pin: j['pin'] is Map ? NotificationPin.fromJson(asJson(j['pin'])) : null,
+    createdAt: asDate(j['createdAt']),
+  );
 
   final int id;
   final NotificationType type;

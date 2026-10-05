@@ -31,10 +31,18 @@ class MyProfileScreen extends ConsumerWidget {
     if (me == null) {
       return Scaffold(
         appBar: AppBar(title: const Text(S.tabProfile)),
-        body: const LoginPrompt(text: S.loginPromptProfile, from: '/profile', icon: Icons.person_outline_rounded),
+        body: const LoginPrompt(
+          text: S.loginPromptProfile,
+          from: '/profile',
+          icon: Icons.person_outline_rounded,
+        ),
       );
     }
-    return ProfileView(key: ValueKey('me-${me.username}'), username: me.username, isTab: true);
+    return ProfileView(
+      key: ValueKey('me-${me.username}'),
+      username: me.username,
+      isTab: true,
+    );
   }
 }
 
@@ -45,7 +53,8 @@ class UserProfileScreen extends StatelessWidget {
   final String username;
 
   @override
-  Widget build(BuildContext context) => ProfileView(key: ValueKey('u-$username'), username: username);
+  Widget build(BuildContext context) =>
+      ProfileView(key: ValueKey('u-$username'), username: username);
 }
 
 class ProfileView extends ConsumerStatefulWidget {
@@ -71,7 +80,9 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
   @override
   void initState() {
     super.initState();
-    _pins = PagedController((page) => ref.read(usersRepositoryProvider).pins(username, page));
+    _pins = PagedController(
+      (page) => ref.read(usersRepositoryProvider).pins(username, page),
+    );
     _loadProfile();
     _loadBoards();
   }
@@ -138,8 +149,11 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
         body: _error == null
             ? const LoadingView()
             : (_error is ApiException && (_error as ApiException).isNotFound)
-                ? const EmptyView(icon: Icons.person_off_outlined, title: S.userNotFound)
-                : ErrorView(error: _error!, onRetry: _loadProfile),
+            ? const EmptyView(
+                icon: Icons.person_off_outlined,
+                title: S.userNotFound,
+              )
+            : ErrorView(error: _error!, onRetry: _loadProfile),
       );
     }
 
@@ -172,13 +186,20 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   text: profile.isMe ? S.noOwnPinsText : S.noUserPinsText,
                   compact: true,
                   action: profile.isMe
-                      ? FilledButton(onPressed: () => context.go('/create'), child: const Text(S.createPin))
+                      ? FilledButton(
+                          onPressed: () => context.go('/create'),
+                          child: const Text(S.createPin),
+                        )
                       : null,
                 ),
               )
             else
               ..._boardSlivers(profile),
-            SliverToBoxAdapter(child: SizedBox(height: 24 + MediaQuery.paddingOf(context).bottom)),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 24 + MediaQuery.paddingOf(context).bottom,
+              ),
+            ),
           ],
         ),
       ),
@@ -189,7 +210,12 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final p = AppPalette.of(context);
     final enc = Uri.encodeComponent(profile.username);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 0, AppPalette.gutter, 8),
+      padding: const EdgeInsets.fromLTRB(
+        AppPalette.gutter,
+        0,
+        AppPalette.gutter,
+        8,
+      ),
       child: Column(
         children: [
           UserAvatar(user: profile, size: 104),
@@ -197,15 +223,26 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           Text(
             profile.displayName,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, height: 1.2),
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              height: 1.2,
+            ),
           ),
           const SizedBox(height: 4),
-          Text('@${profile.username}', style: TextStyle(color: p.muted, fontSize: 15)),
+          Text(
+            '@${profile.username}',
+            style: TextStyle(color: p.muted, fontSize: 15),
+          ),
           if (profile.bio.isNotEmpty) ...[
             const SizedBox(height: 8),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: Text(profile.bio, textAlign: TextAlign.center, style: const TextStyle(height: 1.4)),
+              child: Text(
+                profile.bio,
+                textAlign: TextAlign.center,
+                style: const TextStyle(height: 1.4),
+              ),
             ),
           ],
           const SizedBox(height: 8),
@@ -223,24 +260,34 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                 onTap: () => context.push('/user/$enc/following'),
               ),
               Text(' · ', style: TextStyle(color: p.muted)),
-              Text(S.pinsCount(compactCount(profile.pinsCount)), style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                S.pinsCount(compactCount(profile.pinsCount)),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           if (profile.isMe)
-            ElevatedButton(onPressed: () => context.push('/settings'), child: const Text(S.editProfile))
+            ElevatedButton(
+              onPressed: () => context.push('/settings'),
+              child: const Text(S.editProfile),
+            )
           else
             FollowButton(
               username: profile.username,
               isFollowing: profile.isFollowing,
               onChanged: (following, updated) {
                 setState(() {
-                  _profile = updated ??
+                  _profile =
+                      updated ??
                       profile.copyWith(
                         isFollowing: following,
                         followersCount: math.max(
                           0,
-                          profile.followersCount + (following == profile.isFollowing ? 0 : (following ? 1 : -1)),
+                          profile.followersCount +
+                              (following == profile.isFollowing
+                                  ? 0
+                                  : (following ? 1 : -1)),
                         ),
                       );
                 });
@@ -266,13 +313,23 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: active ? p.text : p.muted)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    color: active ? p.text : p.muted,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   height: 3,
                   width: active ? 40 : 0,
-                  decoration: BoxDecoration(color: p.text, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: p.text,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ],
             ),
@@ -285,7 +342,11 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
       padding: const EdgeInsets.only(top: 8, bottom: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [tab(S.tabCreated, 0), const SizedBox(width: 8), tab(S.tabSaved, 1)],
+        children: [
+          tab(S.tabCreated, 0),
+          const SizedBox(width: 8),
+          tab(S.tabSaved, 1),
+        ],
       ),
     );
   }
@@ -294,38 +355,57 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     final boards = _boards;
     final slivers = <Widget>[];
     if (profile.isMe) {
-      slivers.add(SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 0, AppPalette.gutter, 16),
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: _createBoard,
-              icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text(S.newBoard),
+      slivers.add(
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppPalette.gutter,
+              0,
+              AppPalette.gutter,
+              16,
+            ),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: _createBoard,
+                icon: const Icon(Icons.add_rounded, size: 20),
+                label: const Text(S.newBoard),
+              ),
             ),
           ),
         ),
-      ));
+      );
     }
     if (_boardsError != null && boards == null) {
-      slivers.add(SliverToBoxAdapter(child: ErrorView(error: _boardsError!, onRetry: _loadBoards, compact: true)));
+      slivers.add(
+        SliverToBoxAdapter(
+          child: ErrorView(
+            error: _boardsError!,
+            onRetry: _loadBoards,
+            compact: true,
+          ),
+        ),
+      );
     } else if (boards == null) {
       slivers.add(const SliverToBoxAdapter(child: LoadingView()));
     } else if (boards.isEmpty) {
-      slivers.add(SliverToBoxAdapter(
-        child: EmptyView(
-          icon: Icons.dashboard_outlined,
-          title: S.noBoardsTitle,
-          text: profile.isMe ? S.noOwnBoardsText : S.noUserBoardsText,
-          compact: true,
+      slivers.add(
+        SliverToBoxAdapter(
+          child: EmptyView(
+            icon: Icons.dashboard_outlined,
+            title: S.noBoardsTitle,
+            text: profile.isMe ? S.noOwnBoardsText : S.noUserBoardsText,
+            compact: true,
+          ),
         ),
-      ));
+      );
     } else {
-      slivers.add(BoardGridSliver(
-        boards: boards,
-        onTap: (b) => context.push('/board/${b.id}'),
-      ));
+      slivers.add(
+        BoardGridSliver(
+          boards: boards,
+          onTap: (b) => context.push('/board/${b.id}'),
+        ),
+      );
     }
     return slivers;
   }
@@ -339,13 +419,13 @@ class _StatButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ),
-      );
+    borderRadius: BorderRadius.circular(8),
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
+    ),
+  );
 }
 
 /// Responsive 2+ column grid of [BoardCard]s.
@@ -357,26 +437,27 @@ class BoardGridSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
-        sliver: SliverLayoutBuilder(
-          builder: (context, constraints) {
-            const spacing = 12.0;
-            final width = constraints.crossAxisExtent;
-            final columns = math.max(2, (width / 260).floor());
-            final tile = (width - spacing * (columns - 1)) / columns;
-            return SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: 20,
-                mainAxisExtent: tile * 2 / 3 + 50,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, i) => BoardCard(board: boards[i], onTap: () => onTap(boards[i])),
-                childCount: boards.length,
-              ),
-            );
-          },
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
+    sliver: SliverLayoutBuilder(
+      builder: (context, constraints) {
+        const spacing = 12.0;
+        final width = constraints.crossAxisExtent;
+        final columns = math.max(2, (width / 260).floor());
+        final tile = (width - spacing * (columns - 1)) / columns;
+        return SliverGrid(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: 20,
+            mainAxisExtent: tile * 2 / 3 + 50,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, i) =>
+                BoardCard(board: boards[i], onTap: () => onTap(boards[i])),
+            childCount: boards.length,
+          ),
+        );
+      },
+    ),
+  );
 }

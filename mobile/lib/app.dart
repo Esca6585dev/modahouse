@@ -25,7 +25,8 @@ class ModaHouseApp extends ConsumerWidget {
       scaffoldMessengerKey: rootMessengerKey,
       localizationsDelegates: const [TkMaterialLocalizations.delegate],
       routerConfig: router,
-      builder: (context, child) => ready ? child ?? const SizedBox.shrink() : const SplashView(),
+      builder: (context, child) =>
+          ready ? child ?? const SizedBox.shrink() : const SplashView(),
     );
   }
 }
@@ -36,16 +37,12 @@ class SplashView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ColoredBox(
-        color: AppPalette.of(context).bg,
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LogoMark(size: 64),
-              SizedBox(height: 24),
-              Spinner(),
-            ],
-          ),
-        ),
-      );
+    color: AppPalette.of(context).bg,
+    child: const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [LogoMark(size: 64), SizedBox(height: 24), Spinner()],
+      ),
+    ),
+  );
 }

@@ -36,7 +36,8 @@ class S {
   static const forbidden = 'Bu hereket üçin rugsadyňyz ýok';
   static const notFound = 'Tapylmady';
   static const fileTooLarge = 'Faýl gaty uly';
-  static const tooManyRequests = 'Haýyşlar gaty köp. Birazdan gaýtadan synanyşyň';
+  static const tooManyRequests =
+      'Haýyşlar gaty köp. Birazdan gaýtadan synanyşyň';
   static const timeout = 'Serwer jogap bermedi. Gaýtadan synanyşyň';
   static const sessionExpired = 'Sessiýaňyz tamamlandy. Täzeden giriň';
   static const linkCopied = 'Baglanyşyk göçürildi';
@@ -62,8 +63,10 @@ class S {
   static const loginAction = 'Giriň';
   static const loginPromptTitle = 'Ilki ulgama giriň';
   static const loginPromptCreate = 'Pin döretmek üçin hasabyňyza giriň.';
-  static const loginPromptNotifications = 'Bildirişleri görmek üçin hasabyňyza giriň.';
-  static const loginPromptProfile = 'Profiliňizi we tagtalaryňyzy görmek üçin giriň.';
+  static const loginPromptNotifications =
+      'Bildirişleri görmek üçin hasabyňyza giriň.';
+  static const loginPromptProfile =
+      'Profiliňizi we tagtalaryňyzy görmek üçin giriň.';
   static const register = 'Hasaba al';
   static const createAccount = 'Hasap dörediň';
 
@@ -91,9 +94,11 @@ class S {
   static const similar = 'Şuňa meňzeşler';
   static const noSimilar = 'Meňzeş pin tapylmady.';
   static const pinNotFound = 'Pin tapylmady';
-  static const pinNotFoundText = 'Bu pin pozulan ýa-da hiç haçan bolmadyk bolmagy mümkin.';
+  static const pinNotFoundText =
+      'Bu pin pozulan ýa-da hiç haçan bolmadyk bolmagy mümkin.';
   static const deletePinTitle = 'Pini pozmalymy?';
-  static const deletePinText = 'Bu pini pozmalymy? Bu hereketi yzyna gaýtaryp bolmaýar.';
+  static const deletePinText =
+      'Bu pini pozmalymy? Bu hereketi yzyna gaýtaryp bolmaýar.';
   static const pinDeleted = 'Pin pozuldy';
   static const pinOptions = 'Pin sazlamalary';
   static const cannotOpenLink = 'Baglanyşygy açyp bolmady';
@@ -128,7 +133,8 @@ class S {
   static const descriptionHint = 'Bu pin barada gysgaça ýazyň';
   static const link = 'Baglanyşyk';
   static const linkHint = 'https://…';
-  static const linkInvalid = 'Baglanyşyk http:// ýa-da https:// bilen başlamaly';
+  static const linkInvalid =
+      'Baglanyşyk http:// ýa-da https:// bilen başlamaly';
   static const category = 'Kategoriýa';
   static const categoryRequired = 'Kategoriýa saýlaň';
   static const tags = 'Bellikler';
@@ -164,21 +170,25 @@ class S {
   static const tabCreated = 'Döredilen';
   static const tabSaved = 'Saklanan';
   static const noPinsTitle = 'Entek pin ýok';
-  static const noOwnPinsText = 'Ilkinji pininizi dörediň we ideýalaryňyzy paýlaşyň.';
+  static const noOwnPinsText =
+      'Ilkinji pininizi dörediň we ideýalaryňyzy paýlaşyň.';
   static const noUserPinsText = 'Bu ulanyjy entek pin döretmedi.';
   static const noBoardsTitle = 'Tagta ýok';
-  static const noOwnBoardsText = 'Halan pinleriňizi saklamak üçin tagta dörediň.';
+  static const noOwnBoardsText =
+      'Halan pinleriňizi saklamak üçin tagta dörediň.';
   static const noUserBoardsText = 'Bu ulanyjynyň açyk tagtasy ýok.';
   static const userNotFound = 'Ulanyjy tapylmady';
 
   // ---------- Board ----------
   static const boardNotFound = 'Tagta tapylmady';
-  static const boardNotFoundText = 'Bu tagta pozulan ýa-da gizlin bolmagy mümkin.';
+  static const boardNotFoundText =
+      'Bu tagta pozulan ýa-da gizlin bolmagy mümkin.';
   static const privateBoard = 'Gizlin';
   static const privateBoardLabel = 'Gizlin tagta';
   static const privateBoardHelp = 'Diňe siz görüp bilersiňiz';
   static const boardEmptyTitle = 'Bu tagta entek boş';
-  static const boardEmptyText = 'Halan pinleriňizi “Sakla” düwmesi bilen şu tagta goşuň.';
+  static const boardEmptyText =
+      'Halan pinleriňizi “Sakla” düwmesi bilen şu tagta goşuň.';
   static const editBoard = 'Tagtany üýtget';
   static const deleteBoard = 'Tagtany poz';
   static const deleteBoardText = 'Bu tagtany pozmalymy? Pinleriň özi pozulmaz.';
@@ -204,7 +214,8 @@ class S {
 
   // ---------- Auth ----------
   static const welcome = 'ModaHouse-a hoş geldiňiz';
-  static const loginSubtitle = 'Ulanyjy adyňyzy (ýa-da e-poçtaňyzy) we parolyňyzy ýazyň';
+  static const loginSubtitle =
+      'Ulanyjy adyňyzy (ýa-da e-poçtaňyzy) we parolyňyzy ýazyň';
   static const loginField = 'Ulanyjy ady ýa-da e-poçta';
   static const loginRequired = 'Ulanyjy adyňyzy ýa-da e-poçtaňyzy ýazyň';
   static const password = 'Parol';

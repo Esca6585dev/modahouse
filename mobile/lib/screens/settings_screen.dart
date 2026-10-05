@@ -28,7 +28,12 @@ class SettingsScreen extends ConsumerWidget {
       body: me == null
           ? const LoadingView()
           : ListView(
-              padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 8, AppPalette.gutter, 32),
+              padding: const EdgeInsets.fromLTRB(
+                AppPalette.gutter,
+                8,
+                AppPalette.gutter,
+                32,
+              ),
               children: [
                 _AvatarCard(me: me),
                 _ProfileCard(me: me),
@@ -61,7 +66,10 @@ class _Card extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),
             Text(subtitle!, style: TextStyle(color: p.muted)),
@@ -102,7 +110,10 @@ class _AvatarCardState extends ConsumerState<_AvatarCard> {
   Future<void> _change() async {
     final img = await pickImage(ImageSource.gallery, maxSize: 1024);
     if (img == null || !mounted) return;
-    await _run(() => ref.read(authRepositoryProvider).uploadAvatar(img), S.avatarUpdated);
+    await _run(
+      () => ref.read(authRepositoryProvider).uploadAvatar(img),
+      S.avatarUpdated,
+    );
   }
 
   @override
@@ -125,12 +136,19 @@ class _AvatarCardState extends ConsumerState<_AvatarCard> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                FilledButton(onPressed: _busy ? null : _change, child: const Text(S.changeAvatar)),
+                FilledButton(
+                  onPressed: _busy ? null : _change,
+                  child: const Text(S.changeAvatar),
+                ),
                 if (me.avatarUrl.isNotEmpty)
                   ElevatedButton(
                     onPressed: _busy
                         ? null
-                        : () => _run(() => ref.read(authRepositoryProvider).deleteAvatar(), S.avatarRemoved),
+                        : () => _run(
+                            () =>
+                                ref.read(authRepositoryProvider).deleteAvatar(),
+                            S.avatarRemoved,
+                          ),
                     child: const Text(S.removeAvatar),
                   ),
               ],
@@ -174,7 +192,9 @@ class _ProfileCardState extends ConsumerState<_ProfileCard> {
       _error = null;
     });
     try {
-      final me = await ref.read(authRepositoryProvider).updateMe(
+      final me = await ref
+          .read(authRepositoryProvider)
+          .updateMe(
             name: _name.text.trim(),
             username: _username.text.trim().toLowerCase(),
             bio: _bio.text.trim(),
@@ -190,51 +210,64 @@ class _ProfileCardState extends ConsumerState<_ProfileCard> {
 
   @override
   Widget build(BuildContext context) => _Card(
-        title: S.personalInfo,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _name,
-                enabled: !_busy,
-                maxLength: 60,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: S.name),
-                validator: (v) => (v ?? '').trim().isEmpty ? S.nameRequired : null,
-              ),
-              const SizedBox(height: 4),
-              TextFormField(
-                controller: _username,
-                enabled: !_busy,
-                autocorrect: false,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: S.username, helperText: S.usernameHelp, prefixText: '@'),
-                validator: (v) => _usernameRe.hasMatch((v ?? '').trim().toLowerCase()) ? null : S.usernameInvalid,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _bio,
-                enabled: !_busy,
-                minLines: 2,
-                maxLines: 4,
-                maxLength: 300,
-                decoration: const InputDecoration(labelText: S.bio, hintText: S.bioHint),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                FormErrorBox(message: _error!),
-              ],
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? S.saving : S.save)),
-              ),
-            ],
+    title: S.personalInfo,
+    child: Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: _name,
+            enabled: !_busy,
+            maxLength: 60,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: S.name),
+            validator: (v) => (v ?? '').trim().isEmpty ? S.nameRequired : null,
           ),
-        ),
-      );
+          const SizedBox(height: 4),
+          TextFormField(
+            controller: _username,
+            enabled: !_busy,
+            autocorrect: false,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: S.username,
+              helperText: S.usernameHelp,
+              prefixText: '@',
+            ),
+            validator: (v) =>
+                _usernameRe.hasMatch((v ?? '').trim().toLowerCase())
+                ? null
+                : S.usernameInvalid,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _bio,
+            enabled: !_busy,
+            minLines: 2,
+            maxLines: 4,
+            maxLength: 300,
+            decoration: const InputDecoration(
+              labelText: S.bio,
+              hintText: S.bioHint,
+            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            FormErrorBox(message: _error!),
+          ],
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? S.saving : S.save),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _PasswordCard extends ConsumerStatefulWidget {
@@ -267,7 +300,9 @@ class _PasswordCardState extends ConsumerState<_PasswordCard> {
       _error = null;
     });
     try {
-      await ref.read(authProvider.notifier).changePassword(_current.text, _new.text);
+      await ref
+          .read(authProvider.notifier)
+          .changePassword(_current.text, _new.text);
       _current.clear();
       _new.clear();
       _repeat.clear();
@@ -283,52 +318,53 @@ class _PasswordCardState extends ConsumerState<_PasswordCard> {
 
   @override
   Widget build(BuildContext context) => _Card(
-        title: S.changePassword,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _current,
-                enabled: !_busy,
-                obscureText: true,
-                decoration: _dec(S.currentPassword),
-                validator: (v) => (v ?? '').isEmpty ? S.currentPasswordRequired : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _new,
-                enabled: !_busy,
-                obscureText: true,
-                decoration: _dec(S.newPassword),
-                validator: (v) => (v ?? '').length < 6 ? S.passwordShort : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _repeat,
-                enabled: !_busy,
-                obscureText: true,
-                decoration: _dec(S.repeatPassword),
-                validator: (v) => v != _new.text ? S.passwordsMismatch : null,
-                onFieldSubmitted: (_) => _save(),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                FormErrorBox(message: _error!),
-              ],
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton(
-                  onPressed: _busy ? null : _save,
-                  child: Text(_busy ? S.saving : S.changePassword),
-                ),
-              ),
-            ],
+    title: S.changePassword,
+    child: Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: _current,
+            enabled: !_busy,
+            obscureText: true,
+            decoration: _dec(S.currentPassword),
+            validator: (v) =>
+                (v ?? '').isEmpty ? S.currentPasswordRequired : null,
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _new,
+            enabled: !_busy,
+            obscureText: true,
+            decoration: _dec(S.newPassword),
+            validator: (v) => (v ?? '').length < 6 ? S.passwordShort : null,
+          ),
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _repeat,
+            enabled: !_busy,
+            obscureText: true,
+            decoration: _dec(S.repeatPassword),
+            validator: (v) => v != _new.text ? S.passwordsMismatch : null,
+            onFieldSubmitted: (_) => _save(),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 16),
+            FormErrorBox(message: _error!),
+          ],
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton(
+              onPressed: _busy ? null : _save,
+              child: Text(_busy ? S.saving : S.changePassword),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class _LogoutCard extends ConsumerWidget {
@@ -336,25 +372,30 @@ class _LogoutCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => _Card(
-        title: S.logout,
-        subtitle: S.logoutText,
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppPalette.danger,
-              side: const BorderSide(color: AppPalette.danger, width: 2),
-            ),
-            onPressed: () async {
-              final ok = await confirmDialog(context, title: S.logoutConfirm, text: S.logoutText, confirm: S.logout);
-              if (!ok) return;
-              await ref.read(authProvider.notifier).logout();
-              showSnack(S.loggedOut);
-              if (context.mounted) context.go('/');
-            },
-            icon: const Icon(Icons.logout_rounded),
-            label: const Text(S.logout),
-          ),
+    title: S.logout,
+    subtitle: S.logoutText,
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppPalette.danger,
+          side: const BorderSide(color: AppPalette.danger, width: 2),
         ),
-      );
+        onPressed: () async {
+          final ok = await confirmDialog(
+            context,
+            title: S.logoutConfirm,
+            text: S.logoutText,
+            confirm: S.logout,
+          );
+          if (!ok) return;
+          await ref.read(authProvider.notifier).logout();
+          showSnack(S.loggedOut);
+          if (context.mounted) context.go('/');
+        },
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text(S.logout),
+      ),
+    ),
+  );
 }

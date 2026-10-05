@@ -9,7 +9,8 @@ import 'strings.dart';
 class TkMaterialLocalizations extends DefaultMaterialLocalizations {
   const TkMaterialLocalizations();
 
-  static const LocalizationsDelegate<MaterialLocalizations> delegate = _Delegate();
+  static const LocalizationsDelegate<MaterialLocalizations> delegate =
+      _Delegate();
 
   @override
   String get backButtonTooltip => S.back;

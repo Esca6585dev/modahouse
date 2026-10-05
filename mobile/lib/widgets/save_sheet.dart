@@ -96,7 +96,10 @@ class _SaveSheetState extends ConsumerState<SaveSheet> {
             ? b.copyWith(
                 pinsCount: (b.pinsCount + delta).clamp(0, 1 << 30),
                 covers: delta > 0
-                    ? [_pin.imageUrl, ...b.covers.where((c) => c != _pin.imageUrl)].take(3).toList()
+                    ? [
+                        _pin.imageUrl,
+                        ...b.covers.where((c) => c != _pin.imageUrl),
+                      ].take(3).toList()
                     : b.covers.where((c) => c != _pin.imageUrl).toList(),
               )
             : b,
@@ -115,7 +118,9 @@ class _SaveSheetState extends ConsumerState<SaveSheet> {
     });
     final repo = ref.read(boardsRepositoryProvider);
     try {
-      final res = wasIn ? await repo.unsavePin(board.id, _pin.id) : await repo.savePin(board.id, _pin.id);
+      final res = wasIn
+          ? await repo.unsavePin(board.id, _pin.id)
+          : await repo.savePin(board.id, _pin.id);
       final updated = res ?? _pin.copyWith(savedBoardIds: _saved.toList());
       if (!mounted) return;
       setState(() => _saved = {...updated.savedBoardIds});
@@ -142,10 +147,15 @@ class _SaveSheetState extends ConsumerState<SaveSheet> {
     });
     try {
       final board = await ref.read(boardsRepositoryProvider).create(name: name);
-      final updated = await ref.read(boardsRepositoryProvider).savePin(board.id, _pin.id);
+      final updated = await ref
+          .read(boardsRepositoryProvider)
+          .savePin(board.id, _pin.id);
       if (!mounted) return;
       setState(() {
-        _boards = [board.copyWith(pinsCount: 1, covers: [_pin.imageUrl]), ...?_boards];
+        _boards = [
+          board.copyWith(pinsCount: 1, covers: [_pin.imageUrl]),
+          ...?_boards,
+        ];
         _saved = {...updated.savedBoardIds};
         _creating = false;
         _name.clear();
@@ -181,7 +191,11 @@ class _SaveSheetState extends ConsumerState<SaveSheet> {
     } else if (boards.isEmpty) {
       list = Padding(
         padding: const EdgeInsets.all(16),
-        child: Text(S.noBoards, textAlign: TextAlign.center, style: TextStyle(color: p.muted)),
+        child: Text(
+          S.noBoards,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: p.muted),
+        ),
       );
     } else {
       list = ListView.builder(
@@ -220,7 +234,10 @@ class _SaveSheetState extends ConsumerState<SaveSheet> {
                 child: Text(
                   _error!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppPalette.danger, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: AppPalette.danger,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             Divider(height: 17, color: p.border),
@@ -235,58 +252,76 @@ class _SaveSheetState extends ConsumerState<SaveSheet> {
   }
 
   Widget _newBoardButton(AppPalette p) => InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => setState(() => _creating = true),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(10)),
-                child: const Icon(Icons.add_rounded),
-              ),
-              const SizedBox(width: 12),
-              const Text(S.newBoard, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-            ],
+    borderRadius: BorderRadius.circular(12),
+    onTap: () => setState(() => _creating = true),
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: p.surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.add_rounded),
           ),
-        ),
-      );
+          const SizedBox(width: 12),
+          const Text(
+            S.newBoard,
+            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _newBoardForm() => Padding(
-        padding: const EdgeInsets.all(4),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _name,
-                autofocus: true,
-                enabled: !_busyNew,
-                textInputAction: TextInputAction.done,
-                maxLength: 60,
-                decoration: const InputDecoration(
-                  hintText: S.newBoardName,
-                  counterText: '',
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onChanged: (_) => setState(() {}),
-                onSubmitted: (_) => _createAndSave(),
+    padding: const EdgeInsets.all(4),
+    child: Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _name,
+            autofocus: true,
+            enabled: !_busyNew,
+            textInputAction: TextInputAction.done,
+            maxLength: 60,
+            decoration: const InputDecoration(
+              hintText: S.newBoardName,
+              counterText: '',
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: _name.text.trim().isEmpty || _busyNew || _busyId != null ? null : _createAndSave,
-              child: _busyNew ? const Spinner(size: 18, color: Colors.white) : const Text(S.create),
-            ),
-          ],
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _createAndSave(),
+          ),
         ),
-      );
+        const SizedBox(width: 8),
+        FilledButton(
+          onPressed: _name.text.trim().isEmpty || _busyNew || _busyId != null
+              ? null
+              : _createAndSave,
+          child: _busyNew
+              ? const Spinner(size: 18, color: Colors.white)
+              : const Text(S.create),
+        ),
+      ],
+    ),
+  );
 }
 
 class _BoardRow extends StatelessWidget {
-  const _BoardRow({required this.board, required this.saved, required this.busy, required this.onTap});
+  const _BoardRow({
+    required this.board,
+    required this.saved,
+    required this.busy,
+    required this.onTap,
+  });
 
   final Board board;
   final bool saved;
@@ -308,7 +343,10 @@ class _BoardRow extends StatelessWidget {
               child: SizedBox.square(
                 dimension: 48,
                 child: board.covers.isEmpty
-                    ? ColoredBox(color: p.surface2, child: Icon(Icons.dashboard_outlined, color: p.muted))
+                    ? ColoredBox(
+                        color: p.surface2,
+                        child: Icon(Icons.dashboard_outlined, color: p.muted),
+                      )
                     : AppImage(board.covers.first, placeholder: p.surface2),
               ),
             ),
@@ -321,7 +359,10 @@ class _BoardRow extends StatelessWidget {
                       board.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
                     ),
                   ),
                   if (board.isPrivate) ...[

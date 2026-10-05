@@ -53,7 +53,10 @@ ApiException mapDioError(Object error) {
     final res = error.response;
     if (res != null) {
       final status = res.statusCode ?? 0;
-      return ApiException(errorFromBody(res.data) ?? fallbackMessage(status), status);
+      return ApiException(
+        errorFromBody(res.data) ?? fallbackMessage(status),
+        status,
+      );
     }
     switch (error.type) {
       case DioExceptionType.connectionTimeout:

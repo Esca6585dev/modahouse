@@ -9,11 +9,11 @@ class UserBrief {
   });
 
   factory UserBrief.fromJson(Json j) => UserBrief(
-        id: asInt(j['id']),
-        username: asString(j['username']),
-        name: asString(j['name']),
-        avatarUrl: asString(j['avatarUrl']),
-      );
+    id: asInt(j['id']),
+    username: asString(j['username']),
+    name: asString(j['name']),
+    avatarUrl: asString(j['avatarUrl']),
+  );
 
   final int id;
   final String username;
@@ -25,7 +25,8 @@ class UserBrief {
   String get displayName => name.isNotEmpty ? name : username;
 
   @override
-  bool operator ==(Object other) => other is UserBrief && other.id == id && other.username == username;
+  bool operator ==(Object other) =>
+      other is UserBrief && other.id == id && other.username == username;
 
   @override
   int get hashCode => Object.hash(id, username);
@@ -47,18 +48,18 @@ class Profile extends UserBrief {
   });
 
   factory Profile.fromJson(Json j) => Profile(
-        id: asInt(j['id']),
-        username: asString(j['username']),
-        name: asString(j['name']),
-        avatarUrl: asString(j['avatarUrl']),
-        bio: asString(j['bio']),
-        followersCount: asInt(j['followersCount']),
-        followingCount: asInt(j['followingCount']),
-        pinsCount: asInt(j['pinsCount']),
-        isFollowing: asBool(j['isFollowing']),
-        isMe: asBool(j['isMe']),
-        createdAt: asDate(j['createdAt']),
-      );
+    id: asInt(j['id']),
+    username: asString(j['username']),
+    name: asString(j['name']),
+    avatarUrl: asString(j['avatarUrl']),
+    bio: asString(j['bio']),
+    followersCount: asInt(j['followersCount']),
+    followingCount: asInt(j['followingCount']),
+    pinsCount: asInt(j['pinsCount']),
+    isFollowing: asBool(j['isFollowing']),
+    isMe: asBool(j['isMe']),
+    createdAt: asDate(j['createdAt']),
+  );
 
   final String bio;
   final int followersCount;
@@ -69,18 +70,18 @@ class Profile extends UserBrief {
   final DateTime? createdAt;
 
   Profile copyWith({bool? isFollowing, int? followersCount}) => Profile(
-        id: id,
-        username: username,
-        name: name,
-        avatarUrl: avatarUrl,
-        bio: bio,
-        followersCount: followersCount ?? this.followersCount,
-        followingCount: followingCount,
-        pinsCount: pinsCount,
-        isFollowing: isFollowing ?? this.isFollowing,
-        isMe: isMe,
-        createdAt: createdAt,
-      );
+    id: id,
+    username: username,
+    name: name,
+    avatarUrl: avatarUrl,
+    bio: bio,
+    followersCount: followersCount ?? this.followersCount,
+    followingCount: followingCount,
+    pinsCount: pinsCount,
+    isFollowing: isFollowing ?? this.isFollowing,
+    isMe: isMe,
+    createdAt: createdAt,
+  );
 }
 
 class Me extends Profile {
@@ -123,8 +124,10 @@ class Me extends Profile {
 class AuthResponse {
   const AuthResponse({required this.token, required this.user});
 
-  factory AuthResponse.fromJson(Json j) =>
-      AuthResponse(token: asString(j['token']), user: Me.fromJson(asJson(j['user'])));
+  factory AuthResponse.fromJson(Json j) => AuthResponse(
+    token: asString(j['token']),
+    user: Me.fromJson(asJson(j['user'])),
+  );
 
   final String token;
   final Me user;

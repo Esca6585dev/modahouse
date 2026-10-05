@@ -11,7 +11,9 @@ import '../data/users_repository.dart';
 import '../models/models.dart';
 import 'auth.dart';
 
-final tokenStorageProvider = Provider<TokenStorage>((ref) => SecureTokenStorage());
+final tokenStorageProvider = Provider<TokenStorage>(
+  (ref) => SecureTokenStorage(),
+);
 
 /// Shared HTTP client. The token and the 401 handler are read lazily, so the
 /// client never has to be rebuilt when the user logs in or out.
@@ -22,13 +24,24 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   );
 });
 
-final authRepositoryProvider = Provider((ref) => AuthRepository(ref.watch(apiClientProvider)));
-final usersRepositoryProvider = Provider((ref) => UsersRepository(ref.watch(apiClientProvider)));
-final pinsRepositoryProvider = Provider((ref) => PinsRepository(ref.watch(apiClientProvider)));
-final boardsRepositoryProvider = Provider((ref) => BoardsRepository(ref.watch(apiClientProvider)));
-final commentsRepositoryProvider = Provider((ref) => CommentsRepository(ref.watch(apiClientProvider)));
-final notificationsRepositoryProvider =
-    Provider((ref) => NotificationsRepository(ref.watch(apiClientProvider)));
+final authRepositoryProvider = Provider(
+  (ref) => AuthRepository(ref.watch(apiClientProvider)),
+);
+final usersRepositoryProvider = Provider(
+  (ref) => UsersRepository(ref.watch(apiClientProvider)),
+);
+final pinsRepositoryProvider = Provider(
+  (ref) => PinsRepository(ref.watch(apiClientProvider)),
+);
+final boardsRepositoryProvider = Provider(
+  (ref) => BoardsRepository(ref.watch(apiClientProvider)),
+);
+final commentsRepositoryProvider = Provider(
+  (ref) => CommentsRepository(ref.watch(apiClientProvider)),
+);
+final notificationsRepositoryProvider = Provider(
+  (ref) => NotificationsRepository(ref.watch(apiClientProvider)),
+);
 
 /// Categories rarely change: load once and keep.
 final categoriesProvider = FutureProvider<List<Category>>((ref) {

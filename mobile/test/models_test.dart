@@ -4,7 +4,12 @@ import 'package:modahouse/config.dart';
 import 'package:modahouse/core/format.dart';
 import 'package:modahouse/models/models.dart';
 
-const _author = {'id': 1, 'username': 'aylar.studio', 'name': 'Aýlar Studio', 'avatarUrl': ''};
+const _author = {
+  'id': 1,
+  'username': 'aylar.studio',
+  'name': 'Aýlar Studio',
+  'avatarUrl': '',
+};
 
 const _pinJson = {
   'id': 7,
@@ -58,7 +63,10 @@ void main() {
     });
 
     test('AuthResponse.fromJson', () {
-      final r = AuthResponse.fromJson({'token': 'jwt', 'user': {..._author, 'email': 'a@b.tm'}});
+      final r = AuthResponse.fromJson({
+        'token': 'jwt',
+        'user': {..._author, 'email': 'a@b.tm'},
+      });
       expect(r.token, 'jwt');
       expect(r.user.email, 'a@b.tm');
     });
@@ -98,12 +106,17 @@ void main() {
     test('aspect ratio is guarded', () {
       final noSize = Pin.fromJson({..._pinJson, 'width': 0, 'height': 0});
       expect(noSize.aspectRatio, 0.75);
-      final veryTall = Pin.fromJson({..._pinJson, 'width': 100, 'height': 1000});
+      final veryTall = Pin.fromJson({
+        ..._pinJson,
+        'width': 100,
+        'height': 1000,
+      });
       expect(veryTall.aspectRatio, 0.45);
     });
 
     test('copyWith updates like and save state only', () {
-      final p = Pin.fromJson(_pinJson).copyWith(liked: false, likesCount: 1, savedBoardIds: []);
+      final p = Pin.fromJson(_pinJson)
+          .copyWith(liked: false, likesCount: 1, savedBoardIds: []);
       expect(p.liked, isFalse);
       expect(p.likesCount, 1);
       expect(p.isSaved, isFalse);
@@ -166,7 +179,12 @@ void main() {
     });
 
     test('follow without pin and unknown types', () {
-      final n = Notification.fromJson({'id': 4, 'type': 'follow', 'read': true, 'actor': _author});
+      final n = Notification.fromJson({
+        'id': 4,
+        'type': 'follow',
+        'read': true,
+        'actor': _author,
+      });
       expect(n.type, NotificationType.follow);
       expect(n.pin, isNull);
       expect(notificationTypeFrom('like'), NotificationType.like);
@@ -186,7 +204,10 @@ void main() {
 
   test('Page<T>.fromJson', () {
     final page = Page.fromJson({
-      'items': [_pinJson, {..._pinJson, 'id': 8}],
+      'items': [
+        _pinJson,
+        {..._pinJson, 'id': 8},
+      ],
       'page': 2,
       'limit': 24,
       'hasMore': true,
@@ -203,9 +224,18 @@ void main() {
 
   group('helpers', () {
     test('resolveImageUrl prefixes relative paths', () {
-      expect(resolveImageUrl('/uploads/a.svg', origin: 'http://10.0.2.2:8080'), 'http://10.0.2.2:8080/uploads/a.svg');
-      expect(resolveImageUrl('uploads/a.svg', origin: 'http://h'), 'http://h/uploads/a.svg');
-      expect(resolveImageUrl('https://cdn/x.png', origin: 'http://h'), 'https://cdn/x.png');
+      expect(
+        resolveImageUrl('/uploads/a.svg', origin: 'http://10.0.2.2:8080'),
+        'http://10.0.2.2:8080/uploads/a.svg',
+      );
+      expect(
+        resolveImageUrl('uploads/a.svg', origin: 'http://h'),
+        'http://h/uploads/a.svg',
+      );
+      expect(
+        resolveImageUrl('https://cdn/x.png', origin: 'http://h'),
+        'https://cdn/x.png',
+      );
       expect(resolveImageUrl(''), '');
     });
 
@@ -217,11 +247,23 @@ void main() {
 
     test('timeAgo in Turkmen', () {
       final now = DateTime(2026, 10, 5, 12);
-      expect(timeAgo(now.subtract(const Duration(seconds: 10)), now: now), 'şu wagt');
-      expect(timeAgo(now.subtract(const Duration(minutes: 3)), now: now), '3 minut öň');
-      expect(timeAgo(now.subtract(const Duration(hours: 2)), now: now), '2 sagat öň');
+      expect(
+        timeAgo(now.subtract(const Duration(seconds: 10)), now: now),
+        'şu wagt',
+      );
+      expect(
+        timeAgo(now.subtract(const Duration(minutes: 3)), now: now),
+        '3 minut öň',
+      );
+      expect(
+        timeAgo(now.subtract(const Duration(hours: 2)), now: now),
+        '2 sagat öň',
+      );
       expect(timeAgo(now.subtract(const Duration(hours: 30)), now: now), 'dün');
-      expect(timeAgo(now.subtract(const Duration(days: 4)), now: now), '4 gün öň');
+      expect(
+        timeAgo(now.subtract(const Duration(days: 4)), now: now),
+        '4 gün öň',
+      );
       expect(timeAgo(null), '');
     });
 
@@ -234,10 +276,23 @@ void main() {
     });
 
     test('parseHexColor and splitTags', () {
-      expect(parseHexColor('#f2d0b6', const Color(0x00000000)).toARGB32(), 0xFFF2D0B6);
-      expect(parseHexColor('#abc', const Color(0x00000000)).toARGB32(), 0xFFAABBCC);
-      expect(parseHexColor('nope', const Color(0x11223344)).toARGB32(), 0x11223344);
-      expect(splitTags(' güýz, palto ,, klassyk '), ['güýz', 'palto', 'klassyk']);
+      expect(
+        parseHexColor('#f2d0b6', const Color(0x00000000)).toARGB32(),
+        0xFFF2D0B6,
+      );
+      expect(
+        parseHexColor('#abc', const Color(0x00000000)).toARGB32(),
+        0xFFAABBCC,
+      );
+      expect(
+        parseHexColor('nope', const Color(0x11223344)).toARGB32(),
+        0x11223344,
+      );
+      expect(splitTags(' güýz, palto ,, klassyk '), [
+        'güýz',
+        'palto',
+        'klassyk',
+      ]);
     });
   });
 }

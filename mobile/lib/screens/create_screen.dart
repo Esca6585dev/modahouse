@@ -18,7 +18,10 @@ import '../widgets/pin_fields.dart';
 import '../widgets/states.dart';
 
 /// Picks an image from the gallery or camera. Returns null when cancelled.
-Future<PickedImage?> pickImage(ImageSource source, {double maxSize = 2048}) async {
+Future<PickedImage?> pickImage(
+  ImageSource source, {
+  double maxSize = 2048,
+}) async {
   try {
     final file = await ImagePicker().pickImage(
       source: source,
@@ -46,7 +49,11 @@ class CreateScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text(S.createPin)),
       body: loggedIn
           ? const _CreateForm()
-          : const LoginPrompt(text: S.loginPromptCreate, from: '/create', icon: Icons.add_photo_alternate_outlined),
+          : const LoginPrompt(
+              text: S.loginPromptCreate,
+              from: '/create',
+              icon: Icons.add_photo_alternate_outlined,
+            ),
     );
   }
 }
@@ -115,7 +122,9 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
       _formError = null;
     });
     try {
-      final pin = await ref.read(pinsRepositoryProvider).create(
+      final pin = await ref
+          .read(pinsRepositoryProvider)
+          .create(
             image: _image!,
             title: _fields.title.text.trim(),
             category: _fields.category!,
@@ -124,7 +133,9 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
             tags: splitTags(_fields.tags.text).join(','),
             boardId: _boardId,
             onProgress: (sent, total) {
-              if (mounted && total > 0) setState(() => _progress = sent / total);
+              if (mounted && total > 0) {
+                setState(() => _progress = sent / total);
+              }
             },
           );
       ref.read(pinUpdatesProvider.notifier).created(pin);
@@ -160,7 +171,12 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
     return Form(
       key: _formKey,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 4, AppPalette.gutter, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppPalette.gutter,
+          4,
+          AppPalette.gutter,
+          32,
+        ),
         children: [
           _ImageArea(
             image: _image,
@@ -189,7 +205,9 @@ class _CreateFormState extends ConsumerState<_CreateForm> {
                   value: b.id,
                   child: Row(
                     children: [
-                      Flexible(child: Text(b.name, overflow: TextOverflow.ellipsis)),
+                      Flexible(
+                        child: Text(b.name, overflow: TextOverflow.ellipsis),
+                      ),
                       if (b.isPrivate) ...[
                         const SizedBox(width: 6),
                         Icon(Icons.lock_rounded, size: 15, color: p.muted),
@@ -263,7 +281,13 @@ class _ImageArea extends StatelessWidget {
                     semanticLabel: img.name,
                     errorBuilder: (_, _, _) => SizedBox(
                       height: 200,
-                      child: Center(child: Icon(Icons.broken_image_outlined, color: p.muted, size: 40)),
+                      child: Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: p.muted,
+                          size: 40,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -287,15 +311,27 @@ class _ImageArea extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: missing ? AppPalette.danger : p.border, width: 2),
+        border: Border.all(
+          color: missing ? AppPalette.danger : p.border,
+          width: 2,
+        ),
       ),
       child: Column(
         children: [
           Icon(Icons.add_photo_alternate_outlined, size: 44, color: p.muted),
           const SizedBox(height: 10),
-          const Text(S.pickImage, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+          const Text(
+            S.pickImage,
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+          ),
           const SizedBox(height: 4),
-          Text(S.pickImageHelp, style: TextStyle(color: missing ? AppPalette.danger : p.muted, fontSize: 13)),
+          Text(
+            S.pickImageHelp,
+            style: TextStyle(
+              color: missing ? AppPalette.danger : p.muted,
+              fontSize: 13,
+            ),
+          ),
           const SizedBox(height: 20),
           Wrap(
             alignment: WrapAlignment.center,

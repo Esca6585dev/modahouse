@@ -49,8 +49,12 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _comments = PagedController((page) => ref.read(commentsRepositoryProvider).list(id, page));
-    _similar = PagedController((page) => ref.read(pinsRepositoryProvider).similar(id, page));
+    _comments = PagedController(
+      (page) => ref.read(commentsRepositoryProvider).list(id, page),
+    );
+    _similar = PagedController(
+      (page) => ref.read(pinsRepositoryProvider).similar(id, page),
+    );
     _load();
   }
 
@@ -95,7 +99,12 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     if (_likeBusy || !_requireLogin()) return;
     final was = pin.liked;
     // Optimistic update, rolled back on error.
-    _publish(pin.copyWith(liked: !was, likesCount: math.max(0, pin.likesCount + (was ? -1 : 1))));
+    _publish(
+      pin.copyWith(
+        liked: !was,
+        likesCount: math.max(0, pin.likesCount + (was ? -1 : 1)),
+      ),
+    );
     setState(() => _likeBusy = true);
     try {
       final repo = ref.read(pinsRepositoryProvider);
@@ -113,10 +122,18 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
 
   Future<void> _share(Pin pin) async {
     final image = resolveImageUrl(pin.imageUrl);
-    final text = [pin.title, if (pin.link.isNotEmpty) pin.link, image].join('\n');
+    final text = [
+      pin.title,
+      if (pin.link.isNotEmpty) pin.link,
+      image,
+    ].join('\n');
     try {
-      final res = await SharePlus.instance.share(ShareParams(text: text, subject: pin.title));
-      if (res.status == ShareResultStatus.unavailable) throw Exception('unavailable');
+      final res = await SharePlus.instance.share(
+        ShareParams(text: text, subject: pin.title),
+      );
+      if (res.status == ShareResultStatus.unavailable) {
+        throw Exception('unavailable');
+      }
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: text));
       showSnack(S.linkCopied);
@@ -142,7 +159,11 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
   }
 
   Future<void> _delete() async {
-    final ok = await confirmDialog(context, title: S.deletePinTitle, text: S.deletePinText);
+    final ok = await confirmDialog(
+      context,
+      title: S.deletePinTitle,
+      text: S.deletePinText,
+    );
     if (!ok || !mounted) return;
     setState(() => _deleting = true);
     try {
@@ -173,13 +194,16 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
         body: _error == null
             ? const LoadingView()
             : (_error is ApiException && (_error as ApiException).isNotFound)
-                ? EmptyView(
-                    icon: Icons.image_not_supported_outlined,
-                    title: S.pinNotFound,
-                    text: S.pinNotFoundText,
-                    action: FilledButton(onPressed: () => context.go('/'), child: const Text(S.tabHome)),
-                  )
-                : ErrorView(error: _error!, onRetry: _load),
+            ? EmptyView(
+                icon: Icons.image_not_supported_outlined,
+                title: S.pinNotFound,
+                text: S.pinNotFoundText,
+                action: FilledButton(
+                  onPressed: () => context.go('/'),
+                  child: const Text(S.tabHome),
+                ),
+              )
+            : ErrorView(error: _error!, onRetry: _load),
       );
     }
 
@@ -200,7 +224,8 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                 child: Text(
                   S.similar,
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
             ),
@@ -208,7 +233,9 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               controller: _similar,
               empty: const EmptyView(title: S.noSimilar, compact: true),
             ),
-            SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom)),
+            SliverToBoxAdapter(
+              child: SizedBox(height: MediaQuery.paddingOf(context).bottom),
+            ),
           ],
         ),
       ),
@@ -243,7 +270,8 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   child: RoundIconButton(
                     icon: Icons.arrow_back_rounded,
                     tooltip: S.back,
-                    onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+                    onPressed: () =>
+                        context.canPop() ? context.pop() : context.go('/'),
                   ),
                 ),
                 if (isOwner)
@@ -251,10 +279,15 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                     right: 12,
                     top: 12,
                     child: _deleting
-                        ? const RoundIconButton(icon: Icons.hourglass_top_rounded, tooltip: S.deleting, onPressed: null)
+                        ? const RoundIconButton(
+                            icon: Icons.hourglass_top_rounded,
+                            tooltip: S.deleting,
+                            onPressed: null,
+                          )
                         : PopupMenuButton<String>(
                             tooltip: S.pinOptions,
-                            onSelected: (v) => v == 'edit' ? _edit() : _delete(),
+                            onSelected: (v) =>
+                                v == 'edit' ? _edit() : _delete(),
                             itemBuilder: (_) => [
                               const PopupMenuItem(
                                 value: 'edit',
@@ -267,14 +300,24 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                               const PopupMenuItem(
                                 value: 'delete',
                                 child: ListTile(
-                                  leading: Icon(Icons.delete_outline_rounded, color: AppPalette.danger),
-                                  title: Text(S.delete, style: TextStyle(color: AppPalette.danger)),
+                                  leading: Icon(
+                                    Icons.delete_outline_rounded,
+                                    color: AppPalette.danger,
+                                  ),
+                                  title: Text(
+                                    S.delete,
+                                    style: TextStyle(color: AppPalette.danger),
+                                  ),
                                   contentPadding: EdgeInsets.zero,
                                 ),
                               ),
                             ],
                             child: const IgnorePointer(
-                              child: RoundIconButton(icon: Icons.more_horiz_rounded, tooltip: S.pinOptions, onPressed: null),
+                              child: RoundIconButton(
+                                icon: Icons.more_horiz_rounded,
+                                tooltip: S.pinOptions,
+                                onPressed: null,
+                              ),
                             ),
                           ),
                   ),
@@ -293,21 +336,37 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 8, AppPalette.gutter, 0),
+          padding: const EdgeInsets.fromLTRB(
+            AppPalette.gutter,
+            8,
+            AppPalette.gutter,
+            0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Actions: like, comments, share | save
               Row(
                 children: [
-                  _LikeButton(pin: pin, busy: _likeBusy, onTap: () => _toggleLike(pin)),
+                  _LikeButton(
+                    pin: pin,
+                    busy: _likeBusy,
+                    onTap: () => _toggleLike(pin),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Row(
                       children: [
-                        Icon(Icons.chat_bubble_outline_rounded, size: 22, color: p.text),
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 22,
+                          color: p.text,
+                        ),
                         const SizedBox(width: 6),
-                        Text('${pin.commentsCount}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                          '${pin.commentsCount}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ],
                     ),
                   ),
@@ -319,7 +378,10 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   const Spacer(),
                   FilledButton(
                     style: pin.isSaved
-                        ? FilledButton.styleFrom(backgroundColor: p.text, foregroundColor: p.bg)
+                        ? FilledButton.styleFrom(
+                            backgroundColor: p.text,
+                            foregroundColor: p.bg,
+                          )
                         : null,
                     onPressed: () => showSaveSheet(context, ref, pin),
                     child: Text(pin.isSaved ? S.saved : S.saveAction),
@@ -329,7 +391,9 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               const SizedBox(height: 12),
               if (pin.category.isNotEmpty)
                 InkWell(
-                  onTap: () => context.go('/search?category=${Uri.encodeComponent(pin.category)}'),
+                  onTap: () => context.go(
+                    '/search?category=${Uri.encodeComponent(pin.category)}',
+                  ),
                   child: Text(
                     categoryName(pin.category, cats).toUpperCase(),
                     style: const TextStyle(
@@ -343,11 +407,18 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               const SizedBox(height: 6),
               Text(
                 pin.title,
-                style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, height: 1.2),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                ),
               ),
               if (pin.description.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(pin.description, style: const TextStyle(fontSize: 16, height: 1.45)),
+                Text(
+                  pin.description,
+                  style: const TextStyle(fontSize: 16, height: 1.45),
+                ),
               ],
               if (pin.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
@@ -361,12 +432,20 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                         shape: const StadiumBorder(),
                         child: InkWell(
                           customBorder: const StadiumBorder(),
-                          onTap: () => context.go('/search?q=${Uri.encodeComponent(t)}'),
+                          onTap: () =>
+                              context.go('/search?q=${Uri.encodeComponent(t)}'),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
                             child: Text(
                               '#$t',
-                              style: TextStyle(color: p.muted, fontWeight: FontWeight.w600, fontSize: 14),
+                              style: TextStyle(
+                                color: p.muted,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                         ),
@@ -390,8 +469,13 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                 controller: _comments,
                 loggedIn: me != null,
                 onCountChanged: (delta) {
-                  final current = ref.read(pinUpdatesProvider).updated[id] ?? pin;
-                  _publish(current.copyWith(commentsCount: math.max(0, current.commentsCount + delta)));
+                  final current =
+                      ref.read(pinUpdatesProvider).updated[id] ?? pin;
+                  _publish(
+                    current.copyWith(
+                      commentsCount: math.max(0, current.commentsCount + delta),
+                    ),
+                  );
                 },
               ),
             ],
@@ -404,7 +488,8 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
   Widget _authorRow(Pin pin, bool isOwner) {
     final p = AppPalette.of(context);
     final author = _author;
-    void open() => context.push('/user/${Uri.encodeComponent(pin.author.username)}');
+    void open() =>
+        context.push('/user/${Uri.encodeComponent(pin.author.username)}');
     return Row(
       children: [
         UserAvatar(user: pin.author, size: 48, onTap: open),
@@ -419,7 +504,10 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   pin.author.displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
                 Text(
                   author == null
@@ -438,10 +526,15 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
             small: true,
             onChanged: (following, profile) {
               setState(() {
-                _author = profile ??
+                _author =
+                    profile ??
                     author.copyWith(
                       isFollowing: following,
-                      followersCount: author.followersCount + (following == author.isFollowing ? 0 : (following ? 1 : -1)),
+                      followersCount:
+                          author.followersCount +
+                          (following == author.isFollowing
+                              ? 0
+                              : (following ? 1 : -1)),
                     );
               });
             },
@@ -452,7 +545,11 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
 }
 
 class _LikeButton extends StatelessWidget {
-  const _LikeButton({required this.pin, required this.busy, required this.onTap});
+  const _LikeButton({
+    required this.pin,
+    required this.busy,
+    required this.onTap,
+  });
 
   final Pin pin;
   final bool busy;
@@ -474,7 +571,13 @@ class _LikeButton extends StatelessWidget {
           child: ExcludeSemantics(
             child: Row(
               children: [
-                Icon(pin.liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, color: color, size: 24),
+                Icon(
+                  pin.liked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: color,
+                  size: 24,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   compactCount(pin.likesCount),
@@ -522,7 +625,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
     if (text.isEmpty || _sending) return;
     setState(() => _sending = true);
     try {
-      final c = await ref.read(commentsRepositoryProvider).add(widget.pin.id, text);
+      final c = await ref
+          .read(commentsRepositoryProvider)
+          .add(widget.pin.id, text);
       widget.controller.setItems([...widget.controller.items, c]);
       widget.onCountChanged(1);
       _text.clear();
@@ -535,7 +640,11 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
   }
 
   Future<void> _delete(Comment c) async {
-    final ok = await confirmDialog(context, title: S.deleteComment, text: S.deleteCommentText);
+    final ok = await confirmDialog(
+      context,
+      title: S.deleteComment,
+      text: S.deleteCommentText,
+    );
     if (!ok || !mounted) return;
     setState(() => _deleting.add(c.id));
     try {
@@ -565,12 +674,18 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
           ),
           const SizedBox(height: 12),
           if (!ctrl.loaded && ctrl.loading)
-            Text(S.commentsLoading, style: TextStyle(color: p.muted, fontSize: 14))
+            Text(
+              S.commentsLoading,
+              style: TextStyle(color: p.muted, fontSize: 14),
+            )
           else if (ctrl.error != null && ctrl.items.isEmpty)
             Row(
               children: [
                 Flexible(
-                  child: Text(errorMessage(ctrl.error), style: const TextStyle(color: AppPalette.danger)),
+                  child: Text(
+                    errorMessage(ctrl.error),
+                    style: const TextStyle(color: AppPalette.danger),
+                  ),
                 ),
                 TextButton(onPressed: ctrl.refresh, child: const Text(S.retry)),
               ],
@@ -587,7 +702,9 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                     UserAvatar(
                       user: c.author,
                       size: 32,
-                      onTap: () => context.push('/user/${Uri.encodeComponent(c.author.username)}'),
+                      onTap: () => context.push(
+                        '/user/${Uri.encodeComponent(c.author.username)}',
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -595,20 +712,30 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text.rich(
-                            TextSpan(children: [
-                              TextSpan(
-                                text: c.author.displayName,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
-                              ),
-                              TextSpan(
-                                text: '  ${timeAgo(c.createdAt)}',
-                                style: TextStyle(color: p.muted, fontSize: 12),
-                              ),
-                            ]),
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: c.author.displayName,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '  ${timeAgo(c.createdAt)}',
+                                  style: TextStyle(
+                                    color: p.muted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                             style: const TextStyle(fontSize: 14),
                           ),
                           const SizedBox(height: 2),
-                          Text(c.text, style: const TextStyle(fontSize: 14, height: 1.4)),
+                          Text(
+                            c.text,
+                            style: const TextStyle(fontSize: 14, height: 1.4),
+                          ),
                         ],
                       ),
                     ),
@@ -616,10 +743,16 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                       IconButton(
                         tooltip: S.deleteComment,
                         visualDensity: VisualDensity.compact,
-                        onPressed: _deleting.contains(c.id) ? null : () => _delete(c),
+                        onPressed: _deleting.contains(c.id)
+                            ? null
+                            : () => _delete(c),
                         icon: _deleting.contains(c.id)
                             ? const Spinner(size: 16)
-                            : Icon(Icons.delete_outline_rounded, size: 20, color: p.muted),
+                            : Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                                color: p.muted,
+                              ),
                       ),
                   ],
                 ),
@@ -651,7 +784,10 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                       filled: true,
                       fillColor: p.surface,
                       isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                         borderSide: BorderSide(color: p.border, width: 1),
@@ -662,21 +798,30 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
-                        borderSide: const BorderSide(color: AppPalette.accent, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppPalette.accent,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 FilledButton(
-                  onPressed: _text.text.trim().isEmpty || _sending ? null : _send,
-                  child: _sending ? const Spinner(size: 18, color: Colors.white) : const Text(S.send),
+                  onPressed: _text.text.trim().isEmpty || _sending
+                      ? null
+                      : _send,
+                  child: _sending
+                      ? const Spinner(size: 18, color: Colors.white)
+                      : const Text(S.send),
                 ),
               ],
             )
           else
             TextButton.icon(
-              onPressed: () => context.push('/login?from=${Uri.encodeComponent('/pin/${widget.pin.id}')}'),
+              onPressed: () => context.push(
+                '/login?from=${Uri.encodeComponent('/pin/${widget.pin.id}')}',
+              ),
               icon: const Icon(Icons.login_rounded, size: 18),
               label: const Text(S.loginToComment),
             ),

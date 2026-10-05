@@ -20,7 +20,8 @@ import 'state/auth.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
-int? _intParam(GoRouterState s, String name) => int.tryParse(s.pathParameters[name] ?? '');
+int? _intParam(GoRouterState s, String name) =>
+    int.tryParse(s.pathParameters[name] ?? '');
 
 final routerProvider = Provider<GoRouter>((ref) {
   String? requireLogin(BuildContext context, GoRouterState state) {
@@ -35,27 +36,41 @@ final routerProvider = Provider<GoRouter>((ref) {
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => AppShell(shell: shell),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/', builder: (_, _) => const HomeScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/search',
-              builder: (_, s) => SearchScreen(
-                initialQuery: s.uri.queryParameters['q'],
-                initialCategory: s.uri.queryParameters['category'],
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/search',
+                builder: (_, s) => SearchScreen(
+                  initialQuery: s.uri.queryParameters['q'],
+                  initialCategory: s.uri.queryParameters['category'],
+                ),
               ),
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/create', builder: (_, _) => const CreateScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/notifications', builder: (_, _) => const NotificationsScreen()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: '/profile', builder: (_, _) => const MyProfileScreen()),
-          ]),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(path: '/create', builder: (_, _) => const CreateScreen()),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/notifications',
+                builder: (_, _) => const NotificationsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                builder: (_, _) => const MyProfileScreen(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
@@ -69,15 +84,22 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/user/:username',
-        builder: (_, s) => UserProfileScreen(username: s.pathParameters['username'] ?? ''),
+        builder: (_, s) =>
+            UserProfileScreen(username: s.pathParameters['username'] ?? ''),
       ),
       GoRoute(
         path: '/user/:username/followers',
-        builder: (_, s) => UserListScreen(username: s.pathParameters['username'] ?? '', followers: true),
+        builder: (_, s) => UserListScreen(
+          username: s.pathParameters['username'] ?? '',
+          followers: true,
+        ),
       ),
       GoRoute(
         path: '/user/:username/following',
-        builder: (_, s) => UserListScreen(username: s.pathParameters['username'] ?? '', followers: false),
+        builder: (_, s) => UserListScreen(
+          username: s.pathParameters['username'] ?? '',
+          followers: false,
+        ),
       ),
       GoRoute(
         path: '/board/:id',

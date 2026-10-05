@@ -14,15 +14,15 @@ class Board {
   });
 
   factory Board.fromJson(Json j) => Board(
-        id: asInt(j['id']),
-        name: asString(j['name']),
-        description: asString(j['description']),
-        isPrivate: asBool(j['isPrivate']),
-        pinsCount: asInt(j['pinsCount']),
-        covers: asList(j['covers'], asString),
-        owner: UserBrief.fromJson(asJson(j['owner'])),
-        createdAt: asDate(j['createdAt']),
-      );
+    id: asInt(j['id']),
+    name: asString(j['name']),
+    description: asString(j['description']),
+    isPrivate: asBool(j['isPrivate']),
+    pinsCount: asInt(j['pinsCount']),
+    covers: asList(j['covers'], asString),
+    owner: UserBrief.fromJson(asJson(j['owner'])),
+    createdAt: asDate(j['createdAt']),
+  );
 
   final int id;
   final String name;
@@ -36,13 +36,13 @@ class Board {
   final DateTime? createdAt;
 
   Board copyWith({int? pinsCount, List<String>? covers}) => Board(
-        id: id,
-        name: name,
-        description: description,
-        isPrivate: isPrivate,
-        pinsCount: pinsCount ?? this.pinsCount,
-        covers: covers ?? this.covers,
-        owner: owner,
-        createdAt: createdAt,
-      );
+    id: id,
+    name: name,
+    description: description,
+    isPrivate: isPrivate,
+    pinsCount: pinsCount ?? this.pinsCount,
+    covers: covers ?? this.covers,
+    owner: owner,
+    createdAt: createdAt,
+  );
 }

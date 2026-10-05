@@ -8,7 +8,11 @@ import 'states.dart';
 
 /// Horizontal category chips ("Hemmesi" + every category from the API).
 class CategoryChips extends ConsumerWidget {
-  const CategoryChips({super.key, required this.selected, required this.onSelected});
+  const CategoryChips({
+    super.key,
+    required this.selected,
+    required this.onSelected,
+  });
 
   final String? selected;
   final ValueChanged<String?> onSelected;
@@ -23,9 +27,17 @@ class CategoryChips extends ConsumerWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
           children: [
-            PillChip(label: S.all, active: selected == null, onTap: () => onSelected(null)),
+            PillChip(
+              label: S.all,
+              active: selected == null,
+              onTap: () => onSelected(null),
+            ),
             for (final c in list)
-              PillChip(label: c.name, active: selected == c.slug, onTap: () => onSelected(c.slug)),
+              PillChip(
+                label: c.name,
+                active: selected == c.slug,
+                onTap: () => onSelected(c.slug),
+              ),
           ],
         ),
         loading: () => ListView(
@@ -53,7 +65,12 @@ class CategoryChips extends ConsumerWidget {
 }
 
 class PillChip extends StatelessWidget {
-  const PillChip({super.key, required this.label, required this.active, required this.onTap});
+  const PillChip({
+    super.key,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
 
   final String label;
   final bool active;

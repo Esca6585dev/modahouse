@@ -12,10 +12,10 @@ class PinFieldControllers {
     String link = '',
     String tags = '',
     this.category,
-  })  : title = TextEditingController(text: title),
-        description = TextEditingController(text: description),
-        link = TextEditingController(text: link),
-        tags = TextEditingController(text: tags);
+  }) : title = TextEditingController(text: title),
+       description = TextEditingController(text: description),
+       link = TextEditingController(text: link),
+       tags = TextEditingController(text: tags);
 
   final TextEditingController title;
   final TextEditingController description;
@@ -43,7 +43,10 @@ String? validateLink(String? v) {
   final s = (v ?? '').trim();
   if (s.isEmpty) return null;
   final uri = Uri.tryParse(s);
-  final ok = uri != null && (uri.scheme == 'http' || uri.scheme == 'https') && uri.host.isNotEmpty;
+  final ok =
+      uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.isNotEmpty;
   return ok ? null : S.linkInvalid;
 }
 
@@ -74,7 +77,10 @@ class PinFields extends ConsumerWidget {
           enabled: enabled,
           maxLength: 100,
           textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(labelText: '${S.title} *', hintText: S.titleHint),
+          decoration: const InputDecoration(
+            labelText: '${S.title} *',
+            hintText: S.titleHint,
+          ),
           validator: (v) => (v ?? '').trim().isEmpty ? S.titleRequired : null,
         ),
         const SizedBox(height: 4),
@@ -84,7 +90,10 @@ class PinFields extends ConsumerWidget {
           minLines: 3,
           maxLines: 6,
           maxLength: 1000,
-          decoration: const InputDecoration(labelText: S.description, hintText: S.descriptionHint),
+          decoration: const InputDecoration(
+            labelText: S.description,
+            hintText: S.descriptionHint,
+          ),
         ),
         const SizedBox(height: 4),
         TextFormField(
@@ -92,7 +101,10 @@ class PinFields extends ConsumerWidget {
           enabled: enabled,
           keyboardType: TextInputType.url,
           textInputAction: TextInputAction.next,
-          decoration: const InputDecoration(labelText: S.link, hintText: S.linkHint),
+          decoration: const InputDecoration(
+            labelText: S.link,
+            hintText: S.linkHint,
+          ),
           validator: validateLink,
         ),
         gap,
@@ -104,7 +116,8 @@ class PinFields extends ConsumerWidget {
           decoration: const InputDecoration(labelText: '${S.category} *'),
           hint: const Text(S.categoryRequired),
           items: [
-            for (final cat in cats) DropdownMenuItem(value: cat.slug, child: Text(cat.name)),
+            for (final cat in cats)
+              DropdownMenuItem(value: cat.slug, child: Text(cat.name)),
           ],
           onChanged: enabled ? onCategoryChanged : null,
           validator: (v) => v == null || v.isEmpty ? S.categoryRequired : null,

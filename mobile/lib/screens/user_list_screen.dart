@@ -13,7 +13,11 @@ import '../widgets/states.dart';
 
 /// Followers or following of a user.
 class UserListScreen extends ConsumerStatefulWidget {
-  const UserListScreen({super.key, required this.username, required this.followers});
+  const UserListScreen({
+    super.key,
+    required this.username,
+    required this.followers,
+  });
 
   final String username;
   final bool followers;
@@ -30,7 +34,9 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
     super.initState();
     final repo = ref.read(usersRepositoryProvider);
     _users = PagedController(
-      (page) => widget.followers ? repo.followers(widget.username, page) : repo.following(widget.username, page),
+      (page) => widget.followers
+          ? repo.followers(widget.username, page)
+          : repo.following(widget.username, page),
     );
   }
 
@@ -44,7 +50,9 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(widget.followers ? S.followers : S.followingTitle)),
+      appBar: AppBar(
+        title: Text(widget.followers ? S.followers : S.followingTitle),
+      ),
       body: ListenableBuilder(
         listenable: _users,
         builder: (context, _) {
@@ -67,8 +75,12 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
               itemCount: items.length + 1,
               itemBuilder: (context, i) {
                 if (i == items.length) {
-                  if (_users.hasMore && !_users.loading && _users.error == null) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _users.loadMore());
+                  if (_users.hasMore &&
+                      !_users.loading &&
+                      _users.error == null) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => _users.loadMore(),
+                    );
                   }
                   return SizedBox(
                     height: 56,
@@ -76,18 +88,32 @@ class _UserListScreenState extends ConsumerState<UserListScreen> {
                       child: _users.loading
                           ? const Spinner()
                           : _users.error != null
-                              ? TextButton(onPressed: _users.loadMore, child: Text('${errorMessage(_users.error)} · ${S.retry}'))
-                              : null,
+                          ? TextButton(
+                              onPressed: _users.loadMore,
+                              child: Text(
+                                '${errorMessage(_users.error)} · ${S.retry}',
+                              ),
+                            )
+                          : null,
                     ),
                   );
                 }
                 final u = items[i];
                 return ListTile(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   leading: UserAvatar(user: u, size: 44),
-                  title: Text(u.displayName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text('@${u.username}', style: TextStyle(color: p.muted)),
-                  onTap: () => context.push('/user/${Uri.encodeComponent(u.username)}'),
+                  title: Text(
+                    u.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    '@${u.username}',
+                    style: TextStyle(color: p.muted),
+                  ),
+                  onTap: () =>
+                      context.push('/user/${Uri.encodeComponent(u.username)}'),
                 );
               },
             ),

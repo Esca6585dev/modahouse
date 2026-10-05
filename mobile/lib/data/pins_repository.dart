@@ -18,19 +18,24 @@ class PinsRepository {
     bool following = false,
     int page = 1,
     int limit = AppConfig.pageSize,
-  }) async =>
-      Page.fromJson(
-        parseJson(await _api.get('/pins', query: {
+  }) async => Page.fromJson(
+    parseJson(
+      await _api.get(
+        '/pins',
+        query: {
           'q': q?.trim(),
           'category': category,
           'feed': following ? 'following' : null,
           'page': page,
           'limit': limit,
-        })),
-        Pin.fromJson,
-      );
+        },
+      ),
+    ),
+    Pin.fromJson,
+  );
 
-  Future<Pin> get(int id) async => Pin.fromJson(parseJson(await _api.get('/pins/$id')));
+  Future<Pin> get(int id) async =>
+      Pin.fromJson(parseJson(await _api.get('/pins/$id')));
 
   Future<Pin> create({
     required PickedImage image,
@@ -51,7 +56,11 @@ class PinsRepository {
       'tags': tags,
       if (boardId != null) 'boardId': '$boardId',
     });
-    return Pin.fromJson(parseJson(await _api.post('/pins', data: form, onSendProgress: onProgress)));
+    return Pin.fromJson(
+      parseJson(
+        await _api.post('/pins', data: form, onSendProgress: onProgress),
+      ),
+    );
   }
 
   Future<Pin> update(
@@ -61,23 +70,39 @@ class PinsRepository {
     String? link,
     String? category,
     String? tags,
-  }) async =>
-      Pin.fromJson(parseJson(await _api.put('/pins/$id', data: {
-        'title': ?title,
-        'description': ?description,
-        'link': ?link,
-        'category': ?category,
-        'tags': ?tags,
-      })));
+  }) async => Pin.fromJson(
+    parseJson(
+      await _api.put(
+        '/pins/$id',
+        data: {
+          'title': ?title,
+          'description': ?description,
+          'link': ?link,
+          'category': ?category,
+          'tags': ?tags,
+        },
+      ),
+    ),
+  );
 
   Future<void> delete(int id) => _api.delete('/pins/$id');
 
-  Future<Page<Pin>> similar(int id, int page, {int limit = AppConfig.pageSize}) async => Page.fromJson(
-        parseJson(await _api.get('/pins/$id/similar', query: {'page': page, 'limit': limit})),
-        Pin.fromJson,
-      );
+  Future<Page<Pin>> similar(
+    int id,
+    int page, {
+    int limit = AppConfig.pageSize,
+  }) async => Page.fromJson(
+    parseJson(
+      await _api.get(
+        '/pins/$id/similar',
+        query: {'page': page, 'limit': limit},
+      ),
+    ),
+    Pin.fromJson,
+  );
 
-  Future<LikeState> like(int id) async => LikeState.fromJson(parseJson(await _api.post('/pins/$id/like')));
+  Future<LikeState> like(int id) async =>
+      LikeState.fromJson(parseJson(await _api.post('/pins/$id/like')));
 
   Future<LikeState> unlike(int id) async =>
       LikeState.fromJson(parseJson(await _api.delete('/pins/$id/like')));
