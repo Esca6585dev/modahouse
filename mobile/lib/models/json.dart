@@ -10,7 +10,8 @@ bool asBool(Object? v) => v == true;
 
 DateTime? asDate(Object? v) => v is String ? DateTime.tryParse(v) : null;
 
-Json asJson(Object? v) => v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
+Json asJson(Object? v) =>
+    v is Map ? Map<String, dynamic>.from(v) : <String, dynamic>{};
 
 List<T> asList<T>(Object? v, T Function(Object? item) item) =>
     v is List ? v.map(item).toList() : <T>[];

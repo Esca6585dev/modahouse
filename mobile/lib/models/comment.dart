@@ -11,12 +11,12 @@ class Comment {
   });
 
   factory Comment.fromJson(Json j) => Comment(
-        id: asInt(j['id']),
-        text: asString(j['text']),
-        author: UserBrief.fromJson(asJson(j['author'])),
-        canDelete: asBool(j['canDelete']),
-        createdAt: asDate(j['createdAt']),
-      );
+    id: asInt(j['id']),
+    text: asString(j['text']),
+    author: UserBrief.fromJson(asJson(j['author'])),
+    canDelete: asBool(j['canDelete']),
+    createdAt: asDate(j['createdAt']),
+  );
 
   final int id;
   final String text;

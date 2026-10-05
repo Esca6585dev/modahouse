@@ -10,7 +10,8 @@ import '../state/providers.dart';
 
 /// Create a board (when [board] is null) or edit an existing one.
 /// Returns the saved board, or null when cancelled.
-Future<Board?> showBoardForm(BuildContext context, {Board? board}) => showModalBottomSheet<Board>(
+Future<Board?> showBoardForm(BuildContext context, {Board? board}) =>
+    showModalBottomSheet<Board>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -29,7 +30,9 @@ class BoardForm extends ConsumerStatefulWidget {
 class _BoardFormState extends ConsumerState<BoardForm> {
   final _formKey = GlobalKey<FormState>();
   late final _name = TextEditingController(text: widget.board?.name ?? '');
-  late final _description = TextEditingController(text: widget.board?.description ?? '');
+  late final _description = TextEditingController(
+    text: widget.board?.description ?? '',
+  );
   late bool _private = widget.board?.isPrivate ?? false;
   bool _busy = false;
   String? _error;
@@ -76,7 +79,9 @@ class _BoardFormState extends ConsumerState<BoardForm> {
     final p = AppPalette.of(context);
     final editing = widget.board != null;
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Form(
@@ -88,7 +93,10 @@ class _BoardFormState extends ConsumerState<BoardForm> {
               Text(
                 editing ? S.editBoard : S.newBoard,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -97,8 +105,12 @@ class _BoardFormState extends ConsumerState<BoardForm> {
                 autofocus: !editing,
                 maxLength: 60,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: S.newBoardName, hintText: S.boardNameHint),
-                validator: (v) => (v ?? '').trim().isEmpty ? S.boardNameRequired : null,
+                decoration: const InputDecoration(
+                  labelText: S.newBoardName,
+                  hintText: S.boardNameHint,
+                ),
+                validator: (v) =>
+                    (v ?? '').trim().isEmpty ? S.boardNameRequired : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
@@ -107,14 +119,23 @@ class _BoardFormState extends ConsumerState<BoardForm> {
                 maxLines: 3,
                 minLines: 2,
                 maxLength: 500,
-                decoration: const InputDecoration(labelText: S.description, hintText: S.boardDescriptionHint),
+                decoration: const InputDecoration(
+                  labelText: S.description,
+                  hintText: S.boardDescriptionHint,
+                ),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: _private,
                 onChanged: _busy ? null : (v) => setState(() => _private = v),
-                title: const Text(S.privateBoardLabel, style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text(S.privateBoardHelp, style: TextStyle(color: p.muted)),
+                title: const Text(
+                  S.privateBoardLabel,
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                subtitle: Text(
+                  S.privateBoardHelp,
+                  style: TextStyle(color: p.muted),
+                ),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 8),
@@ -131,7 +152,9 @@ class _BoardFormState extends ConsumerState<BoardForm> {
                   const SizedBox(width: 8),
                   FilledButton(
                     onPressed: _busy ? null : _submit,
-                    child: Text(_busy ? S.saving : (editing ? S.save : S.create)),
+                    child: Text(
+                      _busy ? S.saving : (editing ? S.save : S.create),
+                    ),
                   ),
                 ],
               ),
@@ -151,17 +174,21 @@ class FormErrorBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-        liveRegion: true,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppPalette.danger.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            message,
-            style: const TextStyle(color: AppPalette.danger, fontWeight: FontWeight.w600, fontSize: 14),
-          ),
+    liveRegion: true,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppPalette.danger.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(
+          color: AppPalette.danger,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
         ),
-      );
+      ),
+    ),
+  );
 }

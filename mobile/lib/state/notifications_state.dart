@@ -36,7 +36,9 @@ class UnreadCountNotifier extends Notifier<int> {
   void reset() => state = 0;
 }
 
-final unreadCountProvider = NotifierProvider<UnreadCountNotifier, int>(UnreadCountNotifier.new);
+final unreadCountProvider = NotifierProvider<UnreadCountNotifier, int>(
+  UnreadCountNotifier.new,
+);
 
 /// Bumped whenever the notifications tab is selected, so the screen reloads
 /// and marks everything as read.
@@ -48,4 +50,6 @@ class NotificationsVisitNotifier extends Notifier<int> {
 }
 
 final notificationsVisitProvider =
-    NotifierProvider<NotificationsVisitNotifier, int>(NotificationsVisitNotifier.new);
+    NotifierProvider<NotificationsVisitNotifier, int>(
+      NotificationsVisitNotifier.new,
+    );

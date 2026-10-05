@@ -10,7 +10,7 @@ abstract class TokenStorage {
 /// Default storage: Android Keystore backed (WebCrypto + localStorage on web).
 class SecureTokenStorage implements TokenStorage {
   SecureTokenStorage([FlutterSecureStorage? storage])
-      : _storage = storage ?? const FlutterSecureStorage();
+    : _storage = storage ?? const FlutterSecureStorage();
 
   static const _key = 'mh_token';
   final FlutterSecureStorage _storage;

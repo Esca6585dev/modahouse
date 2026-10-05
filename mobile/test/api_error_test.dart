@@ -16,9 +16,15 @@ class _FakeAdapter implements HttpClientAdapter {
   final requests = <RequestOptions>[];
 
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) async {
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
     requests.add(options);
-    final text = body == null ? '' : (body is String ? body as String : jsonEncode(body));
+    final text = body == null
+        ? ''
+        : (body is String ? body as String : jsonEncode(body));
     return ResponseBody.fromString(
       text,
       status,
@@ -35,16 +41,31 @@ class _FakeAdapter implements HttpClientAdapter {
 /// Simulates "server unreachable".
 class _OfflineAdapter implements HttpClientAdapter {
   @override
-  Future<ResponseBody> fetch(RequestOptions options, Stream<Uint8List>? requestStream, Future<void>? cancelFuture) =>
-      throw DioException.connectionError(requestOptions: options, reason: 'offline');
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) => throw DioException.connectionError(
+    requestOptions: options,
+    reason: 'offline',
+  );
 
   @override
   void close({bool force = false}) {}
 }
 
-ApiClient _client(HttpClientAdapter adapter, {String? token, void Function()? onUnauthorized}) {
-  final dio = Dio(BaseOptions(baseUrl: 'http://test/api'))..httpClientAdapter = adapter;
-  return ApiClient(dio: dio, token: () => token, onUnauthorized: onUnauthorized);
+ApiClient _client(
+  HttpClientAdapter adapter, {
+  String? token,
+  void Function()? onUnauthorized,
+}) {
+  final dio = Dio(BaseOptions(baseUrl: 'http://test/api'))
+    ..httpClientAdapter = adapter;
+  return ApiClient(
+    dio: dio,
+    token: () => token,
+    onUnauthorized: onUnauthorized,
+  );
 }
 
 DioException _bad(int status, Object? data) {
@@ -76,10 +97,17 @@ void main() {
 
     test('network errors and timeouts', () {
       final req = RequestOptions(path: '/x');
-      final offline = mapDioError(DioException.connectionError(requestOptions: req, reason: 'x'));
+      final offline = mapDioError(
+        DioException.connectionError(requestOptions: req, reason: 'x'),
+      );
       expect(offline.message, S.networkError);
       expect(offline.statusCode, 0);
-      final slow = mapDioError(DioException.receiveTimeout(timeout: Duration.zero, requestOptions: req));
+      final slow = mapDioError(
+        DioException.receiveTimeout(
+          timeout: Duration.zero,
+          requestOptions: req,
+        ),
+      );
       expect(slow.message, S.timeout);
     });
 
@@ -96,7 +124,10 @@ void main() {
     test('adds the bearer token and returns decoded JSON', () async {
       final adapter = _FakeAdapter(200, {'status': 'ok'});
       final api = _client(adapter, token: 'abc');
-      final data = await api.get('/health', query: {'q': '', 'page': 1, 'x': null});
+      final data = await api.get(
+        '/health',
+        query: {'q': '', 'page': 1, 'x': null},
+      );
       expect(data, {'status': 'ok'});
       expect(adapter.requests.single.headers['Authorization'], 'Bearer abc');
       // Empty and null query values are dropped.
@@ -107,30 +138,55 @@ void main() {
       final adapter = _FakeAdapter(204);
       final api = _client(adapter);
       expect(await api.post('/notifications/read-all'), isNull);
-      expect(adapter.requests.single.headers.containsKey('Authorization'), isFalse);
-    });
-
-    test('failed responses throw ApiException with the server message', () async {
-      final api = _client(_FakeAdapter(409, {'error': 'Bu ulanyjy ady eýýäm bar'}));
-      await expectLater(
-        api.post('/auth/register', data: {}),
-        throwsA(isA<ApiException>()
-            .having((e) => e.message, 'message', 'Bu ulanyjy ady eýýäm bar')
-            .having((e) => e.statusCode, 'status', 409)),
+      expect(
+        adapter.requests.single.headers.containsKey('Authorization'),
+        isFalse,
       );
     });
 
+    test(
+      'failed responses throw ApiException with the server message',
+      () async {
+        final api = _client(
+          _FakeAdapter(409, {'error': 'Bu ulanyjy ady eýýäm bar'}),
+        );
+        await expectLater(
+          api.post('/auth/register', data: {}),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.message, 'message', 'Bu ulanyjy ady eýýäm bar')
+                .having((e) => e.statusCode, 'status', 409),
+          ),
+        );
+      },
+    );
+
     test('401 on an authenticated request triggers onUnauthorized', () async {
       var calls = 0;
-      final api = _client(_FakeAdapter(401, {'error': 'Ilki ulgama giriň'}), token: 'old', onUnauthorized: () => calls++);
-      await expectLater(api.get('/me'), throwsA(isA<ApiException>().having((e) => e.isUnauthorized, '401', isTrue)));
+      final api = _client(
+        _FakeAdapter(401, {'error': 'Ilki ulgama giriň'}),
+        token: 'old',
+        onUnauthorized: () => calls++,
+      );
+      await expectLater(
+        api.get('/me'),
+        throwsA(
+          isA<ApiException>().having((e) => e.isUnauthorized, '401', isTrue),
+        ),
+      );
       expect(calls, 1);
     });
 
     test('401 without a token (wrong password) does not log out', () async {
       var calls = 0;
-      final api = _client(_FakeAdapter(401, {'error': 'Parol nädogry'}), onUnauthorized: () => calls++);
-      await expectLater(api.post('/auth/login', data: {}), throwsA(isA<ApiException>()));
+      final api = _client(
+        _FakeAdapter(401, {'error': 'Parol nädogry'}),
+        onUnauthorized: () => calls++,
+      );
+      await expectLater(
+        api.post('/auth/login', data: {}),
+        throwsA(isA<ApiException>()),
+      );
       expect(calls, 0);
     });
 
@@ -138,7 +194,13 @@ void main() {
       final api = _client(_OfflineAdapter());
       await expectLater(
         api.get('/pins'),
-        throwsA(isA<ApiException>().having((e) => e.message, 'message', S.networkError)),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.message,
+            'message',
+            S.networkError,
+          ),
+        ),
       );
     });
   });

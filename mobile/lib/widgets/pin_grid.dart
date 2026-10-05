@@ -35,7 +35,9 @@ class PinGridSliver extends ConsumerWidget {
 
   void _maybeLoadMore() {
     if (controller.hasMore && !controller.loading && controller.error == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => controller.loadMore());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => controller.loadMore(),
+      );
     }
   }
 
@@ -45,25 +47,34 @@ class PinGridSliver extends ConsumerWidget {
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
-        final items = controller.items.where((p) => !deleted.contains(p.id)).toList();
+        final items = controller.items
+            .where((p) => !deleted.contains(p.id))
+            .toList();
 
         if (!controller.loaded && controller.error == null) {
           return const PinGridSkeleton();
         }
         if (controller.error != null && items.isEmpty) {
           return SliverToBoxAdapter(
-            child: ErrorView(error: controller.error!, onRetry: controller.refresh),
+            child: ErrorView(
+              error: controller.error!,
+              onRetry: controller.refresh,
+            ),
           );
         }
         if (items.isEmpty) {
           if (controller.hasMore) _maybeLoadMore();
-          return SliverToBoxAdapter(child: controller.hasMore ? const LoadingView() : empty);
+          return SliverToBoxAdapter(
+            child: controller.hasMore ? const LoadingView() : empty,
+          );
         }
 
         return SliverMainAxisGroup(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppPalette.gutter,
+              ),
               sliver: SliverMasonryGrid.extent(
                 maxCrossAxisExtent: _maxTileWidth,
                 mainAxisSpacing: _gridRunSpacing,
@@ -76,8 +87,12 @@ class PinGridSliver extends ConsumerWidget {
                     key: ValueKey(pin.id),
                     pin: pin,
                     onTap: () => context.push('/pin/${pin.id}'),
-                    onAuthorTap: () => context.push('/user/${Uri.encodeComponent(pin.author.username)}'),
-                    onLongPress: () => onLongPress != null ? onLongPress!(pin) : showSaveSheet(context, ref, pin),
+                    onAuthorTap: () => context.push(
+                      '/user/${Uri.encodeComponent(pin.author.username)}',
+                    ),
+                    onLongPress: () => onLongPress != null
+                        ? onLongPress!(pin)
+                        : showSaveSheet(context, ref, pin),
                     action: actionBuilder?.call(pin),
                   );
                 },
@@ -107,8 +122,14 @@ class _Footer extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 8,
         children: [
-          Text(errorMessage(controller.error), style: TextStyle(color: AppPalette.of(context).muted)),
-          TextButton(onPressed: controller.loadMore, child: const Text(S.retry)),
+          Text(
+            errorMessage(controller.error),
+            style: TextStyle(color: AppPalette.of(context).muted),
+          ),
+          TextButton(
+            onPressed: controller.loadMore,
+            child: const Text(S.retry),
+          ),
         ],
       );
     }
@@ -122,24 +143,36 @@ class _Footer extends StatelessWidget {
 class PinGridSkeleton extends StatelessWidget {
   const PinGridSkeleton({super.key});
 
-  static const _heights = [230.0, 170.0, 260.0, 200.0, 240.0, 180.0, 210.0, 250.0];
+  static const _heights = [
+    230.0,
+    170.0,
+    260.0,
+    200.0,
+    240.0,
+    180.0,
+    210.0,
+    250.0,
+  ];
 
   @override
   Widget build(BuildContext context) => SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
-        sliver: SliverMasonryGrid.extent(
-          maxCrossAxisExtent: _maxTileWidth,
-          mainAxisSpacing: _gridRunSpacing,
-          crossAxisSpacing: _gridSpacing,
-          childCount: _heights.length,
-          itemBuilder: (context, i) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Skeleton(height: _heights[i]),
-              const SizedBox(height: 10),
-              const FractionallySizedBox(widthFactor: 0.7, child: Skeleton(height: 14, radius: 7)),
-            ],
+    padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
+    sliver: SliverMasonryGrid.extent(
+      maxCrossAxisExtent: _maxTileWidth,
+      mainAxisSpacing: _gridRunSpacing,
+      crossAxisSpacing: _gridSpacing,
+      childCount: _heights.length,
+      itemBuilder: (context, i) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Skeleton(height: _heights[i]),
+          const SizedBox(height: 10),
+          const FractionallySizedBox(
+            widthFactor: 0.7,
+            child: Skeleton(height: 14, radius: 7),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }

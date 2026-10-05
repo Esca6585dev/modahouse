@@ -60,16 +60,15 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? text,
     Color? muted,
     Color? border,
-  }) =>
-      AppPalette(
-        bg: bg ?? this.bg,
-        surface: surface ?? this.surface,
-        surface2: surface2 ?? this.surface2,
-        card: card ?? this.card,
-        text: text ?? this.text,
-        muted: muted ?? this.muted,
-        border: border ?? this.border,
-      );
+  }) => AppPalette(
+    bg: bg ?? this.bg,
+    surface: surface ?? this.surface,
+    surface2: surface2 ?? this.surface2,
+    card: card ?? this.card,
+    text: text ?? this.text,
+    muted: muted ?? this.muted,
+    border: border ?? this.border,
+  );
 
   @override
   AppPalette lerp(ThemeExtension<AppPalette>? other, double t) {
@@ -114,9 +113,9 @@ ThemeData buildTheme(Brightness brightness) {
   const btnPadding = EdgeInsets.symmetric(horizontal: 18);
 
   OutlineInputBorder field(Color c) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppPalette.radius),
-        borderSide: BorderSide(color: c, width: 2),
-      );
+    borderRadius: BorderRadius.circular(AppPalette.radius),
+    borderSide: BorderSide(color: c, width: 2),
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -134,7 +133,11 @@ ThemeData buildTheme(Brightness brightness) {
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: TextStyle(color: p.text, fontSize: 20, fontWeight: FontWeight.w800),
+      titleTextStyle: TextStyle(
+        color: p.text,
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+      ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
@@ -190,7 +193,10 @@ ThemeData buildTheme(Brightness brightness) {
       focusedErrorBorder: field(AppPalette.danger),
       disabledBorder: field(p.border.withValues(alpha: 0.5)),
       labelStyle: TextStyle(color: p.muted),
-      floatingLabelStyle: const TextStyle(color: AppPalette.accent, fontWeight: FontWeight.w600),
+      floatingLabelStyle: const TextStyle(
+        color: AppPalette.accent,
+        fontWeight: FontWeight.w600,
+      ),
       hintStyle: TextStyle(color: p.muted),
       helperStyle: TextStyle(color: p.muted, fontSize: 12),
       helperMaxLines: 2,
@@ -217,15 +223,25 @@ ThemeData buildTheme(Brightness brightness) {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: p.text,
-      contentTextStyle: TextStyle(color: p.bg, fontWeight: FontWeight.w600, fontSize: 15),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppPalette.radius)),
+      contentTextStyle: TextStyle(
+        color: p.bg,
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppPalette.radius),
+      ),
       insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: p.card,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      titleTextStyle: TextStyle(color: p.text, fontSize: 20, fontWeight: FontWeight.w800),
+      titleTextStyle: TextStyle(
+        color: p.text,
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+      ),
     ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: p.card,
@@ -240,8 +256,14 @@ ThemeData buildTheme(Brightness brightness) {
     popupMenuTheme: PopupMenuThemeData(
       color: p.card,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppPalette.radius)),
-      textStyle: TextStyle(color: p.text, fontWeight: FontWeight.w600, fontSize: 15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppPalette.radius),
+      ),
+      textStyle: TextStyle(
+        color: p.text,
+        fontWeight: FontWeight.w600,
+        fontSize: 15,
+      ),
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: p.bg,
@@ -252,19 +274,25 @@ ThemeData buildTheme(Brightness brightness) {
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
           fontSize: 11.5,
-          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w800 : FontWeight.w600,
+          fontWeight: s.contains(WidgetState.selected)
+              ? FontWeight.w800
+              : FontWeight.w600,
           color: s.contains(WidgetState.selected) ? p.text : p.muted,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
-        (s) => IconThemeData(color: s.contains(WidgetState.selected) ? p.text : p.muted),
+        (s) => IconThemeData(
+          color: s.contains(WidgetState.selected) ? p.text : p.muted,
+        ),
       ),
     ),
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(p.card),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppPalette.radius)),
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppPalette.radius),
+          ),
         ),
       ),
     ),

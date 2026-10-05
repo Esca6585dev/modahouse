@@ -32,11 +32,14 @@ class AppImage extends ConsumerWidget {
     if (full.isEmpty || !ref.watch(networkImagesProvider)) return box;
 
     Widget error(BuildContext context, Object? _, Object? _) => ColoredBox(
-          color: bg,
-          child: Center(
-            child: Icon(Icons.broken_image_outlined, color: AppPalette.of(context).muted),
-          ),
-        );
+      color: bg,
+      child: Center(
+        child: Icon(
+          Icons.broken_image_outlined,
+          color: AppPalette.of(context).muted,
+        ),
+      ),
+    );
 
     final Widget image = isSvgUrl(full)
         ? SvgPicture.network(

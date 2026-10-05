@@ -48,7 +48,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   void didUpdateWidget(covariant SearchScreen old) {
     super.didUpdateWidget(old);
     // Opened again with new ?q= / ?category= (e.g. tapping a tag on a pin).
-    if (old.initialQuery != widget.initialQuery || old.initialCategory != widget.initialCategory) {
+    if (old.initialQuery != widget.initialQuery ||
+        old.initialCategory != widget.initialCategory) {
       _text.text = widget.initialQuery ?? '';
       _query = _text.text.trim();
       _category = widget.initialCategory;
@@ -97,7 +98,12 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 12, AppPalette.gutter, 12),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppPalette.gutter,
+                    12,
+                    AppPalette.gutter,
+                    12,
+                  ),
                   child: TextField(
                     controller: _text,
                     focusNode: _focus,
@@ -130,7 +136,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide(color: AppPalette.accent.withValues(alpha: 0.5), width: 2),
+                        borderSide: BorderSide(
+                          color: AppPalette.accent.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
                       ),
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),

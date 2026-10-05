@@ -35,7 +35,9 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   @override
   void initState() {
     super.initState();
-    _pins = PagedController((page) => ref.read(boardsRepositoryProvider).pins(widget.id, page));
+    _pins = PagedController(
+      (page) => ref.read(boardsRepositoryProvider).pins(widget.id, page),
+    );
     _load();
   }
 
@@ -63,7 +65,11 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
   }
 
   Future<void> _delete(Board board) async {
-    final ok = await confirmDialog(context, title: S.deleteBoard, text: S.deleteBoardText);
+    final ok = await confirmDialog(
+      context,
+      title: S.deleteBoard,
+      text: S.deleteBoardText,
+    );
     if (!ok || !mounted) return;
     setState(() => _busy = true);
     try {
@@ -85,12 +91,18 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
     // Optimistic removal, restored on error.
     setState(() {
       _removing.add(pin.id);
-      _board = board.copyWith(pinsCount: board.pinsCount > 0 ? board.pinsCount - 1 : 0);
+      _board = board.copyWith(
+        pinsCount: board.pinsCount > 0 ? board.pinsCount - 1 : 0,
+      );
     });
     _pins.removeWhere((p) => p.id == pin.id);
     try {
-      final updated = await ref.read(boardsRepositoryProvider).unsavePin(board.id, pin.id);
-      if (updated != null) ref.read(pinUpdatesProvider.notifier).updated(updated);
+      final updated = await ref
+          .read(boardsRepositoryProvider)
+          .unsavePin(board.id, pin.id);
+      if (updated != null) {
+        ref.read(pinUpdatesProvider.notifier).updated(updated);
+      }
       ref.read(boardsVersionProvider.notifier).bump();
       showSnack(S.removedFromBoard);
     } catch (e) {
@@ -113,12 +125,12 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
         body: _error == null
             ? const LoadingView()
             : (_error is ApiException && (_error as ApiException).isNotFound)
-                ? const EmptyView(
-                    icon: Icons.dashboard_outlined,
-                    title: S.boardNotFound,
-                    text: S.boardNotFoundText,
-                  )
-                : ErrorView(error: _error!, onRetry: _load),
+            ? const EmptyView(
+                icon: Icons.dashboard_outlined,
+                title: S.boardNotFound,
+                text: S.boardNotFoundText,
+              )
+            : ErrorView(error: _error!, onRetry: _load),
       );
     }
 
@@ -146,8 +158,14 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                 PopupMenuItem(
                   value: 'delete',
                   child: ListTile(
-                    leading: Icon(Icons.delete_outline_rounded, color: AppPalette.danger),
-                    title: Text(S.deleteBoard, style: TextStyle(color: AppPalette.danger)),
+                    leading: Icon(
+                      Icons.delete_outline_rounded,
+                      color: AppPalette.danger,
+                    ),
+                    title: Text(
+                      S.deleteBoard,
+                      style: TextStyle(color: AppPalette.danger),
+                    ),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -163,7 +181,12 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(AppPalette.gutter, 0, AppPalette.gutter, 24),
+                padding: const EdgeInsets.fromLTRB(
+                  AppPalette.gutter,
+                  0,
+                  AppPalette.gutter,
+                  24,
+                ),
                 child: Column(
                   children: [
                     Wrap(
@@ -175,21 +198,36 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                         Text(
                           board.name,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, height: 1.2),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            height: 1.2,
+                          ),
                         ),
                         if (board.isPrivate)
                           Container(
                             height: 28,
                             padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(color: p.surface, borderRadius: BorderRadius.circular(14)),
+                            decoration: BoxDecoration(
+                              color: p.surface,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.lock_rounded, size: 14, color: p.muted),
+                                Icon(
+                                  Icons.lock_rounded,
+                                  size: 14,
+                                  color: p.muted,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   S.privateBoard,
-                                  style: TextStyle(color: p.muted, fontWeight: FontWeight.w700, fontSize: 13),
+                                  style: TextStyle(
+                                    color: p.muted,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ],
                             ),
@@ -198,12 +236,18 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                     ),
                     if (board.description.isNotEmpty) ...[
                       const SizedBox(height: 8),
-                      Text(board.description, textAlign: TextAlign.center, style: const TextStyle(height: 1.4)),
+                      Text(
+                        board.description,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(height: 1.4),
+                      ),
                     ],
                     const SizedBox(height: 12),
                     InkWell(
                       borderRadius: BorderRadius.circular(20),
-                      onTap: () => context.push('/user/${Uri.encodeComponent(board.owner.username)}'),
+                      onTap: () => context.push(
+                        '/user/${Uri.encodeComponent(board.owner.username)}',
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
                         child: Row(
@@ -211,13 +255,21 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
                           children: [
                             UserAvatar(user: board.owner, size: 28),
                             const SizedBox(width: 8),
-                            Text(board.owner.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                            Text(
+                              board.owner.displayName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(S.pinsCount('${board.pinsCount}'), style: TextStyle(color: p.muted)),
+                    Text(
+                      S.pinsCount('${board.pinsCount}'),
+                      style: TextStyle(color: p.muted),
+                    ),
                   ],
                 ),
               ),
@@ -232,14 +284,20 @@ class _BoardScreenState extends ConsumerState<BoardScreen> {
               ),
               actionBuilder: isOwner
                   ? (pin) => RoundIconButton(
-                        icon: Icons.close_rounded,
-                        size: 34,
-                        tooltip: S.removeFromBoard,
-                        onPressed: _removing.contains(pin.id) ? null : () => _remove(pin),
-                      )
+                      icon: Icons.close_rounded,
+                      size: 34,
+                      tooltip: S.removeFromBoard,
+                      onPressed: _removing.contains(pin.id)
+                          ? null
+                          : () => _remove(pin),
+                    )
                   : null,
             ),
-            SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16)),
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: MediaQuery.paddingOf(context).bottom + 16,
+              ),
+            ),
           ],
         ),
       ),

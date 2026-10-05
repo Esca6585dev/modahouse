@@ -6,7 +6,11 @@ import '../models/models.dart';
 /// refetching: edited pins replace the cached copy, deleted pins disappear,
 /// and `created` lets feeds refresh after a new pin is published.
 class PinUpdates {
-  const PinUpdates({this.updated = const {}, this.deleted = const {}, this.created = 0});
+  const PinUpdates({
+    this.updated = const {},
+    this.deleted = const {},
+    this.created = 0,
+  });
 
   final Map<int, Pin> updated;
   final Set<int> deleted;
@@ -20,25 +24,27 @@ class PinUpdatesNotifier extends Notifier<PinUpdates> {
   PinUpdates build() => const PinUpdates();
 
   void updated(Pin pin) => state = PinUpdates(
-        updated: {...state.updated, pin.id: pin},
-        deleted: state.deleted,
-        created: state.created,
-      );
+    updated: {...state.updated, pin.id: pin},
+    deleted: state.deleted,
+    created: state.created,
+  );
 
   void deleted(int id) => state = PinUpdates(
-        updated: state.updated,
-        deleted: {...state.deleted, id},
-        created: state.created,
-      );
+    updated: state.updated,
+    deleted: {...state.deleted, id},
+    created: state.created,
+  );
 
   void created(Pin pin) => state = PinUpdates(
-        updated: {...state.updated, pin.id: pin},
-        deleted: state.deleted,
-        created: state.created + 1,
-      );
+    updated: {...state.updated, pin.id: pin},
+    deleted: state.deleted,
+    created: state.created + 1,
+  );
 }
 
-final pinUpdatesProvider = NotifierProvider<PinUpdatesNotifier, PinUpdates>(PinUpdatesNotifier.new);
+final pinUpdatesProvider = NotifierProvider<PinUpdatesNotifier, PinUpdates>(
+  PinUpdatesNotifier.new,
+);
 
 /// Bumped when the user's boards change (created, edited, deleted, pins saved).
 class BoardsVersionNotifier extends Notifier<int> {
@@ -48,4 +54,6 @@ class BoardsVersionNotifier extends Notifier<int> {
   void bump() => state++;
 }
 
-final boardsVersionProvider = NotifierProvider<BoardsVersionNotifier, int>(BoardsVersionNotifier.new);
+final boardsVersionProvider = NotifierProvider<BoardsVersionNotifier, int>(
+  BoardsVersionNotifier.new,
+);

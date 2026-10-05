@@ -20,4 +20,3 @@ Json parseJson(Object? data) => asJson(data);
 
 List<T> parseList<T>(Object? data, T Function(Json) f) =>
     data is List ? data.map((e) => f(asJson(e))).toList() : <T>[];
-

@@ -23,11 +23,15 @@ class AppShell extends ConsumerWidget {
     return Scaffold(
       body: shell,
       bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(border: Border(top: BorderSide(color: p.border))),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: p.border)),
+        ),
         child: NavigationBar(
           selectedIndex: shell.currentIndex,
           onDestinationSelected: (i) {
-            if (i == notificationsIndex) ref.read(notificationsVisitProvider.notifier).bump();
+            if (i == notificationsIndex) {
+              ref.read(notificationsVisitProvider.notifier).bump();
+            }
             shell.goBranch(i, initialLocation: i == shell.currentIndex);
           },
           destinations: [
@@ -82,14 +86,18 @@ class _CreateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 40,
-        height: 30,
-        decoration: BoxDecoration(
-          color: AppPalette.accent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(active ? Icons.add_rounded : Icons.add_rounded, color: Colors.white, size: 24),
-      );
+    width: 40,
+    height: 30,
+    decoration: BoxDecoration(
+      color: AppPalette.accent,
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Icon(
+      active ? Icons.add_rounded : Icons.add_rounded,
+      color: Colors.white,
+      size: 24,
+    ),
+  );
 }
 
 class NotFoundScreen extends StatelessWidget {
@@ -97,11 +105,14 @@ class NotFoundScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(),
-        body: EmptyView(
-          icon: Icons.explore_off_outlined,
-          title: S.notFound,
-          action: FilledButton(onPressed: () => context.go('/'), child: const Text(S.tabHome)),
-        ),
-      );
+    appBar: AppBar(),
+    body: EmptyView(
+      icon: Icons.explore_off_outlined,
+      title: S.notFound,
+      action: FilledButton(
+        onPressed: () => context.go('/'),
+        child: const Text(S.tabHome),
+      ),
+    ),
+  );
 }

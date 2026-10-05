@@ -22,23 +22,23 @@ class Pin {
   });
 
   factory Pin.fromJson(Json j) => Pin(
-        id: asInt(j['id']),
-        title: asString(j['title']),
-        description: asString(j['description']),
-        link: asString(j['link']),
-        category: asString(j['category']),
-        tags: asList(j['tags'], asString),
-        imageUrl: asString(j['imageUrl']),
-        width: asInt(j['width']),
-        height: asInt(j['height']),
-        color: asString(j['color']),
-        author: UserBrief.fromJson(asJson(j['author'])),
-        likesCount: asInt(j['likesCount']),
-        commentsCount: asInt(j['commentsCount']),
-        liked: asBool(j['liked']),
-        savedBoardIds: asList(j['savedBoardIds'], asInt),
-        createdAt: asDate(j['createdAt']),
-      );
+    id: asInt(j['id']),
+    title: asString(j['title']),
+    description: asString(j['description']),
+    link: asString(j['link']),
+    category: asString(j['category']),
+    tags: asList(j['tags'], asString),
+    imageUrl: asString(j['imageUrl']),
+    width: asInt(j['width']),
+    height: asInt(j['height']),
+    color: asString(j['color']),
+    author: UserBrief.fromJson(asJson(j['author'])),
+    likesCount: asInt(j['likesCount']),
+    commentsCount: asInt(j['commentsCount']),
+    liked: asBool(j['liked']),
+    savedBoardIds: asList(j['savedBoardIds'], asInt),
+    createdAt: asDate(j['createdAt']),
+  );
 
   final int id;
   final String title;
@@ -83,25 +83,24 @@ class Pin {
     int? commentsCount,
     bool? liked,
     List<int>? savedBoardIds,
-  }) =>
-      Pin(
-        id: id,
-        title: title ?? this.title,
-        description: description ?? this.description,
-        link: link ?? this.link,
-        category: category ?? this.category,
-        tags: tags ?? this.tags,
-        imageUrl: imageUrl,
-        width: width,
-        height: height,
-        color: color,
-        author: author,
-        likesCount: likesCount ?? this.likesCount,
-        commentsCount: commentsCount ?? this.commentsCount,
-        liked: liked ?? this.liked,
-        savedBoardIds: savedBoardIds ?? this.savedBoardIds,
-        createdAt: createdAt,
-      );
+  }) => Pin(
+    id: id,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    link: link ?? this.link,
+    category: category ?? this.category,
+    tags: tags ?? this.tags,
+    imageUrl: imageUrl,
+    width: width,
+    height: height,
+    color: color,
+    author: author,
+    likesCount: likesCount ?? this.likesCount,
+    commentsCount: commentsCount ?? this.commentsCount,
+    liked: liked ?? this.liked,
+    savedBoardIds: savedBoardIds ?? this.savedBoardIds,
+    createdAt: createdAt,
+  );
 }
 
 /// Response of `POST/DELETE /pins/:id/like`.

@@ -13,11 +13,11 @@ class Page<T> {
   });
 
   factory Page.fromJson(Json j, T Function(Json item) fromJson) => Page(
-        items: asList(j['items'], (e) => fromJson(asJson(e))),
-        page: asInt(j['page']),
-        limit: asInt(j['limit']),
-        hasMore: asBool(j['hasMore']),
-      );
+    items: asList(j['items'], (e) => fromJson(asJson(e))),
+    page: asInt(j['page']),
+    limit: asInt(j['limit']),
+    hasMore: asBool(j['hasMore']),
+  );
 
   final List<T> items;
   final int page;

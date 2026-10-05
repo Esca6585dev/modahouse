@@ -37,16 +37,22 @@ class ApiClient {
     String? Function()? token,
     void Function()? onUnauthorized,
     Dio? dio,
-  }) : dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: baseUrl ?? AppConfig.apiBase,
-              connectTimeout: const Duration(seconds: 15),
-              receiveTimeout: const Duration(seconds: 30),
-              headers: {'Accept': 'application/json'},
-            )) {
+  }) : dio =
+           dio ??
+           Dio(
+             BaseOptions(
+               baseUrl: baseUrl ?? AppConfig.apiBase,
+               connectTimeout: const Duration(seconds: 15),
+               receiveTimeout: const Duration(seconds: 30),
+               headers: {'Accept': 'application/json'},
+             ),
+           ) {
     this.dio.interceptors.add(
-          AuthInterceptor(token: token ?? () => null, onUnauthorized: onUnauthorized),
-        );
+      AuthInterceptor(
+        token: token ?? () => null,
+        onUnauthorized: onUnauthorized,
+      ),
+    );
   }
 
   final Dio dio;
@@ -59,13 +65,14 @@ class ApiClient {
     Object? data,
     ProgressCallback? onSendProgress,
     CancelToken? cancelToken,
-  }) =>
-      _run(() => dio.post<dynamic>(
-            path,
-            data: data,
-            onSendProgress: onSendProgress,
-            cancelToken: cancelToken,
-          ));
+  }) => _run(
+    () => dio.post<dynamic>(
+      path,
+      data: data,
+      onSendProgress: onSendProgress,
+      cancelToken: cancelToken,
+    ),
+  );
 
   Future<dynamic> put(String path, {Object? data}) =>
       _run(() => dio.put<dynamic>(path, data: data));

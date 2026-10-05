@@ -37,12 +37,16 @@ class _FollowButtonState extends ConsumerState<FollowButton> {
   @override
   void didUpdateWidget(covariant FollowButton old) {
     super.didUpdateWidget(old);
-    if (!_busy && old.isFollowing != widget.isFollowing) _on = widget.isFollowing;
+    if (!_busy && old.isFollowing != widget.isFollowing) {
+      _on = widget.isFollowing;
+    }
   }
 
   Future<void> _toggle() async {
     if (!ref.read(authProvider).isLoggedIn) {
-      await context.push('/login?from=${Uri.encodeComponent('/user/${widget.username}')}');
+      await context.push(
+        '/login?from=${Uri.encodeComponent('/user/${widget.username}')}',
+      );
       return;
     }
     final was = _on;
@@ -53,7 +57,9 @@ class _FollowButtonState extends ConsumerState<FollowButton> {
     widget.onChanged?.call(!was, null);
     final repo = ref.read(usersRepositoryProvider);
     try {
-      final profile = was ? await repo.unfollow(widget.username) : await repo.follow(widget.username);
+      final profile = was
+          ? await repo.unfollow(widget.username)
+          : await repo.follow(widget.username);
       if (!mounted) return;
       setState(() => _on = profile.isFollowing);
       widget.onChanged?.call(profile.isFollowing, profile);
@@ -76,7 +82,10 @@ class _FollowButtonState extends ConsumerState<FollowButton> {
       backgroundColor: _on ? p.text : AppPalette.accent,
       foregroundColor: _on ? p.bg : Colors.white,
       padding: EdgeInsets.symmetric(horizontal: widget.small ? 14 : 18),
-      textStyle: TextStyle(fontWeight: FontWeight.w700, fontSize: widget.small ? 14 : 15),
+      textStyle: TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: widget.small ? 14 : 15,
+      ),
     );
     return FilledButton(
       style: style,

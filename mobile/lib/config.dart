@@ -5,8 +5,10 @@
 class AppConfig {
   AppConfig._();
 
-  static const String _rawApiUrl =
-      String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8080');
+  static const String _rawApiUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://10.0.2.2:8080',
+  );
 
   /// Server origin without a trailing slash, e.g. `http://10.0.2.2:8080`.
   static final String apiUrl = _rawApiUrl.endsWith('/')
@@ -25,7 +27,9 @@ class AppConfig {
 String resolveImageUrl(String path, {String? origin}) {
   final p = path.trim();
   if (p.isEmpty) return '';
-  if (p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:')) {
+  if (p.startsWith('http://') ||
+      p.startsWith('https://') ||
+      p.startsWith('data:')) {
     return p;
   }
   final base = origin ?? AppConfig.apiUrl;

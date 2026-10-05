@@ -50,7 +50,9 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> login(String login, String password) async {
-    final res = await ref.read(authRepositoryProvider).login(login.trim(), password);
+    final res = await ref
+        .read(authRepositoryProvider)
+        .login(login.trim(), password);
     await _signIn(res);
   }
 
@@ -60,7 +62,9 @@ class AuthNotifier extends Notifier<AuthState> {
     required String email,
     required String password,
   }) async {
-    final res = await ref.read(authRepositoryProvider).register(
+    final res = await ref
+        .read(authRepositoryProvider)
+        .register(
           username: username.trim(),
           name: name.trim(),
           email: email.trim(),
@@ -76,8 +80,13 @@ class AuthNotifier extends Notifier<AuthState> {
 
   /// Changes the password and stores the new token the server returns
   /// (all older tokens stop working).
-  Future<void> changePassword(String currentPassword, String newPassword) async {
-    final res = await ref.read(authRepositoryProvider).changePassword(currentPassword, newPassword);
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
+    final res = await ref
+        .read(authRepositoryProvider)
+        .changePassword(currentPassword, newPassword);
     if (res != null && res.token.isNotEmpty) await _signIn(res);
   }
 
@@ -103,7 +112,11 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 }
 
-final authProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authProvider = NotifierProvider<AuthNotifier, AuthState>(
+  AuthNotifier.new,
+);
 
 /// The logged-in user's id (null when logged out). Handy for `select`-style watches.
-final currentUserIdProvider = Provider<int?>((ref) => ref.watch(authProvider).user?.id);
+final currentUserIdProvider = Provider<int?>(
+  (ref) => ref.watch(authProvider).user?.id,
+);
