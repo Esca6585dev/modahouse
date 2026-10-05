@@ -1,0 +1,5 @@
+uploads/
+*.db
+*.db-*
+.env
+/server
