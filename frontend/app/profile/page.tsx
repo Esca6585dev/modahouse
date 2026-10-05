@@ -1,30 +1,16 @@
-import Avatar from "@/components/Avatar";
-import ProfileTabs from "@/components/ProfileTabs";
-import { boards, currentUser, getPin, pins, type Pin } from "@/lib/data";
+"use client";
 
-export const metadata = { title: `${currentUser.name} · ModaHouse` };
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { useAuth } from "@/lib/auth";
 
-export default function ProfilePage() {
-  const created = pins.filter((p) => p.author === currentUser.handle);
-  const boardData = boards.map((b) => ({
-    name: b.name,
-    pins: b.pinIds.map(getPin).filter((p): p is Pin => Boolean(p)),
-  }));
-
-  return (
-    <div className="page">
-      <section className="profile">
-        <Avatar author={currentUser} size={112} />
-        <h1>{currentUser.name}</h1>
-        <p className="muted">@{currentUser.handle}</p>
-        <p className="bio">Moda we gündelik stil boýunça ideýalar. Aşgabat 🇹🇲</p>
-        <p className="stats"><strong>{currentUser.followers}</strong> yzarlaýjy · <strong>318</strong> yzarlanýan</p>
-        <div className="profile-actions">
-          <button className="btn btn-secondary">Paýlaş</button>
-          <button className="btn btn-secondary">Profili üýtget</button>
-        </div>
-      </section>
-      <ProfileTabs created={created} boards={boardData} />
-    </div>
-  );
+/** Old /profile link: send the visitor to their own profile (or to login). */
+export default function ProfileRedirect() {
+  const { user, ready } = useAuth();
+  const router = useRouter();
+  useEffect(() => {
+    if (!ready) return;
+    router.replace(user ? `/u/${user.username}` : "/login?next=%2Fprofile");
+  }, [ready, user, router]);
+  return <div className="page"><div className="center muted">Ýüklenýär…</div></div>;
 }

@@ -2,41 +2,74 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { authors, type Pin } from "@/lib/data";
+import { categoryName } from "@/lib/format";
+import { useCategories } from "@/lib/hooks";
+import { shareUrl } from "@/lib/share";
+import type { Pin } from "@/lib/types";
 import Avatar from "./Avatar";
-import PinArt from "./PinArt";
-import { MoreIcon, ShareIcon } from "./Icons";
+import { ExternalIcon, ShareIcon } from "./Icons";
+import PinImage from "./PinImage";
+import SavePicker from "./SavePicker";
+import { useToast } from "./Toast";
 
-export default function PinCard({ pin, idPrefix = "card" }: { pin: Pin; idPrefix?: string }) {
-  const [saved, setSaved] = useState(false);
-  const author = authors[pin.author];
+export type PinCardAction = { label: string; onClick: (pin: Pin) => void | Promise<void> };
+
+export default function PinCard({ pin, action }: { pin: Pin; action?: PinCardAction }) {
+  const [saved, setSaved] = useState(pin.savedBoardIds);
+  const [busy, setBusy] = useState(false);
+  const cats = useCategories();
+  const toast = useToast();
+  const href = `/pin/${pin.id}`;
 
   return (
     <article className="pin">
       <div className="pin-media">
-        <Link href={`/pin/${pin.id}`} aria-label={pin.title}>
-          <PinArt pin={pin} idPrefix={idPrefix} />
+        <Link href={href} aria-label={pin.title}>
+          <PinImage pin={pin} />
         </Link>
         <div className="pin-overlay">
-          <span className="pin-board">{pin.category}</span>
-          <button
-            className={`btn btn-save ${saved ? "saved" : ""}`}
-            onClick={() => setSaved((s) => !s)}
-            aria-pressed={saved}
-          >
-            {saved ? "Saklandy" : "Sakla"}
-          </button>
+          <span className="pin-board">{categoryName(pin.category, cats)}</span>
+          <SavePicker pinId={pin.id} savedBoardIds={saved} onChange={setSaved} />
           <div className="pin-overlay-bottom">
-            <button className="round-btn" aria-label="Paýlaş"><ShareIcon size={16} /></button>
-            <button className="round-btn" aria-label="Has köp"><MoreIcon size={16} /></button>
+            {pin.link && (
+              <a className="round-btn" href={pin.link} target="_blank" rel="noopener noreferrer" aria-label="Çeşmä git">
+                <ExternalIcon size={16} />
+              </a>
+            )}
+            <button
+              className="round-btn"
+              aria-label="Paýlaş"
+              onClick={async () => {
+                const msg = await shareUrl(href, pin.title);
+                if (msg) toast(msg);
+              }}
+            >
+              <ShareIcon size={16} />
+            </button>
           </div>
+          {action && (
+            <button
+              className="pin-action btn btn-secondary btn-sm"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await action.onClick(pin);
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {action.label}
+            </button>
+          )}
         </div>
       </div>
-      <Link href={`/pin/${pin.id}`} className="pin-title">{pin.title}</Link>
-      <div className="pin-author">
-        <Avatar author={author} size={22} />
-        <span>{author.name}</span>
-      </div>
+      <Link href={href} className="pin-title">{pin.title}</Link>
+      <Link href={`/u/${pin.author.username}`} className="pin-author">
+        <Avatar user={pin.author} size={22} />
+        <span>{pin.author.name}</span>
+      </Link>
     </article>
   );
 }
