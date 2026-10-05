@@ -1,0 +1,44 @@
+# Bütin ulgamy bir buýruk bilen işletmek: docker compose up --build
+# Web: http://localhost:3000   API: http://localhost:8080/api
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: moda
+      POSTGRES_PASSWORD: moda
+      POSTGRES_DB: modahouse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moda -d modahouse"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DB_DRIVER: postgres
+      DATABASE_URL: postgres://moda:moda@db:5432/modahouse?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      CORS_ORIGINS: "*"
+      SEED: "true"
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  uploads:
