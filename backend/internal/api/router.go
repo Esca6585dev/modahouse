@@ -4,6 +4,7 @@ package api
 import (
 	"errors"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -25,9 +26,24 @@ type Options struct {
 func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *fiber.App {
 	h := &Handler{db: db, store: store, cfg: cfg}
 
+	trust := fiber.TrustProxyConfig{}
+	for _, p := range cfg.TrustedProxies {
+		switch p = strings.TrimSpace(p); p {
+		case "":
+		case "private":
+			trust.Loopback, trust.Private = true, true
+		default:
+			trust.Proxies = append(trust.Proxies, p)
+		}
+	}
+
 	app := fiber.New(fiber.Config{
-		AppName:   "ModaHouse API",
-		BodyLimit: cfg.MaxUploadMB * 1024 * 1024,
+		AppName: "ModaHouse API",
+		// c.IP() returns the real client IP only when the request comes from a trusted proxy.
+		TrustProxy:       true,
+		TrustProxyConfig: trust,
+		ProxyHeader:      fiber.HeaderXForwardedFor,
+		BodyLimit:        cfg.MaxUploadMB * 1024 * 1024,
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			var fe *fiber.Error
 			if errors.As(err, &fe) {
@@ -59,15 +75,18 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	api.Get("/health", func(c fiber.Ctx) error { return c.JSON(fiber.Map{"status": "ok"}) })
 	api.Get("/categories", listCategories)
 
-	auth := api.Group("/auth")
+	// Only credential endpoints are rate limited, per client IP.
+	credLimit := func(c fiber.Ctx) error { return c.Next() }
 	if !opts.Quiet {
-		auth.Use(limiter.New(limiter.Config{Max: 20, Expiration: time.Minute}))
+		credLimit = limiter.New(limiter.Config{Max: 20, Expiration: time.Minute})
 	}
-	auth.Post("/register", h.register)
-	auth.Post("/login", h.login)
+	auth := api.Group("/auth")
+	auth.Post("/register", credLimit, h.register)
+	auth.Post("/login", credLimit, h.login)
 	auth.Get("/me", requireAuth, h.getMe)
 
 	me := api.Group("/me", requireAuth)
+	me.Get("/", h.getMe)
 	me.Put("/", h.updateMe)
 	me.Put("/password", h.changePassword)
 	me.Post("/avatar", h.uploadAvatar)

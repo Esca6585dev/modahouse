@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -202,8 +203,55 @@ func TestAuthFlow(t *testing.T) {
 	}
 
 	e.expect(400, "PUT", "/api/me/password", login.Token, map[string]string{"currentPassword": "nope", "newPassword": "newsecret"}, nil)
-	e.expect(204, "PUT", "/api/me/password", login.Token, map[string]string{"currentPassword": "secret123", "newPassword": "newsecret"}, nil)
+	// JWT iat has one-second precision; make sure the old token is strictly older.
+	time.Sleep(1100 * time.Millisecond)
+	var changed authResp
+	e.expect(200, "PUT", "/api/me/password", login.Token, map[string]string{"currentPassword": "secret123", "newPassword": "newsecret"}, &changed)
+	e.expect(401, "GET", "/api/me", login.Token, nil, nil) // old sessions are revoked
+	e.expect(401, "GET", "/api/me", a.Token, nil, nil)
+	e.expect(200, "GET", "/api/me", changed.Token, nil, nil)
 	e.expect(200, "POST", "/api/auth/login", "", map[string]string{"login": "merdan", "password": "newsecret"}, nil)
+}
+
+func TestNotificationsDoNotPileUp(t *testing.T) {
+	e := newEnv(t, false)
+	owner := e.register("owner")
+	fan := e.register("fan")
+
+	var pin pinResp
+	e.expect(201, "POST", "/api/pins", owner.Token, pinForm(t, map[string]string{"title": "A", "category": "moda"}, testPNG(4, 4)), &pin)
+	likePath := fmt.Sprintf("/api/pins/%d/like", pin.ID)
+
+	count := func() int {
+		var n struct{ Count int }
+		e.expect(200, "GET", "/api/notifications/unread-count", owner.Token, nil, &n)
+		return n.Count
+	}
+
+	for i := 0; i < 3; i++ {
+		e.expect(200, "POST", likePath, fan.Token, nil, nil)
+		e.expect(200, "DELETE", likePath, fan.Token, nil, nil)
+	}
+	if n := count(); n != 0 {
+		t.Fatalf("unlike should remove the notification, got %d", n)
+	}
+	e.expect(200, "POST", likePath, fan.Token, nil, nil)
+	e.expect(200, "POST", "/api/users/owner/follow", fan.Token, nil, nil)
+	e.expect(200, "DELETE", "/api/users/owner/follow", fan.Token, nil, nil)
+	e.expect(200, "POST", "/api/users/owner/follow", fan.Token, nil, nil)
+	if n := count(); n != 2 { // one like + one follow
+		t.Fatalf("want 2 notifications, got %d", n)
+	}
+
+	var cm struct{ ID uint }
+	e.expect(201, "POST", fmt.Sprintf("/api/pins/%d/comments", pin.ID), fan.Token, map[string]string{"text": "Salam"}, &cm)
+	if n := count(); n != 3 {
+		t.Fatalf("comment notification missing, got %d", n)
+	}
+	e.expect(204, "DELETE", fmt.Sprintf("/api/comments/%d", cm.ID), fan.Token, nil, nil)
+	if n := count(); n != 2 {
+		t.Fatalf("deleted comment should drop its notification, got %d", n)
+	}
 }
 
 func TestPinLifecycle(t *testing.T) {

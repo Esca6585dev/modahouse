@@ -9,14 +9,38 @@ import (
 )
 
 // notify records an event for recipient. Actions on your own content are skipped.
+// Like/follow/save are toggles, so an older identical notification is replaced
+// instead of piling up when someone toggles repeatedly.
 func (h *Handler) notify(recipient, actor uint, kind string, pinID *uint) {
 	if recipient == actor {
 		return
 	}
-	n := models.Notification{UserID: recipient, ActorID: actor, Type: kind, PinID: pinID}
+	h.unnotify(recipient, actor, kind, pinID)
+	h.createNotification(models.Notification{UserID: recipient, ActorID: actor, Type: kind, PinID: pinID})
+}
+
+func (h *Handler) notifyComment(recipient, actor, pinID, commentID uint) {
+	if recipient == actor {
+		return
+	}
+	h.createNotification(models.Notification{UserID: recipient, ActorID: actor, Type: models.NotifyComment, PinID: &pinID, CommentID: &commentID})
+}
+
+func (h *Handler) createNotification(n models.Notification) {
 	if err := h.db.Create(&n).Error; err != nil {
 		log.Printf("notify: %v", err)
 	}
+}
+
+// unnotify removes the notification for an undone action (unlike, unfollow, unsave).
+func (h *Handler) unnotify(recipient, actor uint, kind string, pinID *uint) {
+	q := h.db.Where("user_id = ? AND actor_id = ? AND type = ?", recipient, actor, kind)
+	if pinID != nil {
+		q = q.Where("pin_id = ?", *pinID)
+	} else {
+		q = q.Where("pin_id IS NULL")
+	}
+	q.Delete(&models.Notification{})
 }
 
 func (h *Handler) listNotifications(c fiber.Ctx) error {

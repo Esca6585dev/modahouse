@@ -205,5 +205,9 @@ func (h *Handler) unsavePin(c fiber.Ctx) error {
 	if err != nil {
 		return c.SendStatus(fiber.StatusNoContent)
 	}
+	// Drop the "saved" notification once the pin is in none of this user's boards.
+	if len(h.enrichPins([]models.Pin{p}, b.UserID)[0].SavedBoardIDs) == 0 {
+		h.unnotify(p.UserID, b.UserID, models.NotifySave, &p.ID)
+	}
 	return c.JSON(h.enrichPins([]models.Pin{p}, b.UserID)[0])
 }

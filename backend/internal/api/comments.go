@@ -61,7 +61,7 @@ func (h *Handler) addComment(c fiber.Ctx) error {
 	if err := h.db.Create(&cm).Error; err != nil {
 		return err
 	}
-	h.notify(pin.UserID, me, models.NotifyComment, &pin.ID)
+	h.notifyComment(pin.UserID, me, pin.ID, cm.ID)
 	h.db.Preload("User").First(&cm, cm.ID)
 	return c.Status(fiber.StatusCreated).JSON(commentDTO(cm, me, pin.UserID))
 }
@@ -80,6 +80,7 @@ func (h *Handler) deleteComment(c fiber.Ctx) error {
 	if cm.UserID != me && cm.Pin.UserID != me {
 		return forbidden(c)
 	}
+	h.db.Where("comment_id = ?", cm.ID).Delete(&models.Notification{})
 	h.db.Delete(&models.Comment{}, cm.ID)
 	return c.SendStatus(fiber.StatusNoContent)
 }

@@ -68,7 +68,8 @@ type Category = { slug: string; name: string };
 | Method | Path | Body | Response |
 |---|---|---|---|
 | PUT | `/me` | `{name?, bio?, username?}` | `Me` |
-| PUT | `/me/password` | `{currentPassword, newPassword}` | 204 |
+| GET | `/me` | | `Me` (same as `/auth/me`) |
+| PUT | `/me/password` | `{currentPassword, newPassword}` | `{token, user: Me}`. All older tokens stop working: store the new token. |
 | POST | `/me/avatar` | multipart field `avatar` (jpg/png/gif/webp) | `Me` |
 | DELETE | `/me/avatar` | | `Me` |
 | GET | `/me/boards` | | `Board[]` incl. private (use for the "save to board" picker) |
@@ -108,7 +109,7 @@ type Category = { slug: string; name: string };
 | DELETE 🔒 | `/boards/:id` | | 204 (pins themselves stay) |
 | GET | `/boards/:id/pins` | `?page&limit` | `Page<Pin>` |
 | POST 🔒 | `/boards/:id/pins/:pinId` | save pin into own board | `Pin` (updated `savedBoardIds`) |
-| DELETE 🔒 | `/boards/:id/pins/:pinId` | remove from board | `Pin` |
+| DELETE 🔒 | `/boards/:id/pins/:pinId` | remove from board | `Pin`, or 204 if the pin no longer exists |
 
 ### Notifications 🔒
 | Method | Path | Response |
@@ -118,3 +119,6 @@ type Category = { slug: string; name: string };
 | POST | `/notifications/read-all` | 204 |
 
 Notifications are created for the pin/user owner when someone likes, comments, saves (to a public board) or follows.
+Undoing the action (unlike, unfollow, unsave, deleting the comment) removes the notification again.
+
+Only `POST /auth/login` and `POST /auth/register` are rate limited (20 per minute per client IP).

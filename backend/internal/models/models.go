@@ -11,7 +11,9 @@ type User struct {
 	PasswordHash string `gorm:"not null"`
 	Bio          string `gorm:"size:300"`
 	AvatarURL    string `gorm:"size:255"`
-	CreatedAt    time.Time
+	// Tokens issued before this moment are rejected (set on password change).
+	TokensValidAfter time.Time
+	CreatedAt        time.Time
 }
 
 type Pin struct {
@@ -91,8 +93,9 @@ type Notification struct {
 	Actor     User   `gorm:"constraint:OnDelete:CASCADE"`
 	Type      string `gorm:"size:20;not null"`
 	PinID     *uint
-	Pin       *Pin `gorm:"constraint:OnDelete:CASCADE"`
-	Read      bool `gorm:"index"`
+	Pin       *Pin  `gorm:"constraint:OnDelete:CASCADE"`
+	CommentID *uint `gorm:"index"`
+	Read      bool  `gorm:"index"`
 	CreatedAt time.Time
 }
 

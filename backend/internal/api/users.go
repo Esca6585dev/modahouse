@@ -2,6 +2,7 @@ package api
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"golang.org/x/crypto/bcrypt"
@@ -135,8 +136,13 @@ func (h *Handler) changePassword(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	h.db.Model(&u).Update("password_hash", string(hash))
-	return c.SendStatus(fiber.StatusNoContent)
+	// Invalidate every existing session, then hand this client a fresh token.
+	u.PasswordHash = string(hash)
+	u.TokensValidAfter = time.Now()
+	if err := h.db.Model(&u).Select("password_hash", "tokens_valid_after").Updates(&u).Error; err != nil {
+		return err
+	}
+	return h.respondAuth(c, fiber.StatusOK, u)
 }
 
 func (h *Handler) follow(c fiber.Ctx) error {
@@ -166,6 +172,7 @@ func (h *Handler) unfollow(c fiber.Ctx) error {
 	}
 	me := viewerID(c)
 	h.db.Where("follower_id = ? AND following_id = ?", me, target.ID).Delete(&models.Follow{})
+	h.unnotify(target.ID, me, models.NotifyFollow, nil)
 	return c.JSON(h.profile(target, me))
 }
 

@@ -335,6 +335,10 @@ func (h *Handler) unlikePin(c fiber.Ctx) error {
 	if !ok {
 		return notFound(c)
 	}
-	h.db.Where("user_id = ? AND pin_id = ?", viewerID(c), id).Delete(&models.Like{})
+	if res := h.db.Where("user_id = ? AND pin_id = ?", viewerID(c), id).Delete(&models.Like{}); res.RowsAffected > 0 {
+		var owner uint
+		h.db.Model(&models.Pin{}).Where("id = ?", id).Pluck("user_id", &owner)
+		h.unnotify(owner, viewerID(c), models.NotifyLike, &id)
+	}
 	return h.likeState(c, id)
 }

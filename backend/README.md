@@ -56,3 +56,4 @@ TEST_POSTGRES_URL="postgres://moda:moda@localhost:5432/modahouse_test?sslmode=di
 | `SEED` | `true` bolsa boş baza demo maglumatlar bilen doldurylýar |
 | `MAX_UPLOAD_MB` | Surat ölçeginiň çägi |
 | `TOKEN_TTL_DAYS` | JWT möhleti |
+| `TRUSTED_PROXIES` | `X-Forwarded-For` sözbaşysyna ynanylýan proksiler (adaty: `127.0.0.1,::1`). `private` ähli içki torlara ynanýar |
