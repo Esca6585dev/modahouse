@@ -1,5 +1,7 @@
 # ModaHouse
 
+[![CI](https://github.com/Esca6585dev/modahouse/actions/workflows/ci.yml/badge.svg)](https://github.com/Esca6585dev/modahouse/actions/workflows/ci.yml)
+
 Pinterest görnüşli ideýalar tagtasy: pinleri tap, sakla, tagtalara ýygna we paýlaş.
 Ähli bölekler şu bir repoda ýerleşýär.
 
@@ -55,3 +57,12 @@ JWT_SECRET=uzyn-tötänleýin-setir docker compose up --build
 ```
 
 Web: http://localhost:3000, API: http://localhost:8080/api.
+
+## CI
+
+Her `push` we PR-da GitHub Actions şulary barlaýar:
+
+- **Backend:** `gofmt`, `go vet`, SQLite we PostgreSQL 16 bilen testler.
+- **Frontend:** `npm ci` we `npm run build`, şol sanda TypeScript barlagy.
+- **Mobile:** `dart format`, `flutter analyze`, `flutter test` we release APK gurmak. APK faýly işiň "Artifacts" bölüminden ýüklenip alynýar.
+- **Docker:** backend we frontend obrazlaryny gurmak.

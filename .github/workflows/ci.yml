@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Every push runs CI. Pull requests from this repository are already covered
+# by their push, so the pull_request event only runs jobs for forks.
+
+jobs:
+  backend:
+    name: Backend (Go)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: moda
+          POSTGRES_PASSWORD: moda
+          POSTGRES_DB: modahouse_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U moda -d modahouse_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "Run gofmt on:"; echo "$unformatted"; exit 1
+          fi
+      - run: go vet ./...
+      - name: Test (SQLite)
+        run: go test ./...
+      - name: Test (PostgreSQL)
+        run: go test -count=1 ./internal/api/
+        env:
+          TEST_POSTGRES_URL: postgres://moda:moda@localhost:5432/modahouse_test?sslmode=disable
+      - run: go build ./cmd/server
+
+  frontend:
+    name: Frontend (Next.js)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Build and type-check
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  mobile:
+    name: Mobile (Flutter)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.6
+          cache: true
+      - run: flutter pub get
+      - name: dart format
+        run: dart format --output=none --set-exit-if-changed lib test tool
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build APK
+        run: flutter build apk --release --dart-define=API_URL=http://10.0.2.2:8080
+      - uses: actions/upload-artifact@v4
+        with:
+          name: modahouse-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+
+  docker:
+    name: Docker images
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build backend image
+        run: docker build -t modahouse-backend ./backend
+      - name: Build frontend image
+        run: docker build --build-arg BACKEND_URL=http://backend:8080 -t modahouse-frontend ./frontend
