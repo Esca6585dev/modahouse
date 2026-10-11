@@ -14,10 +14,8 @@ import (
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
-// fashionArt draws category illustrations; swapped for renderFashionArt once available.
-var fashionArt = func(kind string, variant int, w, h float64) string {
-	return renderDress(randomDress(uint32(variant*31+len(kind))), viewFront, w, h)
-}
+// fashionArt draws the category illustrations (art_fashion.go).
+var fashionArt = renderFashionArt
 
 type creator struct{ username, name, bio, focus string }
 
@@ -388,7 +386,64 @@ func captionHashtags(s string) []string {
 	return out
 }
 
-// seedReels is replaced once the generated reel assets exist.
-var seedReels = func(tx *gorm.DB, store *storage.Storage, ids map[string]uint, people []uint, now time.Time) error {
+type demoReel struct {
+	author, title, desc, category string
+}
+
+// The clips in assets/reels, in file order (reel-1 … reel-8).
+var demoReels = []demoReel{
+	{"aysoltan.style", "Toý köýnegi hereketde ✨", "Matasy nähili akýar — görüň! #toýköýnek #reels #türkmenmoda", "toy"},
+	{"aygul.kesde", "Gül nagşyny tikýärin 🧵", "Bir gülüň dünýä inişi. #elkeşde #keşde #reels", "keshde"},
+	{"ogulnabat", "Mamamyň şaý-sepleri", "Gupba, bilezik, gülýaka — hemmesi el işi. #şaýsep #kümüş #reels", "shay"},
+	{"nurana.nails", "5 dyrnak dizaýny 💅", "Haýsysyny saýlaýarsyňyz? Teswirde ýazyň! #dyrnak #dyrnakdizaýny #reels", "dyrnak"},
+	{"selbi.saclar", "Iki örüm we çaçbag", "Türkmen gyzlarynyň iň owadan saç düzümi. #örüm #saçdüzüm #reels", "sac"},
+	{"aybolek", "Keşdeli matanyň owadanlygy", "Ýakyndan görüň — her sapak el bilen. #elkeşde #milli #reels", "keshde"},
+	{"mahym.fason", "Täze kolleksiýa", "Bu möwsümiň iň owadan köýnekleri. #köýnek #moda #reels", "koynekler"},
+	{"leyli.makiyaj", "Üç makiýaž obrazy", "Gündelikden toý makiýažyna çenli. #makiýaž #gözellik #reels", "makiyaj"},
+}
+
+// seedReels publishes the generated demo clips as video posts and stories.
+func seedReels(tx *gorm.DB, store *storage.Storage, ids map[string]uint, people []uint, now time.Time) error {
+	for i, r := range demoReels {
+		n := i + 1
+		video, err := reelFS.ReadFile(fmt.Sprintf("assets/reels/reel-%d.webm", n))
+		if err != nil {
+			return err
+		}
+		poster, err := reelFS.ReadFile(fmt.Sprintf("assets/reels/reel-%d.jpg", n))
+		if err != nil {
+			return err
+		}
+		videoURL, err := store.WriteFile("seed", fmt.Sprintf("reel-%d.webm", n), video)
+		if err != nil {
+			return err
+		}
+		posterURL, err := store.WriteFile("seed", fmt.Sprintf("reel-%d.jpg", n), poster)
+		if err != nil {
+			return err
+		}
+		p := models.Pin{UserID: ids[r.author], Title: r.title, Description: r.desc, Category: r.category, ListingType: "post",
+			Tags: strings.Join(captionHashtags(r.desc), ","), ImageURL: posterURL, Width: 360, Height: 640, Color: "#2B2328",
+			HasVideo: true, ViewsCount: 300 + i*157, CreatedAt: now.Add(-time.Duration(i*5+2) * time.Hour)}
+		p.SearchText = strings.ToLower(p.Title + " " + p.Description + " " + p.Tags)
+		if err := tx.Create(&p).Error; err != nil {
+			return err
+		}
+		if err := tx.Create(&models.PinImage{PinID: p.ID, Kind: "video", URL: videoURL, PosterURL: posterURL, Duration: 6.07,
+			Width: 360, Height: 640, Color: "#2B2328"}).Error; err != nil {
+			return err
+		}
+		for j := 0; j < 6+i; j++ {
+			tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.Like{UserID: people[(i*3+j)%len(people)], PinID: p.ID})
+		}
+		tx.Create(&models.Comment{PinID: p.ID, UserID: people[(i+5)%len(people)], Text: commentPool[i%len(commentPool)]})
+		// Video stories from three of the creators.
+		if i%3 == 0 {
+			pid := p.ID
+			tx.Create(&models.Story{UserID: ids[r.author], ImageURL: posterURL, VideoURL: videoURL, Width: 360, Height: 640,
+				Color: "#2B2328", Caption: r.title, PinID: &pid, CreatedAt: now.Add(-time.Duration(i+1) * time.Hour),
+				ExpiresAt: now.Add(time.Duration(20-i) * time.Hour)})
+		}
+	}
 	return nil
 }

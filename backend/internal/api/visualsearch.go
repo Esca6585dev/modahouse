@@ -103,7 +103,7 @@ type scored struct {
 }
 
 // rank returns pin ids ordered by similarity to q (excluding skip), limited to allowed if set.
-func (v *visualIndex) rank(q *visual.Descriptor, skip uint, allowed map[uint]bool, boost map[uint]bool, n int) []scored {
+func (v *visualIndex) rank(q *visual.Descriptor, skip uint, allowed map[uint]bool, boost map[uint]bool, boostBy float64, n int) []scored {
 	v.mu.RLock()
 	defer v.mu.RUnlock()
 	out := make([]scored, 0, len(v.items))
@@ -113,8 +113,9 @@ func (v *visualIndex) rank(q *visual.Descriptor, skip uint, allowed map[uint]boo
 		}
 		s := visual.Similarity(q, d)
 		if boost[id] {
-			s += 0.15
+			s += boostBy
 		}
+		s = min(s, 1)
 		out = append(out, scored{id, s})
 	}
 	sort.Slice(out, func(a, b int) bool { return out[a].score > out[b].score })
@@ -224,7 +225,7 @@ func (h *Handler) searchByImage(c fiber.Ctx) error {
 			}
 		}
 	}
-	ranked := h.visual.rank(&q, 0, h.allowedSet(c), boost, limit*2)
+	ranked := h.visual.rank(&q, 0, h.allowedSet(c), boost, 0.2, limit*2)
 	res.Items, res.Scores = h.visualResults(c, ranked, limit)
 	return c.JSON(res)
 }
@@ -251,7 +252,17 @@ func (h *Handler) visuallySimilar(c fiber.Ctx) error {
 	if limit < 1 || limit > 60 {
 		limit = 30
 	}
-	ranked := h.visual.rank(q, id, h.allowedSet(c), nil, limit*2)
+	// The source post's category is a strong hint of what "similar" means.
+	var cat string
+	h.db.Model(&models.Pin{}).Where("id = ?", id).Pluck("category", &cat)
+	boost := map[uint]bool{}
+	var same []uint
+	h.db.Model(&models.Pin{}).Where("category = ?", cat).Pluck("id", &same)
+	for _, pid := range same {
+		boost[pid] = true
+	}
+	res.Category = cat
+	ranked := h.visual.rank(q, id, h.allowedSet(c), boost, 0.3, limit*2)
 	res.Items, res.Scores = h.visualResults(c, ranked, limit)
 	return c.JSON(res)
 }
