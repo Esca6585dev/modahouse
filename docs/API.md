@@ -428,3 +428,28 @@ type Suggestion = {
 The server asks Claude (model `AI_MODEL`, default `claude-opus-5-5`) to write Turkmen copy from the image and the notes, without inventing prices or facts; missing values come back as "…". Without credentials, or if the call fails, it returns template text for the listing type, so the button always works. Rate limit: 10 requests per minute per user.
 
 Server configuration: set `ANTHROPIC_API_KEY` to enable Claude.
+
+## Visual search (search by photo)
+
+Like Pinduoduo or TikTok: the user uploads or takes a photo, adjusts the frame around the item, and
+gets visually similar posts and products.
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| POST | `/search/image` | multipart: `image` (JPG/PNG/GIF/WEBP), optional crop `x`, `y`, `w`, `h` (fractions 0..1 of the image), `type=products` (only listings), `limit` (≤ 60, default 30) | `VisualResult` |
+| GET | `/pins/:id/visual` | `?type=products&limit=` | `VisualResult`: "Meňzeşini tap" for an existing post (the post itself is excluded) |
+
+```ts
+type VisualResult = {
+  items: Pin[];          // most similar first
+  scores: number[];      // 0..1, same order as items
+  category: string;      // category detected by AI ("" without AI)
+  source: "local" | "ai+local";
+};
+```
+
+**How results are found:**
+- Every post's cover image (a video's poster) gets a compact descriptor: a centre-weighted colour histogram, a layout hash and an edge-orientation histogram.
+- Descriptors are built in the background, and also on demand before a search, so new posts are searchable within seconds.
+- Results are ranked by similarity and respect the viewer's hidden posts and blocks.
+- When the server has Claude credentials, Claude also names the category of the photo, and posts of that category are boosted.

@@ -30,7 +30,10 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	for i, c := range Categories {
 		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
 	}
-	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats)}
+	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats), visual: newVisualIndex(db, store)}
+	if !opts.Quiet {
+		logVisualStart(h.visual) // background indexing; tests index on demand
+	}
 
 	trust := fiber.TrustProxyConfig{}
 	for _, p := range cfg.TrustedProxies {
@@ -125,6 +128,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	pins.Put("/:id", requireAuth, h.updatePin)
 	pins.Delete("/:id", requireAuth, h.deletePin)
 	pins.Get("/:id/similar", h.similarPins)
+	pins.Get("/:id/visual", h.visuallySimilar)
 	pins.Post("/:id/view", h.viewPin)
 	pins.Post("/:id/report", requireAuth, h.reportPin)
 	pins.Post("/:id/hide", requireAuth, h.hidePin)
@@ -149,6 +153,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 
 	api.Get("/businesses", h.listBusinesses)
 	api.Get("/search", h.search)
+	api.Post("/search/image", h.searchByImage)
 	aiLimit := func(c fiber.Ctx) error { return c.Next() }
 	if !opts.Quiet {
 		aiLimit = limiter.New(limiter.Config{Max: 10, Expiration: time.Minute, KeyGenerator: func(c fiber.Ctx) string {

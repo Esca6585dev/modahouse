@@ -13,10 +13,11 @@ import (
 )
 
 type Handler struct {
-	db    *gorm.DB
-	store *storage.Storage
-	cfg   config.Config
-	ai    *ai.Service
+	db     *gorm.DB
+	store  *storage.Storage
+	cfg    config.Config
+	ai     *ai.Service
+	visual *visualIndex
 }
 
 type Page[T any] struct {

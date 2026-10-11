@@ -277,8 +277,16 @@ type Block struct {
 	CreatedAt time.Time
 }
 
+// PinFeature stores the visual-search descriptor of a pin's cover image.
+type PinFeature struct {
+	PinID   uint `gorm:"primaryKey"`
+	Pin     Pin  `gorm:"constraint:OnDelete:CASCADE"`
+	Version int
+	Data    []byte
+}
+
 func All() []any {
 	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{},
 		&Business{}, &PinImage{}, &PinView{}, &CartItem{}, &Order{}, &OrderItem{}, &Review{}, &Story{}, &StoryView{},
-		&Report{}, &HiddenPin{}, &Block{}}
+		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}}
 }

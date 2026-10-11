@@ -325,3 +325,52 @@ func (s *Service) tidy(out Suggestion, r Request) Suggestion {
 	}
 	return out
 }
+
+// Classify returns the category slug of a fashion photo, or "" when the model is
+// unavailable or unsure. Used to boost visual search results.
+func (s *Service) Classify(ctx context.Context, img []byte) string {
+	if s.client == nil {
+		return ""
+	}
+	data, mt, ok := prepareImage(img)
+	if !ok {
+		return ""
+	}
+	slugs := []any{"none"}
+	var names []string
+	for _, c := range s.categories {
+		slugs = append(slugs, c.Slug)
+		names = append(names, c.Slug+" = "+c.Name)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	resp, err := s.client.Beta.Messages.New(ctx, anthropic.BetaMessageNewParams{
+		Model:     anthropic.Model(s.model),
+		MaxTokens: 1024,
+		Messages: []anthropic.BetaMessageParam{anthropic.NewBetaUserMessage(
+			anthropic.NewBetaImageBlock(anthropic.BetaBase64ImageSourceParam{Data: base64.StdEncoding.EncodeToString(data), MediaType: anthropic.BetaBase64ImageSourceMediaType(mt)}),
+			anthropic.NewBetaTextBlock("Which category of this fashion app best matches the main item in the photo? Categories: "+strings.Join(names, "; ")+". Answer \"none\" if nothing fits."),
+		)},
+		OutputConfig: anthropic.BetaOutputConfigParam{
+			Effort: "low",
+			Format: anthropic.BetaJSONOutputFormatParam{Schema: map[string]any{
+				"type": "object", "additionalProperties": false, "required": []any{"category"},
+				"properties": map[string]any{"category": map[string]any{"type": "string", "enum": slugs}},
+			}},
+		},
+		Fallbacks: anthropic.BetaFallbacksParamUnion{OfDefault: constant.ValueOf[constant.Default]()},
+		Betas:     []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01},
+	})
+	if err != nil || resp.StopReason == anthropic.BetaStopReasonRefusal {
+		return ""
+	}
+	for _, block := range resp.Content {
+		if t, ok := block.AsAny().(anthropic.BetaTextBlock); ok {
+			var out struct{ Category string }
+			if json.Unmarshal([]byte(t.Text), &out) == nil && s.categoryName(out.Category) != "" {
+				return out.Category
+			}
+		}
+	}
+	return ""
+}

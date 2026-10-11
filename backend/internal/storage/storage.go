@@ -158,6 +158,15 @@ func (s *Storage) WriteFile(sub, name string, data []byte) (string, error) {
 	return "/uploads/" + sub + "/" + name, nil
 }
 
+// Read returns the bytes of a file previously returned as a /uploads/ URL.
+func (s *Storage) Read(url string) ([]byte, error) {
+	rel, ok := strings.CutPrefix(url, "/uploads/")
+	if !ok || strings.Contains(rel, "..") {
+		return nil, os.ErrNotExist
+	}
+	return os.ReadFile(filepath.Join(s.Dir, filepath.FromSlash(rel)))
+}
+
 // Remove deletes a file previously returned as a /uploads/ URL. Unknown URLs are ignored.
 func (s *Storage) Remove(url string) {
 	rel, ok := strings.CutPrefix(url, "/uploads/")

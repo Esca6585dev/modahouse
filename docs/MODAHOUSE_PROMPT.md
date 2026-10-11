@@ -122,7 +122,18 @@ The seed must make the app look alive on first start:
 
 No real people or real brands. Illustrations are generated (SVG); reels are short generated WebM clips.
 
-### 10. Platforms and quality bar
+### 10. Search by photo (Pinduoduo / TikTok style)
+
+The search bar and the create flow have a camera button.
+
+1. The user takes or picks a photo. They can also take one of a post on screen ("Meňzeşini tap" in the ⋯ menu and on every product page).
+2. An adjustable crop frame shows around the main item, and the user can drag its corners.
+3. The app shows similar posts and products from the database right away, with a "Diňe harytlar" switch.
+4. Moving the frame searches again.
+
+The server implements `POST /api/search/image` and `GET /api/pins/:id/visual`. It uses its own visual descriptors (colour, shape, pattern), and Claude-detected categories boost the ranking when an API key is set.
+
+### 11. Platforms and quality bar
 
 - Web (Next.js), Android (Flutter, release APK built in CI) and the shared Go API.
 - Pixel-level polish at 390 px phone width and on desktop.

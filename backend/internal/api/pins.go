@@ -432,7 +432,8 @@ func (h *Handler) deletePin(c fiber.Ctx) error {
 	err = h.db.Transaction(func(tx *gorm.DB) error {
 		// Explicit cleanup keeps SQLite and Postgres consistent even without FK cascades.
 		for _, m := range []any{&models.BoardPin{}, &models.Like{}, &models.Comment{}, &models.Notification{},
-			&models.PinImage{}, &models.PinView{}, &models.CartItem{}, &models.Review{}} {
+			&models.PinImage{}, &models.PinView{}, &models.CartItem{}, &models.Review{},
+			&models.PinFeature{}, &models.HiddenPin{}, &models.Report{}} {
 			if err := tx.Where("pin_id = ?", p.ID).Delete(m).Error; err != nil {
 				return err
 			}
@@ -463,6 +464,7 @@ func (h *Handler) deletePin(c fiber.Ctx) error {
 	if !removed[p.ImageURL] && !h.urlInOrders(p.ImageURL) {
 		h.store.Remove(p.ImageURL)
 	}
+	h.visual.remove(p.ID)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
