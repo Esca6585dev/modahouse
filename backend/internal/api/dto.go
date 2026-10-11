@@ -166,9 +166,11 @@ type NotificationDTO struct {
 }
 
 type OrderBrief struct {
-	ID     uint   `json:"id"`
-	Status string `json:"status"`
-	Total  int    `json:"total"`
+	ID            uint   `json:"id"`
+	Status        string `json:"status"`        // status this notification is about
+	CurrentStatus string `json:"currentStatus"` // the order's status now
+	Total         int    `json:"total"`
+	Role          string `json:"role"` // the recipient is the "buyer" or the "seller"
 }
 
 type PinBrief struct {

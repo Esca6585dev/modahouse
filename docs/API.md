@@ -408,6 +408,14 @@ type Pin = { ...existing..., mediaType: "image" | "video";  // type of images[0]
 Feeds (`/pins`, `/pins/:id/similar`) hide pins I hid and pins of users I blocked or who blocked me.
 `Profile` gains `isBlocked` (I blocked this user).
 
+## Order notifications
+
+`Notification.order` (for `order` / `order_status`) is now
+`{id, status, currentStatus, total, role}`.
+- `status` is the status this notification is about (the step that happened).
+- `currentStatus` is the order's status now.
+- `role` says whether the recipient is the `"buyer"` or the `"seller"`.
+
 ## AI writing assistant
 
 | Method | Path | Body | Response |

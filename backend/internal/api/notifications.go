@@ -31,7 +31,7 @@ func (h *Handler) notifyOrder(recipient, actor uint, kind string, o models.Order
 	if recipient == actor {
 		return
 	}
-	n := models.Notification{UserID: recipient, ActorID: actor, Type: kind, OrderID: &o.ID}
+	n := models.Notification{UserID: recipient, ActorID: actor, Type: kind, OrderID: &o.ID, OrderStatus: o.Status}
 	if len(o.Items) > 0 && o.Items[0].PinID != nil {
 		n.PinID = o.Items[0].PinID
 	}
@@ -71,8 +71,16 @@ func (h *Handler) listNotifications(c fiber.Ctx) error {
 		}
 		if n.OrderID != nil {
 			var o models.Order
-			if h.db.Select("id", "status", "total").First(&o, *n.OrderID).Error == nil {
-				d.Order = &OrderBrief{ID: o.ID, Status: o.Status, Total: o.Total}
+			if h.db.Select("id", "status", "total", "buyer_id").First(&o, *n.OrderID).Error == nil {
+				status := o.Status
+				if n.OrderStatus != "" {
+					status = n.OrderStatus // what happened at that moment, not the current state
+				}
+				role := "seller"
+				if o.BuyerID == n.UserID {
+					role = "buyer"
+				}
+				d.Order = &OrderBrief{ID: o.ID, Status: status, CurrentStatus: o.Status, Total: o.Total, Role: role}
 			}
 		}
 		items[i] = d

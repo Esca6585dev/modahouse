@@ -108,18 +108,19 @@ const (
 )
 
 type Notification struct {
-	ID        uint   `gorm:"primaryKey"`
-	UserID    uint   `gorm:"index;not null"` // recipient
-	ActorID   uint   `gorm:"not null"`
-	User      User   `gorm:"constraint:OnDelete:CASCADE"`
-	Actor     User   `gorm:"constraint:OnDelete:CASCADE"`
-	Type      string `gorm:"size:20;not null"`
-	PinID     *uint
-	Pin       *Pin  `gorm:"constraint:OnDelete:CASCADE"`
-	CommentID *uint `gorm:"index"`
-	OrderID   *uint `gorm:"index"`
-	Read      bool  `gorm:"index"`
-	CreatedAt time.Time
+	ID          uint   `gorm:"primaryKey"`
+	UserID      uint   `gorm:"index;not null"` // recipient
+	ActorID     uint   `gorm:"not null"`
+	User        User   `gorm:"constraint:OnDelete:CASCADE"`
+	Actor       User   `gorm:"constraint:OnDelete:CASCADE"`
+	Type        string `gorm:"size:20;not null"`
+	PinID       *uint
+	Pin         *Pin   `gorm:"constraint:OnDelete:CASCADE"`
+	CommentID   *uint  `gorm:"index"`
+	OrderID     *uint  `gorm:"index"`
+	OrderStatus string `gorm:"size:20"` // order status at the time of the event
+	Read        bool   `gorm:"index"`
+	CreatedAt   time.Time
 }
 
 // Business holds the professional profile of a user with IsBusiness set.

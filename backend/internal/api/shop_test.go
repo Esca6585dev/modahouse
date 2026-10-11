@@ -3,6 +3,7 @@ package api_test
 import (
 	"fmt"
 	"mime/multipart"
+	"strings"
 	"testing"
 )
 
@@ -164,6 +165,27 @@ func TestShopFlow(t *testing.T) {
 		e.expect(200, "PUT", opath, seller.Token, map[string]any{"status": st}, nil)
 	}
 	e.expect(400, "POST", fmt.Sprintf("/api/orders/%d/cancel", order.ID), buyer.Token, nil, nil)
+	var notes page[struct {
+		Type  string `json:"type"`
+		Order *struct {
+			Status        string `json:"status"`
+			CurrentStatus string `json:"currentStatus"`
+			Role          string `json:"role"`
+		} `json:"order"`
+	}]
+	e.expect(200, "GET", "/api/notifications", buyer.Token, nil, &notes)
+	var steps []string
+	for _, n := range notes.Items {
+		if n.Type == "order_status" {
+			steps = append(steps, n.Order.Status)
+			if n.Order.CurrentStatus != "delivered" || n.Order.Role != "buyer" {
+				t.Fatalf("notification order: %+v", n.Order)
+			}
+		}
+	}
+	if strings.Join(steps, ",") != "delivered,shipped,confirmed" {
+		t.Fatalf("status per notification: %v", steps)
+	}
 
 	// Reviews.
 	e.expect(400, "POST", pinPath+"/reviews", buyer.Token, map[string]any{"rating": 6}, nil)
