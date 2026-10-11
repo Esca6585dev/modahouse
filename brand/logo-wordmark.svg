@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" role="img" aria-label="ModaHouse">
+  <circle cx="50" cy="50" r="50" fill="#E60023"/>
+  <path d="M20 42 L50 17 L80 42" fill="none" stroke="#fff" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M31 79 V48 L50 66 L69 48 V79" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="118" y="68" font-family="Helvetica Neue, Arial, sans-serif" font-size="46" font-weight="800" letter-spacing="-1.5" fill="#E60023">Moda<tspan>House</tspan></text>
+  <!-- small roof over the H of House -->
+  <path d="M234 31 L250 19 L266 31" fill="none" stroke="#E60023" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
