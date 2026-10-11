@@ -26,6 +26,7 @@ type Profile struct {
 	CreatedAt      time.Time    `json:"createdAt"`
 	HasStory       bool         `json:"hasStory"`
 	StorySeen      bool         `json:"storySeen"`
+	IsBlocked      bool         `json:"isBlocked"` // the viewer blocked this user
 	Business       *BusinessDTO `json:"business"`
 }
 
@@ -35,6 +36,12 @@ type BusinessDTO struct {
 	Address       string  `json:"address"`
 	City          string  `json:"city"`
 	Instagram     string  `json:"instagram"`
+	Tiktok        string  `json:"tiktok"`
+	Telegram      string  `json:"telegram"`
+	Whatsapp      string  `json:"whatsapp"`
+	Imo           string  `json:"imo"`
+	Youtube       string  `json:"youtube"`
+	Website       string  `json:"website"`
 	WorkingHours  string  `json:"workingHours"`
 	DeliveryDays  int     `json:"deliveryDays"`
 	ReturnDays    int     `json:"returnDays"`
@@ -72,6 +79,10 @@ type ColorOption struct {
 }
 
 type ProductDTO struct {
+	ListingType  string        `json:"listingType"` // sale, rent, custom
+	Deposit      int           `json:"deposit"`
+	MinDays      int           `json:"minDays"`
+	ReadyDays    int           `json:"readyDays"`
 	Price        int           `json:"price"`
 	OldPrice     int           `json:"oldPrice"`
 	Colors       []ColorOption `json:"colors"`
@@ -84,10 +95,13 @@ type ProductDTO struct {
 }
 
 type PinImageDTO struct {
-	URL    string `json:"url"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	Color  string `json:"color"`
+	Type      string  `json:"type"` // image or video
+	PosterURL string  `json:"posterUrl"`
+	Duration  float64 `json:"duration"`
+	URL       string  `json:"url"`
+	Width     int     `json:"width"`
+	Height    int     `json:"height"`
+	Color     string  `json:"color"`
 }
 
 type Me struct {
@@ -96,28 +110,30 @@ type Me struct {
 }
 
 type PinDTO struct {
-	ID            uint          `json:"id"`
-	Title         string        `json:"title"`
-	Description   string        `json:"description"`
-	Link          string        `json:"link"`
-	Category      string        `json:"category"`
-	Tags          []string      `json:"tags"`
-	ImageURL      string        `json:"imageUrl"`
-	Width         int           `json:"width"`
-	Height        int           `json:"height"`
-	Color         string        `json:"color"`
-	Author        UserBrief     `json:"author"`
-	LikesCount    int64         `json:"likesCount"`
-	CommentsCount int64         `json:"commentsCount"`
-	Liked         bool          `json:"liked"`
-	SavedBoardIDs []uint        `json:"savedBoardIds"`
-	Images        []PinImageDTO `json:"images"`
-	Product       *ProductDTO   `json:"product"`
-	ViewsCount    int           `json:"viewsCount"`
-	OrdersCount   int           `json:"ordersCount"`
-	Rating        float64       `json:"rating"`
-	ReviewsCount  int64         `json:"reviewsCount"`
-	CreatedAt     time.Time     `json:"createdAt"`
+	ID             uint          `json:"id"`
+	Title          string        `json:"title"`
+	Description    string        `json:"description"`
+	Link           string        `json:"link"`
+	Category       string        `json:"category"`
+	Tags           []string      `json:"tags"`
+	ImageURL       string        `json:"imageUrl"`
+	Width          int           `json:"width"`
+	Height         int           `json:"height"`
+	Color          string        `json:"color"`
+	Author         UserBrief     `json:"author"`
+	LikesCount     int64         `json:"likesCount"`
+	CommentsCount  int64         `json:"commentsCount"`
+	Liked          bool          `json:"liked"`
+	SavedBoardIDs  []uint        `json:"savedBoardIds"`
+	Images         []PinImageDTO `json:"images"`
+	Product        *ProductDTO   `json:"product"`
+	LatestComments []CommentDTO  `json:"latestComments,omitempty"`
+	MediaType      string        `json:"mediaType"` // image or video (the cover)
+	ViewsCount     int           `json:"viewsCount"`
+	OrdersCount    int           `json:"ordersCount"`
+	Rating         float64       `json:"rating"`
+	ReviewsCount   int64         `json:"reviewsCount"`
+	CreatedAt      time.Time     `json:"createdAt"`
 }
 
 type BoardDTO struct {

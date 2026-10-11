@@ -320,3 +320,111 @@ type StoryGroup = { user: UserBrief; stories: Story[]; allSeen: boolean };
 | DELETE 🔒 | `/stories/:id` | owner | 204 |
 
 `viewsCount` is only filled for the owner (0 for others).
+
+---
+
+# v3: Turkmen fashion, reels, listing types, AI and moderation
+
+Everything above still applies. All changes are additive.
+
+## Categories
+
+`GET /categories` now returns fashion categories only: `toy` Toý köýnekleri, `gelin` Gelin lybaslary,
+`milli` Milli köýnekler, `koynekler` Köýnekler, `yaka` Ýaka fasonlary, `keshde` El keşdeleri,
+`gundelik` Gündelik moda, `sac` Saç düzümleri, `makiyaj` Makiýaž, `dyrnak` Dyrnak dizaýny,
+`shay` Şaý-sepler, `aksessuar` Aksessuarlar. Old posts may still carry retired slugs; they stay valid.
+
+`GET /business-categories` → `Category[]`: `dress` Köýnek dükany, `tailor` Tikinçi, `atelier` Atelýe,
+`bridal` Gelin salony, `rental` Kärende salony, `boutique` Butik, `designer` Dizaýner,
+`jewelry` Şaý-sep ussasy, `beauty` Gözellik salony, `accessories` Aksessuarlar.
+
+## Business social links
+
+`Business` (in `Profile.business`) and the `POST/PUT /me/business` body gain:
+`tiktok`, `telegram` (handles, a leading @ is stripped), `whatsapp`, `imo` (phone numbers, same format as
+`phone`), `youtube`, `website` (http/https URLs). `instagram` already existed.
+
+## Listing types
+
+```ts
+type ListingType = "post" | "sale" | "rent" | "custom";
+// Turkmen: Diňe paýlaşmak, Satlyk, Kärende, Sargyt bilen tikmek
+type Product = {
+  ...existing fields...,
+  listingType: "sale" | "rent" | "custom";
+  deposit: number;    // rent: deposit in TMT (0 = none)
+  minDays: number;    // rent: minimum rental days (0 = none)
+  readyDays: number;  // custom: days to make (0 = unknown)
+  // price meaning: sale = price, rent = price per day, custom = "from" price
+};
+```
+
+- `POST /pins` (multipart) and `PUT /pins/:id` accept `listingType`, `deposit`, `minDays`, `readyDays`.
+- `sale`/`rent`/`custom` need a price > 0 and a business account (403 otherwise). `post` clears every price field.
+- `oldPrice` (discount) applies to `sale` only.
+- Only `sale` products can go into the cart and checkout. For `rent` and `custom`, clients show a contact sheet built from the business phone and social links. `POST /cart` with such a pin returns 400.
+- Pins created before v3 with a price and no type are reported as `sale`.
+
+## Video posts and reels
+
+```ts
+type PinImage = {
+  type: "image" | "video";
+  url: string;          // the image, or the video file (MP4 or WebM)
+  posterUrl: string;    // video: a poster image ("" for images)
+  duration: number;     // video: seconds (0 = unknown)
+  width: number; height: number; color: string;
+};
+type Pin = { ...existing..., mediaType: "image" | "video";  // type of images[0]
+             latestComments?: Comment[] };                  // only with ?withComments=1
+```
+
+- **Uploading a video:** In `POST /pins`, any file in `images` may be a video (MP4/MOV or WebM, up to `MAX_VIDEO_MB`, default 60 MB).
+  - For the k-th video, send its poster as the k-th `posters` file and, optionally, its length in seconds as the k-th `durations` value.
+  - Without a poster the server draws a placeholder in 9:16. The pin's `imageUrl` is the poster when the cover is a video, so `<img>` tags keep working.
+- **Reels feed:** `GET /pins?type=videos` lists video posts.
+- **Video stories:** `POST /stories` accepts `video` (plus an optional `poster`) instead of `image`. `Story` gains `mediaType` and `videoUrl`; `imageUrl` is then the poster.
+
+## Feeds, hashtags and search
+
+- `GET /pins` also accepts:
+  - `tag=<hashtag>` (with or without "#");
+  - `withComments=1`, which adds the two latest comments to each pin.
+- Hashtags written in a caption (`#toýköýnek`) are added to the pin's `tags` automatically.
+- `GET /search?q=` → `{ users: UserBrief[] (max 10), tags: {tag, count}[] (max 10) }`. A leading "#" in `q` is ignored.
+- `GET /me/likes` 🔒 → `Page<Pin>`, the posts I liked, newest like first.
+
+## Moderation
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| POST 🔒 | `/pins/:id/report` | `{reason: "spam"\|"inappropriate"\|"copyright"\|"fake"\|"other", note?}` | 204 |
+| POST 🔒 | `/pins/:id/hide` | | 204: "Gyzyklanmaýaryn", the pin disappears from my feeds |
+| DELETE 🔒 | `/pins/:id/hide` | | 204 |
+| POST 🔒 | `/users/:username/block` | | `{blocked: true}`; also removes follows both ways |
+| DELETE 🔒 | `/users/:username/block` | | `{blocked: false}` |
+| GET 🔒 | `/me/blocks` | | `UserBrief[]` |
+
+Feeds (`/pins`, `/pins/:id/similar`) hide pins I hid and pins of users I blocked or who blocked me.
+`Profile` gains `isBlocked` (I blocked this user).
+
+## AI writing assistant
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| GET | `/ai/status` | | `{enabled}`: true when the server has Claude credentials |
+| POST 🔒 | `/ai/suggest` | multipart (`listingType`, `category`, `title`, `notes`, optional `image` file) or the same fields as JSON | `Suggestion` |
+
+```ts
+type Suggestion = {
+  title: string; description: string; hashtags: string[];  // without "#"
+  category: string;     // one of the category slugs
+  priceLine: string;    // "" for post; e.g. "Günlük kärende: 250 TMT · Girew: 500 TMT"
+  details: string[];    // short facts buyers ask about
+  source: "ai" | "template";
+};
+```
+
+The server asks Claude (model `AI_MODEL`, default `claude-opus-5-5`) to write Turkmen copy from the image and the notes, without inventing prices or facts; missing values come back as "…". Without credentials, or if the call fails, it returns template text for the listing type, so the button always works. Rate limit: 10 requests per minute per user.
+
+Server configuration: set `ANTHROPIC_API_KEY` to enable Claude.

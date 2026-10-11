@@ -15,10 +15,17 @@ import (
 var BusinessCategories = []Category{
 	{"dress", "Köýnek dükany"},
 	{"tailor", "Tikinçi"},
+	{"atelier", "Atelýe"},
+	{"bridal", "Gelin salony"},
+	{"rental", "Kärende salony"},
 	{"boutique", "Butik"},
 	{"designer", "Dizaýner"},
+	{"jewelry", "Şaý-sep ussasy"},
+	{"beauty", "Gözellik salony"},
 	{"accessories", "Aksessuarlar"},
 }
+
+func listBusinessCategories(c fiber.Ctx) error { return c.JSON(BusinessCategories) }
 
 var phoneRe = regexp.MustCompile(`^\+?[0-9][0-9 ()\-]{6,18}[0-9]$`)
 
@@ -60,6 +67,7 @@ func (h *Handler) businessDTO(u models.User) *BusinessDTO {
 	a := h.businessAgg(u.ID)
 	return &BusinessDTO{
 		Category: b.Category, Phone: b.Phone, Address: b.Address, City: b.City, Instagram: b.Instagram,
+		Tiktok: b.Tiktok, Telegram: b.Telegram, Whatsapp: b.Whatsapp, Imo: b.Imo, Youtube: b.Youtube, Website: b.Website,
 		WorkingHours: b.WorkingHours, DeliveryDays: b.DeliveryDays, ReturnDays: b.ReturnDays,
 		Rating: a.Rating, ReviewsCount: a.ReviewsCount, OrdersCount: a.OrdersCount, ProductsCount: a.ProductsCount,
 	}
@@ -89,6 +97,12 @@ type businessReq struct {
 	Address      *string `json:"address"`
 	City         *string `json:"city"`
 	Instagram    *string `json:"instagram"`
+	Tiktok       *string `json:"tiktok"`
+	Telegram     *string `json:"telegram"`
+	Whatsapp     *string `json:"whatsapp"`
+	Imo          *string `json:"imo"`
+	Youtube      *string `json:"youtube"`
+	Website      *string `json:"website"`
 	WorkingHours *string `json:"workingHours"`
 	DeliveryDays *int    `json:"deliveryDays"`
 	ReturnDays   *int    `json:"returnDays"`
@@ -112,6 +126,29 @@ func (r businessReq) apply(b *models.Business) string {
 	}
 	if r.Instagram != nil {
 		b.Instagram = clean(strings.TrimPrefix(strings.TrimSpace(*r.Instagram), "@"), 60)
+	}
+	handle := func(v *string, dst *string) {
+		if v != nil {
+			*dst = clean(strings.TrimPrefix(strings.TrimSpace(*v), "@"), 60)
+		}
+	}
+	handle(r.Tiktok, &b.Tiktok)
+	handle(r.Telegram, &b.Telegram)
+	for _, ph := range []struct{ v, dst *string }{{r.Whatsapp, &b.Whatsapp}, {r.Imo, &b.Imo}} {
+		if ph.v != nil {
+			*ph.dst = strings.TrimSpace(*ph.v)
+			if *ph.dst != "" && !phoneRe.MatchString(*ph.dst) {
+				return "WhatsApp/IMO belgisi nädogry, mysal: +993 61 234567"
+			}
+		}
+	}
+	for _, link := range []struct{ v, dst *string }{{r.Youtube, &b.Youtube}, {r.Website, &b.Website}} {
+		if link.v != nil {
+			*link.dst = clean(*link.v, 200)
+			if *link.dst != "" && !validHTTPURL(*link.dst) {
+				return "Baglanyşyk http:// ýa-da https:// bilen başlamaly"
+			}
+		}
 	}
 	if r.WorkingHours != nil {
 		b.WorkingHours = clean(*r.WorkingHours, 60)

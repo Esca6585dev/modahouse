@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 
+	"github.com/esca6585dev/modahouse/backend/internal/ai"
 	"github.com/esca6585dev/modahouse/backend/internal/config"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
@@ -15,6 +16,7 @@ type Handler struct {
 	db    *gorm.DB
 	store *storage.Storage
 	cfg   config.Config
+	ai    *ai.Service
 }
 
 type Page[T any] struct {

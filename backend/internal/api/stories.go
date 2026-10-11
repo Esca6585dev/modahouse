@@ -9,13 +9,16 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
+	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
 const storyTTL = 24 * time.Hour
 
 type StoryDTO struct {
 	ID         uint      `json:"id"`
-	ImageURL   string    `json:"imageUrl"`
+	MediaType  string    `json:"mediaType"` // image or video
+	VideoURL   string    `json:"videoUrl"`
+	ImageURL   string    `json:"imageUrl"` // the image, or the video's poster
 	Width      int       `json:"width"`
 	Height     int       `json:"height"`
 	Color      string    `json:"color"`
@@ -89,7 +92,7 @@ func (h *Handler) storyGroups(userIDs []uint, viewer uint) []StoryGroup {
 			g = &StoryGroup{User: brief(s.User), AllSeen: true}
 			byUser[s.UserID] = g
 		}
-		d := StoryDTO{ID: s.ID, ImageURL: s.ImageURL, Width: s.Width, Height: s.Height, Color: s.Color, Caption: s.Caption,
+		d := StoryDTO{ID: s.ID, MediaType: storyMedia(s), VideoURL: s.VideoURL, ImageURL: s.ImageURL, Width: s.Width, Height: s.Height, Color: s.Color, Caption: s.Caption,
 			PinID: s.PinID, Seen: seen[s.ID] || s.UserID == viewer, CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt}
 		if s.UserID == viewer {
 			d.ViewsCount = views[s.ID]
@@ -171,10 +174,20 @@ func (h *Handler) userStories(c fiber.Ctx) error {
 	return c.JSON(groups[0])
 }
 
+func storyMedia(s models.Story) string {
+	if s.VideoURL != "" {
+		return "video"
+	}
+	return "image"
+}
+
 func (h *Handler) createStory(c fiber.Ctx) error {
-	fh, err := c.FormFile("image")
+	fh, err := c.FormFile("video")
 	if err != nil {
-		return badRequest(c, "Surat saýlaň")
+		fh, err = c.FormFile("image")
+	}
+	if err != nil {
+		return badRequest(c, "Surat ýa-da wideo saýlaň")
 	}
 	me := viewerID(c)
 	story := models.Story{UserID: me, Caption: clean(c.FormValue("caption"), 200)}
@@ -188,18 +201,27 @@ func (h *Handler) createStory(c fiber.Ctx) error {
 		pid := uint(id)
 		story.PinID = &pid
 	}
-	saved, err := h.store.SaveImage(fh, "stories")
-	if err != nil {
-		return badRequest(c, err.Error())
-	}
 	now := time.Now()
-	story.ImageURL, story.Width, story.Height, story.Color = saved.URL, saved.Width, saved.Height, saved.Color
+	if storage.IsVideo(fh) {
+		im, msg := h.saveVideoMedia(fh, formFiles(c, "poster"), nil, 0, "stories")
+		if msg != "" {
+			return badRequest(c, msg)
+		}
+		story.VideoURL, story.ImageURL, story.Width, story.Height, story.Color = im.URL, im.PosterURL, im.Width, im.Height, im.Color
+	} else {
+		saved, err := h.store.SaveImage(fh, "stories")
+		if err != nil {
+			return badRequest(c, err.Error())
+		}
+		story.ImageURL, story.Width, story.Height, story.Color = saved.URL, saved.Width, saved.Height, saved.Color
+	}
 	story.CreatedAt, story.ExpiresAt = now, now.Add(storyTTL)
 	if err := h.db.Create(&story).Error; err != nil {
-		h.store.Remove(saved.URL)
+		h.store.Remove(story.ImageURL)
+		h.store.Remove(story.VideoURL)
 		return err
 	}
-	return c.Status(fiber.StatusCreated).JSON(StoryDTO{ID: story.ID, ImageURL: story.ImageURL, Width: story.Width, Height: story.Height,
+	return c.Status(fiber.StatusCreated).JSON(StoryDTO{ID: story.ID, MediaType: storyMedia(story), VideoURL: story.VideoURL, ImageURL: story.ImageURL, Width: story.Width, Height: story.Height,
 		Color: story.Color, Caption: story.Caption, PinID: story.PinID, Seen: true, CreatedAt: story.CreatedAt, ExpiresAt: story.ExpiresAt})
 }
 
@@ -233,5 +255,6 @@ func (h *Handler) deleteStory(c fiber.Ctx) error {
 	h.db.Where("story_id = ?", s.ID).Delete(&models.StoryView{})
 	h.db.Delete(&models.Story{}, s.ID)
 	h.store.Remove(s.ImageURL)
+	h.store.Remove(s.VideoURL)
 	return c.SendStatus(fiber.StatusNoContent)
 }

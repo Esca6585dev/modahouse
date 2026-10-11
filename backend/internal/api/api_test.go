@@ -65,7 +65,7 @@ func newEnv(t *testing.T, withSeed bool) *env {
 			t.Fatal(err)
 		}
 	}
-	cfg := config.Config{JWTSecret: "test", UploadDir: store.Dir, CORSOrigins: []string{"*"}, MaxUploadMB: 5, TokenTTLDays: 1}
+	cfg := config.Config{JWTSecret: "test", UploadDir: store.Dir, CORSOrigins: []string{"*"}, MaxUploadMB: 5, MaxVideoMB: 10, TokenTTLDays: 1}
 	return &env{t: t, app: api.New(db, store, cfg, api.Options{Quiet: true}), dir: store.Dir}
 }
 

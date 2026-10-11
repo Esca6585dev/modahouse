@@ -16,6 +16,8 @@ type Config struct {
 	CORSOrigins  []string
 	Seed         bool
 	MaxUploadMB  int
+	MaxVideoMB   int
+	AIModel      string // Claude model for the writing assistant
 	TokenTTLDays int
 	// TrustedProxies lists proxy IPs/CIDRs whose X-Forwarded-For is trusted
 	// (e.g. the Next.js server). "private" trusts loopback and private networks.
@@ -32,6 +34,8 @@ func Load() Config {
 		CORSOrigins:    strings.Split(env("CORS_ORIGINS", "*"), ","),
 		Seed:           env("SEED", "true") == "true",
 		MaxUploadMB:    envInt("MAX_UPLOAD_MB", 20),
+		MaxVideoMB:     envInt("MAX_VIDEO_MB", 60),
+		AIModel:        env("AI_MODEL", "claude-opus-5-5"),
 		TokenTTLDays:   envInt("TOKEN_TTL_DAYS", 30),
 		TrustedProxies: strings.Split(env("TRUSTED_PROXIES", "127.0.0.1,::1"), ","),
 	}

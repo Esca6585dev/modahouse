@@ -37,7 +37,7 @@ type CartDTO struct {
 }
 
 func available(p models.Pin, qty int) bool {
-	return isProduct(p) && (p.Stock == nil || *p.Stock >= qty)
+	return isForSale(p) && (p.Stock == nil || *p.Stock >= qty)
 }
 
 func (h *Handler) cartItems(userID uint) []models.CartItem {
@@ -89,6 +89,9 @@ func (h *Handler) validateLine(buyer uint, r *lineReq, extraQty int) (models.Pin
 	}
 	if !isProduct(p) {
 		return p, "Bu pin satylmaýar"
+	}
+	if !isForSale(p) {
+		return p, "Bu haryt kärende ýa-da sargyt üçin: satyjy bilen habarlaşyň"
 	}
 	if p.UserID == buyer {
 		return p, "Öz harydyňyzy satyn alyp bilmersiňiz"

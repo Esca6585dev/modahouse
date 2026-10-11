@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mime/multipart"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,8 +46,31 @@ func parseSizes(raw string) []string {
 	return out
 }
 
-// isProduct reports whether p is sold: a priced pin whose author is a business.
-func isProduct(p models.Pin) bool { return p.Price > 0 && p.User.IsBusiness }
+const (
+	ListingPost   = "post"
+	ListingSale   = "sale"
+	ListingRent   = "rent"
+	ListingCustom = "custom"
+)
+
+// listingType normalizes legacy rows: priced pins without a type are sales.
+func listingType(p models.Pin) string {
+	if p.ListingType == "" {
+		if p.Price > 0 {
+			return ListingSale
+		}
+		return ListingPost
+	}
+	return p.ListingType
+}
+
+// isProduct reports whether p is a business listing (sale, rent or custom) with a price.
+func isProduct(p models.Pin) bool {
+	return p.Price > 0 && p.User.IsBusiness && listingType(p) != ListingPost
+}
+
+// isForSale reports whether p can go into the cart.
+func isForSale(p models.Pin) bool { return isProduct(p) && listingType(p) == ListingSale }
 
 func productDTO(p models.Pin, now time.Time) *ProductDTO {
 	if !isProduct(p) {
@@ -62,6 +86,7 @@ func productDTO(p models.Pin, now time.Time) *ProductDTO {
 		badge = "new"
 	}
 	return &ProductDTO{
+		ListingType: listingType(p), Deposit: p.Deposit, MinDays: p.MinDays, ReadyDays: p.ReadyDays,
 		Price: p.Price, OldPrice: p.OldPrice, Colors: parseColors(p.Colors), Sizes: parseSizes(p.Sizes),
 		Stock: p.Stock, DeliveryDays: p.DeliveryDays, ReturnDays: p.ReturnDays, Material: p.Material, Badge: badge,
 	}
@@ -70,6 +95,10 @@ func productDTO(p models.Pin, now time.Time) *ProductDTO {
 // productFields carries the optional product part of a pin create/update.
 // Stock uses RawMessage so that "absent" (keep) and null (untracked) differ.
 type productFields struct {
+	ListingType  *string         `json:"listingType"`
+	Deposit      *int            `json:"deposit"`
+	MinDays      *int            `json:"minDays"`
+	ReadyDays    *int            `json:"readyDays"`
 	Price        *int            `json:"price"`
 	OldPrice     *int            `json:"oldPrice"`
 	Stock        json.RawMessage `json:"stock"`
@@ -81,12 +110,35 @@ type productFields struct {
 }
 
 func (f productFields) touchesProduct() bool {
-	return (f.Price != nil && *f.Price > 0) || f.OldPrice != nil || len(f.Stock) > 0 || f.DeliveryDays != nil ||
+	return (f.ListingType != nil && *f.ListingType != ListingPost && *f.ListingType != "") ||
+		(f.Price != nil && *f.Price > 0) || f.OldPrice != nil || f.Deposit != nil || f.MinDays != nil || f.ReadyDays != nil || len(f.Stock) > 0 || f.DeliveryDays != nil ||
 		f.ReturnDays != nil || f.Material != nil || f.Colors != nil || f.Sizes != nil
 }
 
 // apply validates and copies product fields onto p. Returns a user-facing message on error.
 func (f productFields) apply(p *models.Pin) string {
+	if f.ListingType != nil {
+		switch *f.ListingType {
+		case ListingPost, ListingSale, ListingRent, ListingCustom:
+			p.ListingType = *f.ListingType
+		case "":
+			p.ListingType = ListingPost
+		default:
+			return "Post görnüşi nädogry"
+		}
+	}
+	for _, d := range []struct {
+		v   *int
+		dst *int
+		max int
+	}{{f.Deposit, &p.Deposit, maxPrice}, {f.MinDays, &p.MinDays, 365}, {f.ReadyDays, &p.ReadyDays, 365}} {
+		if d.v != nil {
+			if *d.v < 0 || *d.v > d.max {
+				return "San nädogry"
+			}
+			*d.dst = *d.v
+		}
+	}
 	if f.Price != nil {
 		if *f.Price < 0 || *f.Price > maxPrice {
 			return "Baha nädogry"
@@ -177,6 +229,18 @@ func productFieldsFromForm(c fiber.Ctx) (productFields, string) {
 		return &n, ""
 	}
 	var msg string
+	if v := strings.TrimSpace(c.FormValue("listingType")); v != "" {
+		f.ListingType = &v
+	}
+	if f.Deposit, msg = intField("deposit"); msg != "" {
+		return f, "Girew san bolmaly"
+	}
+	if f.MinDays, msg = intField("minDays"); msg != "" {
+		return f, "Iň az gün san bolmaly"
+	}
+	if f.ReadyDays, msg = intField("readyDays"); msg != "" {
+		return f, "Taýýar bolmak möhleti san bolmaly"
+	}
 	if f.Price, msg = intField("price"); msg != "" {
 		return f, "Baha san bolmaly"
 	}
@@ -265,4 +329,83 @@ func (h *Handler) viewPin(c fiber.Ctx) error {
 		p.ViewsCount++
 	}
 	return c.JSON(fiber.Map{"viewsCount": p.ViewsCount})
+}
+
+// finishListing enforces consistency once all fields are applied.
+func finishListing(p *models.Pin) string {
+	if p.ListingType == "" {
+		if p.Price > 0 {
+			p.ListingType = ListingSale
+		} else {
+			p.ListingType = ListingPost
+		}
+	}
+	if p.ListingType == ListingPost {
+		p.Price, p.OldPrice, p.Deposit, p.MinDays, p.ReadyDays = 0, 0, 0, 0, 0
+		return ""
+	}
+	if p.Price <= 0 {
+		return "Bahasyny ýazyň"
+	}
+	if p.ListingType != ListingSale {
+		p.OldPrice = 0
+	}
+	return ""
+}
+
+func validHTTPURL(raw string) bool {
+	u, err := url.Parse(raw)
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != ""
+}
+
+func formFiles(c fiber.Ctx, field string) []*multipart.FileHeader {
+	form, err := c.MultipartForm()
+	if err != nil {
+		return nil
+	}
+	return form.File[field]
+}
+
+// coverImage is what <img> tags show for a media item: the poster for videos.
+func coverImage(im models.PinImage) string {
+	if im.Kind == "video" {
+		return im.PosterURL
+	}
+	return im.URL
+}
+
+// saveVideoMedia stores the idx-th video of an upload with its poster (posters[idx])
+// and optional duration. Without a poster the server draws a placeholder in 9:16.
+func (h *Handler) saveVideoMedia(fh *multipart.FileHeader, posters []*multipart.FileHeader, durations [][]byte, idx int, sub string) (models.PinImage, string) {
+	im := models.PinImage{Kind: "video", Width: 1080, Height: 1920, Color: "#3a2f37"}
+	maxMB := h.cfg.MaxVideoMB
+	if maxMB <= 0 {
+		maxMB = 60
+	}
+	url, err := h.store.SaveVideo(fh, sub, int64(maxMB)*1024*1024)
+	if err != nil {
+		return im, err.Error()
+	}
+	im.URL = url
+	if idx < len(posters) {
+		saved, err := h.store.SaveImage(posters[idx], sub)
+		if err != nil {
+			h.store.Remove(url)
+			return im, "Wideonyň poster suraty: " + err.Error()
+		}
+		im.PosterURL, im.Width, im.Height, im.Color = saved.URL, saved.Width, saved.Height, saved.Color
+	} else {
+		poster, err := h.store.VideoPlaceholder(sub)
+		if err != nil {
+			h.store.Remove(url)
+			return im, "Wideo saklanmady"
+		}
+		im.PosterURL = poster
+	}
+	if idx < len(durations) {
+		if d, err := strconv.ParseFloat(string(durations[idx]), 64); err == nil && d > 0 && d < 3600 {
+			im.Duration = d
+		}
+	}
+	return im, ""
 }

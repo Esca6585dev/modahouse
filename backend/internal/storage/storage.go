@@ -25,6 +25,65 @@ var ErrUnsupported = errors.New("diňe JPG, PNG, GIF ýa-da WEBP suratlary kabul
 
 var ErrTooLarge = errors.New("suratyň ölçegi gaty uly (iň köp 40 megapiksel)")
 
+var ErrVideo = errors.New("diňe MP4 ýa-da WebM wideolary kabul edilýär")
+
+// IsVideo sniffs the first bytes of an upload.
+func IsVideo(fh *multipart.FileHeader) bool {
+	f, err := fh.Open()
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	head := make([]byte, 512)
+	n, _ := io.ReadFull(f, head)
+	_, ok := videoExt(head[:n])
+	return ok
+}
+
+func videoExt(head []byte) (string, bool) {
+	if len(head) >= 12 && string(head[4:8]) == "ftyp" {
+		return ".mp4", true // MP4 and QuickTime share the ISO box layout
+	}
+	if http.DetectContentType(head) == "video/webm" {
+		return ".webm", true
+	}
+	return "", false
+}
+
+// SaveVideo stores an MP4/WebM upload under sub/ and returns its public URL.
+func (s *Storage) SaveVideo(fh *multipart.FileHeader, sub string, maxBytes int64) (string, error) {
+	if fh.Size > maxBytes {
+		return "", fmt.Errorf("wideo gaty uly (iň köp %d MB)", maxBytes/1024/1024)
+	}
+	f, err := fh.Open()
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, maxBytes+1))
+	if err != nil {
+		return "", err
+	}
+	ext, ok := videoExt(data[:min(len(data), 512)])
+	if !ok {
+		return "", ErrVideo
+	}
+	name := randomName() + ext
+	if err := os.WriteFile(filepath.Join(s.Dir, sub, name), data, 0o644); err != nil {
+		return "", err
+	}
+	return "/uploads/" + sub + "/" + name, nil
+}
+
+// VideoPlaceholder writes a poster for a video uploaded without one.
+func (s *Storage) VideoPlaceholder(sub string) (string, error) {
+	svg := `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">` +
+		`<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2f37"/><stop offset="1" stop-color="#7b1e3a"/></linearGradient></defs>` +
+		`<rect width="1080" height="1920" fill="url(#g)"/><circle cx="540" cy="960" r="120" fill="#fff" opacity=".9"/>` +
+		`<path d="M505 890 L620 960 L505 1030 Z" fill="#7b1e3a"/></svg>`
+	return s.WriteFile(sub, randomName()+".svg", []byte(svg))
+}
+
 const maxPixels = 40_000_000
 
 var extByType = map[string]string{

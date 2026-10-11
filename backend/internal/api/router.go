@@ -4,6 +4,7 @@ package api
 import (
 	"errors"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"gorm.io/gorm"
 
+	"github.com/esca6585dev/modahouse/backend/internal/ai"
 	"github.com/esca6585dev/modahouse/backend/internal/config"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
@@ -24,7 +26,11 @@ type Options struct {
 }
 
 func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *fiber.App {
-	h := &Handler{db: db, store: store, cfg: cfg}
+	cats := make([]ai.Category, len(Categories))
+	for i, c := range Categories {
+		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
+	}
+	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats)}
 
 	trust := fiber.TrustProxyConfig{}
 	for _, p := range cfg.TrustedProxies {
@@ -43,7 +49,8 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		TrustProxy:       true,
 		TrustProxyConfig: trust,
 		ProxyHeader:      fiber.HeaderXForwardedFor,
-		BodyLimit:        cfg.MaxUploadMB * 1024 * 1024,
+		// One request may carry a video plus several images.
+		BodyLimit: (max(cfg.MaxVideoMB, 1) + 4*max(cfg.MaxUploadMB, 1)) * 1024 * 1024,
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			var fe *fiber.Error
 			if errors.As(err, &fe) {
@@ -74,6 +81,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	api := app.Group("/api", h.optionalAuth)
 	api.Get("/health", func(c fiber.Ctx) error { return c.JSON(fiber.Map{"status": "ok"}) })
 	api.Get("/categories", listCategories)
+	api.Get("/business-categories", listBusinessCategories)
 
 	// Only credential endpoints are rate limited, per client IP.
 	credLimit := func(c fiber.Ctx) error { return c.Next() }
@@ -92,6 +100,8 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	me.Post("/avatar", h.uploadAvatar)
 	me.Delete("/avatar", h.deleteAvatar)
 	me.Get("/boards", h.myBoards)
+	me.Get("/likes", h.myLikes)
+	me.Get("/blocks", h.myBlocks)
 	me.Post("/business", h.openBusiness)
 	me.Put("/business", h.updateBusiness)
 	me.Delete("/business", h.closeBusiness)
@@ -103,6 +113,8 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	users.Get("/followers", h.followList(true))
 	users.Get("/following", h.followList(false))
 	users.Get("/stories", h.userStories)
+	users.Post("/block", requireAuth, h.blockUser)
+	users.Delete("/block", requireAuth, h.unblockUser)
 	users.Post("/follow", requireAuth, h.follow)
 	users.Delete("/follow", requireAuth, h.unfollow)
 
@@ -114,6 +126,9 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	pins.Delete("/:id", requireAuth, h.deletePin)
 	pins.Get("/:id/similar", h.similarPins)
 	pins.Post("/:id/view", h.viewPin)
+	pins.Post("/:id/report", requireAuth, h.reportPin)
+	pins.Post("/:id/hide", requireAuth, h.hidePin)
+	pins.Delete("/:id/hide", requireAuth, h.unhidePin)
 	pins.Get("/:id/reviews", h.listReviews)
 	pins.Post("/:id/reviews", requireAuth, h.addReview)
 	api.Delete("/reviews/:id", requireAuth, h.deleteReview)
@@ -133,6 +148,15 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	boards.Delete("/:id/pins/:pinId", requireAuth, h.unsavePin)
 
 	api.Get("/businesses", h.listBusinesses)
+	api.Get("/search", h.search)
+	aiLimit := func(c fiber.Ctx) error { return c.Next() }
+	if !opts.Quiet {
+		aiLimit = limiter.New(limiter.Config{Max: 10, Expiration: time.Minute, KeyGenerator: func(c fiber.Ctx) string {
+			return "ai:" + strconv.FormatUint(uint64(viewerID(c)), 10)
+		}})
+	}
+	api.Get("/ai/status", h.aiStatus)
+	api.Post("/ai/suggest", requireAuth, aiLimit, h.aiSuggest)
 	api.Get("/top", h.top)
 	biz := api.Group("/business", requireAuth)
 	biz.Get("/stats", h.businessStats)

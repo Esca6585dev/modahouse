@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
+	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
 // enrichPins turns pins (with User preloaded) into DTOs with counts and viewer state,
@@ -63,7 +64,12 @@ func (h *Handler) enrichPins(pins []models.Pin, viewer uint) []PinDTO {
 	var imgRows []models.PinImage
 	h.db.Where("pin_id IN ?", ids).Order("pin_id, position, id").Find(&imgRows)
 	for _, im := range imgRows {
-		images[im.PinID] = append(images[im.PinID], PinImageDTO{URL: im.URL, Width: im.Width, Height: im.Height, Color: im.Color})
+		kind := im.Kind
+		if kind == "" {
+			kind = "image"
+		}
+		images[im.PinID] = append(images[im.PinID], PinImageDTO{Type: kind, PosterURL: im.PosterURL, Duration: im.Duration,
+			URL: im.URL, Width: im.Width, Height: im.Height, Color: im.Color})
 	}
 
 	type ratingRow struct {
@@ -86,14 +92,18 @@ func (h *Handler) enrichPins(pins []models.Pin, viewer uint) []PinDTO {
 		}
 		imgs := images[p.ID]
 		if len(imgs) == 0 {
-			imgs = []PinImageDTO{{URL: p.ImageURL, Width: p.Width, Height: p.Height, Color: p.Color}}
+			imgs = []PinImageDTO{{Type: "image", URL: p.ImageURL, Width: p.Width, Height: p.Height, Color: p.Color}}
+		}
+		mediaType := "image"
+		if imgs[0].Type == "video" {
+			mediaType = "video"
 		}
 		out[i] = PinDTO{
 			ID: p.ID, Title: p.Title, Description: p.Description, Link: p.Link, Category: p.Category,
 			Tags: splitTags(p.Tags), ImageURL: p.ImageURL, Width: p.Width, Height: p.Height, Color: p.Color,
 			Author: brief(p.User), LikesCount: likes[p.ID], CommentsCount: comments[p.ID],
 			Liked: liked[p.ID], SavedBoardIDs: boards, CreatedAt: p.CreatedAt,
-			Images: imgs, Product: productDTO(p, now), ViewsCount: p.ViewsCount, OrdersCount: p.OrdersCount,
+			Images: imgs, MediaType: mediaType, Product: productDTO(p, now), ViewsCount: p.ViewsCount, OrdersCount: p.OrdersCount,
 			Rating: round1(ratings[p.ID].Avg), ReviewsCount: ratings[p.ID].N,
 		}
 	}
@@ -115,7 +125,11 @@ func (h *Handler) pagePins(c fiber.Ctx, q *gorm.DB, defLimit int) error {
 		return err
 	}
 	pins, more := trimPage(pins, limit)
-	return c.JSON(Page[PinDTO]{Items: h.enrichPins(pins, viewerID(c)), Page: page, Limit: limit, HasMore: more})
+	items := h.enrichPins(pins, viewerID(c))
+	if c.Query("withComments") == "1" {
+		h.attachComments(items, viewerID(c))
+	}
+	return c.JSON(Page[PinDTO]{Items: items, Page: page, Limit: limit, HasMore: more})
 }
 
 func searchText(p *models.Pin) string {
@@ -140,12 +154,18 @@ func (h *Handler) listPins(c fiber.Ctx) error {
 	switch c.Query("type") {
 	case "products":
 		q = h.productScope(q)
+	case "videos":
+		q = q.Where("pins.has_video = ?", true)
 	case "ideas":
 		q = q.Where("NOT (pins.price > 0 AND pins.user_id IN (?))", h.db.Model(&models.User{}).Select("id").Where("is_business = ?", true))
 	}
 	if author := strings.ToLower(c.Query("author")); author != "" {
 		q = q.Where("pins.user_id IN (?)", h.db.Model(&models.User{}).Select("id").Where("username = ?", author))
 	}
+	if tag := strings.ToLower(strings.TrimPrefix(strings.TrimSpace(c.Query("tag")), "#")); tag != "" {
+		q = q.Where(`(',' || pins.tags || ',') LIKE ? ESCAPE '\'`, "%,"+escapeLike(tag)+",%")
+	}
+	q = h.viewerFilter(q, viewerID(c))
 	if c.Query("feed") == "following" {
 		me := viewerID(c)
 		if me == 0 {
@@ -189,6 +209,7 @@ func (h *Handler) similarPins(c fiber.Ctx) error {
 		Vars:               []any{p.Category},
 		WithoutParentheses: true,
 	}})
+	q = h.viewerFilter(q, viewerID(c))
 	return h.pagePins(c, q, 20)
 }
 
@@ -232,8 +253,12 @@ func (f pinFields) apply(p *models.Pin) string {
 		}
 		p.Category = *f.Category
 	}
-	if f.Tags != nil {
-		p.Tags = strings.Join(splitTags(*f.Tags), ",")
+	if f.Tags != nil || f.Description != nil {
+		tags := splitTags(p.Tags)
+		if f.Tags != nil {
+			tags = splitTags(*f.Tags)
+		}
+		p.Tags = strings.Join(splitTags(strings.Join(append(tags, captionTags(p.Description)...), ",")), ",")
 	}
 	if p.Title == "" {
 		return "Pine at beriň"
@@ -271,6 +296,9 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 	if msg := prod.apply(&pin); msg != "" {
 		return badRequest(c, msg)
 	}
+	if msg := finishListing(&pin); msg != "" {
+		return badRequest(c, msg)
+	}
 	h.businessDefaults(&pin)
 
 	var board *models.Board
@@ -287,18 +315,44 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 	removeAll := func() {
 		for _, im := range images {
 			h.store.Remove(im.URL)
+			h.store.Remove(im.PosterURL)
 		}
 	}
+	posters := formFiles(c, "posters")
+	durations := c.Request().PostArgs().PeekMulti("durations")
+	if form, err := c.MultipartForm(); err == nil {
+		durations = nil
+		for _, d := range form.Value["durations"] {
+			durations = append(durations, []byte(d))
+		}
+	}
+	videoIdx := 0
 	for i, fh := range files {
+		if storage.IsVideo(fh) {
+			im, msg := h.saveVideoMedia(fh, posters, durations, videoIdx, "pins")
+			videoIdx++
+			if msg != "" {
+				removeAll()
+				return badRequest(c, msg)
+			}
+			im.Position = i
+			images = append(images, im)
+			pin.HasVideo = true
+			continue
+		}
+		if fh.Size > int64(h.cfg.MaxUploadMB)*1024*1024 {
+			removeAll()
+			return badRequest(c, fmt.Sprintf("Surat gaty uly (iň köp %d MB)", h.cfg.MaxUploadMB))
+		}
 		saved, err := h.store.SaveImage(fh, "pins")
 		if err != nil {
 			removeAll()
 			return badRequest(c, err.Error())
 		}
-		images = append(images, models.PinImage{URL: saved.URL, Width: saved.Width, Height: saved.Height, Color: saved.Color, Position: i})
+		images = append(images, models.PinImage{Kind: "image", URL: saved.URL, Width: saved.Width, Height: saved.Height, Color: saved.Color, Position: i})
 	}
 	cover := images[0]
-	pin.ImageURL, pin.Width, pin.Height, pin.Color = cover.URL, cover.Width, cover.Height, cover.Color
+	pin.ImageURL, pin.Width, pin.Height, pin.Color = coverImage(cover), cover.Width, cover.Height, cover.Color
 
 	err := h.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&pin).Error; err != nil {
@@ -359,6 +413,9 @@ func (h *Handler) updatePin(c fiber.Ctx) error {
 	if msg := f.productFields.apply(&p); msg != "" {
 		return badRequest(c, msg)
 	}
+	if msg := finishListing(&p); msg != "" {
+		return badRequest(c, msg)
+	}
 	if err := h.db.Omit("User").Save(&p).Error; err != nil {
 		return err
 	}
@@ -397,6 +454,10 @@ func (h *Handler) deletePin(c fiber.Ctx) error {
 		if !removed[im.URL] && !h.urlInOrders(im.URL) {
 			removed[im.URL] = true
 			h.store.Remove(im.URL)
+		}
+		if im.PosterURL != "" && !removed[im.PosterURL] && !h.urlInOrders(im.PosterURL) {
+			removed[im.PosterURL] = true
+			h.store.Remove(im.PosterURL)
 		}
 	}
 	if !removed[p.ImageURL] && !h.urlInOrders(p.ImageURL) {
@@ -458,4 +519,17 @@ func (h *Handler) urlInOrders(url string) bool {
 	var n int64
 	h.db.Model(&models.OrderItem{}).Where("image_url = ?", url).Count(&n)
 	return n > 0
+}
+
+// attachComments adds the two newest comments to each pin (Instagram feed view).
+func (h *Handler) attachComments(items []PinDTO, viewer uint) {
+	for i := range items {
+		var list []models.Comment
+		h.db.Preload("User").Where("pin_id = ?", items[i].ID).Order("created_at DESC, id DESC").Limit(2).Find(&list)
+		items[i].LatestComments = make([]CommentDTO, len(list))
+		for j := range list {
+			// oldest of the two first, like Instagram
+			items[i].LatestComments[len(list)-1-j] = commentDTO(list[j], viewer, items[i].Author.ID)
+		}
+	}
 }
