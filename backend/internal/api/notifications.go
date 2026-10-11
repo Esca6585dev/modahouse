@@ -26,6 +26,18 @@ func (h *Handler) notifyComment(recipient, actor, pinID, commentID uint) {
 	h.createNotification(models.Notification{UserID: recipient, ActorID: actor, Type: models.NotifyComment, PinID: &pinID, CommentID: &commentID})
 }
 
+// notifyOrder tells recipient about an order event; the first item links the pin.
+func (h *Handler) notifyOrder(recipient, actor uint, kind string, o models.Order) {
+	if recipient == actor {
+		return
+	}
+	n := models.Notification{UserID: recipient, ActorID: actor, Type: kind, OrderID: &o.ID}
+	if len(o.Items) > 0 && o.Items[0].PinID != nil {
+		n.PinID = o.Items[0].PinID
+	}
+	h.createNotification(n)
+}
+
 func (h *Handler) createNotification(n models.Notification) {
 	if err := h.db.Create(&n).Error; err != nil {
 		log.Printf("notify: %v", err)
@@ -56,6 +68,12 @@ func (h *Handler) listNotifications(c fiber.Ctx) error {
 		d := NotificationDTO{ID: n.ID, Type: n.Type, Read: n.Read, Actor: brief(n.Actor), CreatedAt: n.CreatedAt}
 		if n.Pin != nil {
 			d.Pin = &PinBrief{ID: n.Pin.ID, Title: n.Pin.Title, ImageURL: n.Pin.ImageURL}
+		}
+		if n.OrderID != nil {
+			var o models.Order
+			if h.db.Select("id", "status", "total").First(&o, *n.OrderID).Error == nil {
+				d.Order = &OrderBrief{ID: o.ID, Status: o.Status, Total: o.Total}
+			}
 		}
 		items[i] = d
 	}

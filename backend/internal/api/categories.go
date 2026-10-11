@@ -8,6 +8,10 @@ type Category struct {
 }
 
 var Categories = []Category{
+	{"koynekler", "Köýnekler"},
+	{"toy", "Toý köýnekleri"},
+	{"milli", "Milli eşikler"},
+	{"aksessuarlar", "Aksessuarlar"},
 	{"moda", "Moda"},
 	{"ic-bezeg", "Içki bezeg"},
 	{"tagamlar", "Tagamlar"},

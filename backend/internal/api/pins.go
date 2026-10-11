@@ -1,9 +1,11 @@
 package api
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
@@ -57,19 +59,52 @@ func (h *Handler) enrichPins(pins []models.Pin, viewer uint) []PinDTO {
 		}
 	}
 
+	images := map[uint][]PinImageDTO{}
+	var imgRows []models.PinImage
+	h.db.Where("pin_id IN ?", ids).Order("pin_id, position, id").Find(&imgRows)
+	for _, im := range imgRows {
+		images[im.PinID] = append(images[im.PinID], PinImageDTO{URL: im.URL, Width: im.Width, Height: im.Height, Color: im.Color})
+	}
+
+	type ratingRow struct {
+		PinID uint
+		Avg   float64
+		N     int64
+	}
+	ratings := map[uint]ratingRow{}
+	var rRows []ratingRow
+	h.db.Model(&models.Review{}).Select("pin_id, AVG(rating) AS avg, COUNT(*) AS n").Where("pin_id IN ?", ids).Group("pin_id").Scan(&rRows)
+	for _, r := range rRows {
+		ratings[r.PinID] = r
+	}
+
+	now := time.Now()
 	for i, p := range pins {
 		boards := saved[p.ID]
 		if boards == nil {
 			boards = []uint{}
+		}
+		imgs := images[p.ID]
+		if len(imgs) == 0 {
+			imgs = []PinImageDTO{{URL: p.ImageURL, Width: p.Width, Height: p.Height, Color: p.Color}}
 		}
 		out[i] = PinDTO{
 			ID: p.ID, Title: p.Title, Description: p.Description, Link: p.Link, Category: p.Category,
 			Tags: splitTags(p.Tags), ImageURL: p.ImageURL, Width: p.Width, Height: p.Height, Color: p.Color,
 			Author: brief(p.User), LikesCount: likes[p.ID], CommentsCount: comments[p.ID],
 			Liked: liked[p.ID], SavedBoardIDs: boards, CreatedAt: p.CreatedAt,
+			Images: imgs, Product: productDTO(p, now), ViewsCount: p.ViewsCount, OrdersCount: p.OrdersCount,
+			Rating: round1(ratings[p.ID].Avg), ReviewsCount: ratings[p.ID].N,
 		}
 	}
 	return out
+}
+
+func round1(v float64) float64 { return float64(int(v*10+0.5)) / 10 }
+
+// productScope limits q to pins that are for sale.
+func (h *Handler) productScope(q *gorm.DB) *gorm.DB {
+	return q.Where("pins.price > 0 AND pins.user_id IN (?)", h.db.Model(&models.User{}).Select("id").Where("is_business = ?", true))
 }
 
 // pagePins runs q (already filtered/ordered) for the requested page.
@@ -101,6 +136,15 @@ func (h *Handler) listPins(c fiber.Ctx) error {
 		for _, w := range strings.Fields(term) {
 			q = q.Where(`pins.search_text LIKE ? ESCAPE '\'`, "%"+escapeLike(w)+"%")
 		}
+	}
+	switch c.Query("type") {
+	case "products":
+		q = h.productScope(q)
+	case "ideas":
+		q = q.Where("NOT (pins.price > 0 AND pins.user_id IN (?))", h.db.Model(&models.User{}).Select("id").Where("is_business = ?", true))
+	}
+	if author := strings.ToLower(c.Query("author")); author != "" {
+		q = q.Where("pins.user_id IN (?)", h.db.Model(&models.User{}).Select("id").Where("username = ?", author))
 	}
 	if c.Query("feed") == "following" {
 		me := viewerID(c)
@@ -201,11 +245,15 @@ func (f pinFields) apply(p *models.Pin) string {
 	return ""
 }
 
-// createPin: multipart form with "image" file, pin fields and optional boardId.
+// createPin: multipart form with "images" (repeatable) or "image", pin fields,
+// optional product fields (business accounts) and optional boardId.
 func (h *Handler) createPin(c fiber.Ctx) error {
-	fh, err := c.FormFile("image")
-	if err != nil {
+	files := formImages(c)
+	if len(files) == 0 {
 		return badRequest(c, "Surat saýlaň")
+	}
+	if len(files) > maxPinImages {
+		return badRequest(c, fmt.Sprintf("Iň köp %d surat ýükläp bolýar", maxPinImages))
 	}
 	str := func(k string) *string { v := c.FormValue(k); return &v }
 	fields := pinFields{Title: str("title"), Description: str("description"), Link: str("link"), Category: str("category"), Tags: str("tags")}
@@ -213,6 +261,17 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 	if msg := fields.apply(&pin); msg != "" {
 		return badRequest(c, msg)
 	}
+	prod, msg := productFieldsFromForm(c)
+	if msg != "" {
+		return badRequest(c, msg)
+	}
+	if prod.touchesProduct() && !h.isBusiness(pin.UserID) {
+		return fail(c, fiber.StatusForbidden, "Harydyň bahasyny diňe biznes hasaplary goýup bilýär")
+	}
+	if msg := prod.apply(&pin); msg != "" {
+		return badRequest(c, msg)
+	}
+	h.businessDefaults(&pin)
 
 	var board *models.Board
 	if raw := c.FormValue("boardId"); raw != "" {
@@ -224,14 +283,31 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 		board = &b
 	}
 
-	saved, err := h.store.SaveImage(fh, "pins")
-	if err != nil {
-		return badRequest(c, err.Error())
+	var images []models.PinImage
+	removeAll := func() {
+		for _, im := range images {
+			h.store.Remove(im.URL)
+		}
 	}
-	pin.ImageURL, pin.Width, pin.Height, pin.Color = saved.URL, saved.Width, saved.Height, saved.Color
+	for i, fh := range files {
+		saved, err := h.store.SaveImage(fh, "pins")
+		if err != nil {
+			removeAll()
+			return badRequest(c, err.Error())
+		}
+		images = append(images, models.PinImage{URL: saved.URL, Width: saved.Width, Height: saved.Height, Color: saved.Color, Position: i})
+	}
+	cover := images[0]
+	pin.ImageURL, pin.Width, pin.Height, pin.Color = cover.URL, cover.Width, cover.Height, cover.Color
 
-	err = h.db.Transaction(func(tx *gorm.DB) error {
+	err := h.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(&pin).Error; err != nil {
+			return err
+		}
+		for i := range images {
+			images[i].PinID = pin.ID
+		}
+		if err := tx.Create(&images).Error; err != nil {
 			return err
 		}
 		if board != nil {
@@ -240,7 +316,7 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 		return nil
 	})
 	if err != nil {
-		h.store.Remove(saved.URL)
+		removeAll()
 		return err
 	}
 	p, _ := h.loadPin(pin.ID)
@@ -267,11 +343,20 @@ func (h *Handler) updatePin(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	var f pinFields
+	var f struct {
+		pinFields
+		productFields
+	}
 	if err := c.Bind().Body(&f); err != nil {
 		return badRequest(c, "Nädogry maglumat")
 	}
-	if msg := f.apply(&p); msg != "" {
+	if msg := f.pinFields.apply(&p); msg != "" {
+		return badRequest(c, msg)
+	}
+	if f.productFields.touchesProduct() && !p.User.IsBusiness {
+		return fail(c, fiber.StatusForbidden, "Harydyň bahasyny diňe biznes hasaplary goýup bilýär")
+	}
+	if msg := f.productFields.apply(&p); msg != "" {
 		return badRequest(c, msg)
 	}
 	if err := h.db.Omit("User").Save(&p).Error; err != nil {
@@ -285,19 +370,38 @@ func (h *Handler) deletePin(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	var imgs []models.PinImage
+	h.db.Where("pin_id = ?", p.ID).Find(&imgs)
 	err = h.db.Transaction(func(tx *gorm.DB) error {
 		// Explicit cleanup keeps SQLite and Postgres consistent even without FK cascades.
-		for _, m := range []any{&models.BoardPin{}, &models.Like{}, &models.Comment{}, &models.Notification{}} {
+		for _, m := range []any{&models.BoardPin{}, &models.Like{}, &models.Comment{}, &models.Notification{},
+			&models.PinImage{}, &models.PinView{}, &models.CartItem{}, &models.Review{}} {
 			if err := tx.Where("pin_id = ?", p.ID).Delete(m).Error; err != nil {
 				return err
 			}
+		}
+		// Orders keep their snapshot; only the link to the pin goes away.
+		if err := tx.Model(&models.OrderItem{}).Where("pin_id = ?", p.ID).Update("pin_id", nil).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&models.Story{}).Where("pin_id = ?", p.ID).Update("pin_id", nil).Error; err != nil {
+			return err
 		}
 		return tx.Delete(&models.Pin{}, p.ID).Error
 	})
 	if err != nil {
 		return err
 	}
-	h.store.Remove(p.ImageURL)
+	removed := map[string]bool{}
+	for _, im := range imgs {
+		if !removed[im.URL] && !h.urlInOrders(im.URL) {
+			removed[im.URL] = true
+			h.store.Remove(im.URL)
+		}
+	}
+	if !removed[p.ImageURL] && !h.urlInOrders(p.ImageURL) {
+		h.store.Remove(p.ImageURL)
+	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -341,4 +445,17 @@ func (h *Handler) unlikePin(c fiber.Ctx) error {
 		h.unnotify(owner, viewerID(c), models.NotifyLike, &id)
 	}
 	return h.likeState(c, id)
+}
+
+func (h *Handler) isBusiness(userID uint) bool {
+	var n int64
+	h.db.Model(&models.User{}).Where("id = ? AND is_business = ?", userID, true).Count(&n)
+	return n > 0
+}
+
+// urlInOrders keeps images that past orders still show.
+func (h *Handler) urlInOrders(url string) bool {
+	var n int64
+	h.db.Model(&models.OrderItem{}).Where("image_url = ?", url).Count(&n)
+	return n > 0
 }

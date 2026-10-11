@@ -447,8 +447,8 @@ func TestFollowAndFeed(t *testing.T) {
 func TestSeedAndPaging(t *testing.T) {
 	e := newEnv(t, true)
 	var p1, p2 page[pinResp]
-	e.expect(200, "GET", "/api/pins?limit=20", "", nil, &p1)
-	e.expect(200, "GET", "/api/pins?limit=20&page=2", "", nil, &p2)
+	e.expect(200, "GET", "/api/pins?type=ideas&limit=20", "", nil, &p1)
+	e.expect(200, "GET", "/api/pins?type=ideas&limit=20&page=2", "", nil, &p2)
 	if len(p1.Items) != 20 || !p1.HasMore || len(p2.Items) != 10 || p2.HasMore {
 		t.Fatalf("paging wrong: %d/%v %d/%v", len(p1.Items), p1.HasMore, len(p2.Items), p2.HasMore)
 	}

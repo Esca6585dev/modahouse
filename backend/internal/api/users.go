@@ -20,6 +20,8 @@ func (h *Handler) profile(u models.User, viewer uint) Profile {
 		h.db.Model(&models.Follow{}).Where("follower_id = ? AND following_id = ?", viewer, u.ID).Count(&n)
 		p.IsFollowing = n > 0
 	}
+	p.HasStory, p.StorySeen = h.storyState(u.ID, viewer)
+	p.Business = h.businessDTO(u)
 	return p
 }
 

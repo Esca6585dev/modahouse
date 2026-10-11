@@ -98,13 +98,26 @@ var comments = []struct {
 	{26, "tagam.tm", "Meniň monsteram hem edil şeýle ösýär 🌿"},
 }
 
-// Run seeds the database only when it has no users yet.
+// Run seeds an empty database with demo users and ideas, and adds the demo
+// shops (business accounts, products, orders, reviews) when none exist yet,
+// so databases created before the shop feature get them too.
 func Run(db *gorm.DB, store *storage.Storage) error {
 	var n int64
 	db.Model(&models.User{}).Count(&n)
-	if n > 0 {
-		return nil
+	if n == 0 {
+		if err := seedBase(db, store); err != nil {
+			return err
+		}
 	}
+	var b int64
+	db.Model(&models.User{}).Where("is_business = ?", true).Count(&b)
+	if b == 0 {
+		return seedShop(db, store)
+	}
+	return nil
+}
+
+func seedBase(db *gorm.DB, store *storage.Storage) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(DemoPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err

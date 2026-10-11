@@ -46,7 +46,7 @@ type Saved struct {
 }
 
 func New(dir string) (*Storage, error) {
-	for _, sub := range []string{"pins", "avatars", "seed"} {
+	for _, sub := range []string{"pins", "avatars", "seed", "stories"} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
 			return nil, err
 		}
