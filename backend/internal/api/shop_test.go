@@ -80,7 +80,7 @@ func TestShopFlow(t *testing.T) {
 		t.Fatalf("business not opened: %+v", me)
 	}
 
-	e.expect(400, "POST", "/api/pins", seller.Token, multiImageForm(t, productFields, 9), nil) // too many images
+	e.expect(400, "POST", "/api/pins", seller.Token, multiImageForm(t, productFields, 11), nil) // too many images
 	var pin productResp
 	e.expect(201, "POST", "/api/pins", seller.Token, multiImageForm(t, productFields, 2), &pin)
 	if pin.Product == nil || pin.Product.Price != 300 || pin.Product.Badge != "sale" || *pin.Product.Stock != 3 ||

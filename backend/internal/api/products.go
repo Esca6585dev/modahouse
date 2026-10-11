@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	maxPinImages   = 8
+	maxPinImages   = 10
 	maxPrice       = 1_000_000
 	newBadgeWindow = 14 * 24 * time.Hour
 	hitOrders      = 5

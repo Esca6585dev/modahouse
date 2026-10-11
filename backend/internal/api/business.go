@@ -86,6 +86,11 @@ func (h *Handler) businessCards(users []models.User, viewer uint) []BusinessCard
 		h.db.Model(&models.Follow{}).Where("following_id = ?", u.ID).Count(&card.FollowersCount)
 		h.db.Model(&models.Pin{}).Where("user_id = ? AND price > 0", u.ID).Order("orders_count DESC, created_at DESC").Limit(4).Pluck("image_url", &card.Covers)
 		card.HasStory, _ = h.storyState(u.ID, viewer)
+		if viewer != 0 && viewer != u.ID {
+			var n int64
+			h.db.Model(&models.Follow{}).Where("follower_id = ? AND following_id = ?", viewer, u.ID).Count(&n)
+			card.IsFollowing = n > 0
+		}
 		out[i] = card
 	}
 	return out

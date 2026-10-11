@@ -59,6 +59,7 @@ type BusinessCard struct {
 	ReviewsCount   int64    `json:"reviewsCount"`
 	FollowersCount int64    `json:"followersCount"`
 	ProductsCount  int64    `json:"productsCount"`
+	IsFollowing    bool     `json:"isFollowing"`
 	HasStory       bool     `json:"hasStory"`
 	Covers         []string `json:"covers"`
 }

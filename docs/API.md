@@ -174,7 +174,7 @@ type PinImage = { url: string; width: number; height: number; color: string };
 
 type Pin = {
   ...existing fields...,     // imageUrl/width/height/color stay = the cover (images[0])
-  images: PinImage[];        // NEW: 1..8 images, first = cover (carousel "1/5")
+  images: PinImage[];        // NEW: 1..10 images, first = cover (carousel "1/5")
   product: Product | null;   // NEW: set when the author is a business and price > 0
   viewsCount: number; ordersCount: number;      // NEW
   rating: number; reviewsCount: number;         // NEW: 0..5 average for this pin
@@ -209,6 +209,7 @@ New categories (prepended to `GET /categories`): `koynekler` (Köýnekler), `toy
 type BusinessCard = UserBrief & {
   category: BusinessCategory; city: string; rating: number; reviewsCount: number;
   followersCount: number; productsCount: number; hasStory: boolean;
+  isFollowing: boolean;      // the viewer follows this shop
   covers: string[];          // up to 4 product image URLs
 };
 type TopEntry = {
@@ -228,7 +229,7 @@ Score = 25% views + 25% likes + 35% orders (each relative to the best business i
 Products are pins created by business accounts with a price.
 
 - `POST /pins` (multipart) also accepts:
-  - `images`: repeat the field for several files (max 8). `image` still works for a single file.
+  - `images`: repeat the field for several files (max 10). `image` still works for a single file.
   - `price`, `oldPrice`, `stock` (empty = not tracked), `deliveryDays`, `returnDays`, `material`.
   - `colors`: JSON string, e.g. `[{"name":"Gyzyl","hex":"#C62828"}]`. `sizes`: comma separated, e.g. `42,44,46`.
   - Sending `price` > 0 from a personal account → 403.
