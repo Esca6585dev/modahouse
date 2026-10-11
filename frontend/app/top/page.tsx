@@ -9,7 +9,8 @@ import StoryAvatar from "@/components/StoryAvatar";
 import { useStories } from "@/components/StoryViewer";
 import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { BUSINESS_CATEGORIES, businessCategoryLabel, num, PERIODS } from "@/lib/format";
+import { businessCategoryLabel, num, PERIODS } from "@/lib/format";
+import { useBusinessCategories } from "@/lib/hooks";
 import type { StatsPeriod, TopEntry } from "@/lib/types";
 
 function Medal({ rank }: { rank: number }) {
@@ -62,6 +63,7 @@ function TopCard({ e }: { e: TopEntry }) {
 }
 
 function TopView() {
+  const bizCats = useBusinessCategories();
   const params = useSearchParams();
   const router = useRouter();
   const { ready } = useAuth();
@@ -132,7 +134,7 @@ function TopView() {
           {filterOpen && (
             <div className="menu" role="menu">
               <button role="menuitemradio" aria-checked={!category} className={`menu-item ${!category ? "checked" : ""}`} onClick={() => { go({ category: "" }); setFilterOpen(false); }}>Ähli kategoriýalar</button>
-              {BUSINESS_CATEGORIES.map((c) => (
+              {bizCats.map((c) => (
                 <button key={c.value} role="menuitemradio" aria-checked={category === c.value} className={`menu-item ${category === c.value ? "checked" : ""}`} onClick={() => { go({ category: c.value }); setFilterOpen(false); }}>
                   {c.label}
                 </button>

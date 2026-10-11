@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { BUSINESS_CATEGORIES } from "@/lib/format";
 import type { BusinessCategory, BusinessInput } from "@/lib/types";
 import { BagIcon, ChartIcon, StoreIcon, TrophyIcon } from "./Icons";
+import { useBusinessCategories } from "@/lib/hooks";
 import { useToast } from "./Toast";
 
 const PHONE_RE = /^[0-9+\-\s]{8,20}$/;
@@ -17,12 +17,19 @@ type Values = {
   city: string;
   address: string;
   instagram: string;
+  tiktok: string;
+  telegram: string;
+  whatsapp: string;
+  imo: string;
+  youtube: string;
+  website: string;
   workingHours: string;
   deliveryDays: string;
   returnDays: string;
 };
 
 function Fields({ v, set }: { v: Values; set: (k: keyof Values) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void }) {
+  const bizCats = useBusinessCategories();
   return (
     <>
       <div className="form-row">
@@ -30,7 +37,7 @@ function Fields({ v, set }: { v: Values; set: (k: keyof Values) => (e: React.Cha
           <span>Kategoriýa <span className="req">*</span></span>
           <select value={v.category} onChange={set("category")}>
             <option value="" disabled>Saýlaň…</option>
-            {BUSINESS_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            {bizCats.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </label>
         <label>
@@ -52,10 +59,43 @@ function Fields({ v, set }: { v: Values; set: (k: keyof Values) => (e: React.Cha
         Salgy
         <input value={v.address} onChange={set("address")} maxLength={200} placeholder="Köçe, jaý, söwda merkezi" />
       </label>
-      <label>
-        Instagram
-        <input value={v.instagram} onChange={set("instagram")} maxLength={60} placeholder="@dukanyň_ady" autoCapitalize="none" />
-      </label>
+      <fieldset className="social-fields">
+        <legend>Sosial ulgamlar</legend>
+        <div className="form-row">
+          <label>
+            Instagram
+            <input value={v.instagram} onChange={set("instagram")} maxLength={60} placeholder="@dukanyň_ady" autoCapitalize="none" />
+          </label>
+          <label>
+            TikTok
+            <input value={v.tiktok} onChange={set("tiktok")} maxLength={60} placeholder="@dukanyň_ady" autoCapitalize="none" />
+          </label>
+        </div>
+        <div className="form-row">
+          <label>
+            Telegram
+            <input value={v.telegram} onChange={set("telegram")} maxLength={60} placeholder="@dukanyň_ady" autoCapitalize="none" />
+          </label>
+          <label>
+            WhatsApp
+            <input type="tel" inputMode="tel" value={v.whatsapp} onChange={set("whatsapp")} maxLength={20} placeholder="+993 61 234567" />
+          </label>
+        </div>
+        <div className="form-row">
+          <label>
+            IMO
+            <input type="tel" inputMode="tel" value={v.imo} onChange={set("imo")} maxLength={20} placeholder="+993 61 234567" />
+          </label>
+          <label>
+            YouTube
+            <input type="url" inputMode="url" value={v.youtube} onChange={set("youtube")} maxLength={200} placeholder="https://youtube.com/@…" />
+          </label>
+        </div>
+        <label>
+          Web sahypa
+          <input type="url" inputMode="url" value={v.website} onChange={set("website")} maxLength={200} placeholder="https://" />
+        </label>
+      </fieldset>
       <div className="form-row">
         <label>
           Eltip bermek (gün)
@@ -80,6 +120,12 @@ function toInput(v: Values): BusinessInput {
     city: v.city.trim(),
     address: v.address.trim(),
     instagram: v.instagram.trim(),
+    tiktok: v.tiktok.trim(),
+    telegram: v.telegram.trim(),
+    whatsapp: v.whatsapp.trim(),
+    imo: v.imo.trim(),
+    youtube: v.youtube.trim(),
+    website: v.website.trim(),
     workingHours: v.workingHours.trim(),
     deliveryDays: n(v.deliveryDays),
     returnDays: n(v.returnDays),
@@ -89,6 +135,9 @@ function toInput(v: Values): BusinessInput {
 function validate(v: Values): string | null {
   if (!v.category) return "Biznes kategoriýasyny saýlaň";
   if (!PHONE_RE.test(v.phone.trim())) return "Telefon belgisi nädogry. Mysal: +993 61 234567";
+  if (v.whatsapp.trim() && !PHONE_RE.test(v.whatsapp.trim())) return "WhatsApp belgisi nädogry";
+  if (v.imo.trim() && !PHONE_RE.test(v.imo.trim())) return "IMO belgisi nädogry";
+  for (const u of [v.youtube, v.website]) if (u.trim() && !/^https?:\/\/\S+/i.test(u.trim())) return "Baglanyşyk http:// ýa-da https:// bilen başlamaly";
   return null;
 }
 
@@ -103,6 +152,12 @@ export default function BusinessSection() {
     city: biz?.city ?? "",
     address: biz?.address ?? "",
     instagram: biz?.instagram ?? "",
+    tiktok: biz?.tiktok ?? "",
+    telegram: biz?.telegram ?? "",
+    whatsapp: biz?.whatsapp ?? "",
+    imo: biz?.imo ?? "",
+    youtube: biz?.youtube ?? "",
+    website: biz?.website ?? "",
     workingHours: biz?.workingHours ?? "",
     deliveryDays: biz ? String(biz.deliveryDays) : "3",
     returnDays: biz ? String(biz.returnDays) : "14",

@@ -8,8 +8,8 @@ import Carousel from "@/components/Carousel";
 import Comments from "@/components/Comments";
 import FollowButton from "@/components/FollowButton";
 import {
-  BackIcon, BagIcon, BoxIcon, CalendarIcon, CartIcon, EditIcon, ExternalIcon, EyeIcon, HeartIcon, LayersIcon, ReturnIcon,
-  ShareIcon, ShieldIcon, TrashIcon, TruckIcon, VerifiedIcon,
+  BackIcon, BagIcon, BoxIcon, CalendarIcon, CartIcon, CashIcon, ChatIcon, EditIcon, ExternalIcon, EyeIcon, HeartIcon, LayersIcon,
+  PhoneIcon, ReturnIcon, RulerIcon, ScanIcon, ShareIcon, ShieldIcon, TrashIcon, TruckIcon, VerifiedIcon,
 } from "@/components/Icons";
 import { PinFeed } from "@/components/Masonry";
 import { Badge, Price } from "@/components/Price";
@@ -21,10 +21,13 @@ import { useToast } from "@/components/Toast";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useAddToCart } from "@/lib/cart";
-import { businessCategoryLabel, categoryName, compact, days, isForSale, num, stockText, timeAgo } from "@/lib/format";
+import { businessCategoryLabel, categoryName, compact, days, isForSale, money, num, phoneDigits, stockText, timeAgo } from "@/lib/format";
 import { useCategories, useLoginHref, usePaged } from "@/lib/hooks";
 import { shareUrl } from "@/lib/share";
-import type { Pin, Profile } from "@/lib/types";
+import type { Business, Pin, Profile } from "@/lib/types";
+import ContactSheet from "@/components/ContactSheet";
+import PinMenu from "@/components/PinMenu";
+import { RichText } from "@/components/RichText";
 
 function hostOf(link: string) {
   try {
@@ -33,6 +36,19 @@ function hostOf(link: string) {
     return link;
   }
 }
+
+const STEPS_BY_TYPE: Record<string, { title: string; text: string }[]> = {
+  rent: [
+    { title: "Köýnegi saýlaň", text: "Ölçegini we reňkini görüň, synap görmek mugt." },
+    { title: "Dükan bilen habarlaşyň", text: "«Kärendä al» düwmesi bilen senäni ylalaşyň." },
+    { title: "Girew goýup alyň", text: "Gaýtaryp berlende girew yzyna berilýär." },
+  ],
+  custom: [
+    { title: "Fasony saýlaň", text: "Şu nusga ýa-da öz islegiňiz boýunça." },
+    { title: "Ölçegleriňizi iberiň", text: "«Sargyt et» düwmesi bilen ussa ýazyň." },
+    { title: "Taýýar bolanda alyň", text: "Möhlet we baha ussa bilen ylalaşylýar." },
+  ],
+};
 
 const STEPS = [
   { title: "Halan harydyňy saýla", text: "Reňkini, ölçegini we sanyny kesgitle." },
@@ -111,6 +127,63 @@ function BuyBox({ pin }: { pin: Pin }) {
   );
 }
 
+/** Rent / custom listings: details and a contact sheet instead of the cart. */
+function ContactBox({ pin, business }: { pin: Pin; business: Business | null }) {
+  const product = pin.product!;
+  const [open, setOpen] = useState(false);
+  const rent = product.listingType === "rent";
+  return (
+    <>
+      {(product.colors.length > 0 || product.sizes.length > 0) && (
+        <div className="opt-block">
+          {product.colors.length > 0 && (
+            <div className="ro-opts">
+              <span className="opt-label">Reňkleri</span>
+              <div className="chip-list">
+                {product.colors.map((c) => <span key={c.name} className="edit-chip ro"><span className="dot" style={{ background: c.hex }} /> {c.name}</span>)}
+              </div>
+            </div>
+          )}
+          {product.sizes.length > 0 && (
+            <div className="ro-opts">
+              <span className="opt-label">Ölçegleri</span>
+              <div className="chip-list">{product.sizes.map((x) => <span key={x} className="edit-chip ro">{x}</span>)}</div>
+            </div>
+          )}
+        </div>
+      )}
+      <div className="spec-grid">
+        {rent ? (
+          <>
+            <div className="spec"><CashIcon /><div><span>Günlük baha</span><strong>{money(product.price)}</strong></div></div>
+            <div className="spec"><ShieldIcon /><div><span>Girew</span><strong>{product.deposit ? money(product.deposit) : "Girewsiz"}</strong></div></div>
+            <div className="spec"><CalendarIcon /><div><span>Iň az möhlet</span><strong>{product.minDays ? days(product.minDays) : "1 gün"}</strong></div></div>
+            <div className="spec"><ReturnIcon /><div><span>Synap görmek</span><strong>Mugt, salonda</strong></div></div>
+          </>
+        ) : (
+          <>
+            <div className="spec"><CashIcon /><div><span>Baha</span><strong>{money(product.price)}-dan başlap</strong></div></div>
+            <div className="spec"><CalendarIcon /><div><span>Taýýar bolýar</span><strong>{product.readyDays ? `${days(product.readyDays)} içinde` : "Ylalaşyk boýunça"}</strong></div></div>
+            <div className="spec"><LayersIcon /><div><span>Mata görnüşleri</span><strong>{product.material || "Saýlap bolýar"}</strong></div></div>
+            <div className="spec"><RulerIcon /><div><span>Ölçeg</span><strong>Siziň ölçegiňize görä</strong></div></div>
+          </>
+        )}
+      </div>
+      <div className="buy-box">
+        <button className="btn btn-primary btn-lg buy-now" onClick={() => setOpen(true)}>
+          <ChatIcon size={20} /> {rent ? "Kärendä al" : "Sargyt et"}
+        </button>
+        {business?.phone && (
+          <a href={`tel:${phoneDigits(business.phone)}`} className="btn btn-secondary btn-lg icon-only" aria-label="Jaň et" title="Jaň et">
+            <PhoneIcon size={20} />
+          </a>
+        )}
+      </div>
+      {open && <ContactSheet pin={pin} business={business} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
 export default function PinPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -160,6 +233,13 @@ export default function PinPage() {
       (r) => setPin((p) => (p && String(p.id) === id && typeof r?.viewsCount === "number" ? { ...p, viewsCount: r.viewsCount } : p)),
       () => {},
     );
+  }, [state, id]);
+
+  // Links like /pin/1#comments or #reviews: scroll once the async content is there.
+  useEffect(() => {
+    if (state !== "ok" || !window.location.hash) return;
+    const t = window.setTimeout(() => document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" }), 450);
+    return () => window.clearTimeout(t);
   }, [state, id]);
 
   const authorName = pin?.author.username;
@@ -280,6 +360,7 @@ export default function PinPage() {
             <button className="icon-btn danger" onClick={remove} disabled={deleting} aria-label="Poz" title="Poz"><TrashIcon size={20} /></button>
           </>
         )}
+        <PinMenu pin={pin} savedBoardIds={pin.savedBoardIds} onSavedChange={(ids) => setPin((p) => (p ? { ...p, savedBoardIds: ids } : p))} className="icon-btn" />
       </div>
       <div className="detail-save">
         <SavePicker
@@ -317,7 +398,7 @@ export default function PinPage() {
 
   const textBlock = (
     <>
-      {pin.description && <p className="detail-desc">{pin.description}</p>}
+      {pin.description && <p className="detail-desc"><RichText text={pin.description} /></p>}
       {pin.link && (
         <a className="detail-link" href={pin.link} target="_blank" rel="noopener noreferrer">
           <ExternalIcon /> {hostOf(pin.link)}
@@ -326,7 +407,7 @@ export default function PinPage() {
       {pin.tags.length > 0 && (
         <div className="tags">
           {pin.tags.map((t) => (
-            <Link key={t} href={`/?q=${encodeURIComponent(t)}`} className="tag">#{t}</Link>
+            <Link key={t} href={`/tag/${encodeURIComponent(t)}`} className="tag">#{t}</Link>
           ))}
         </div>
       )}
@@ -399,10 +480,25 @@ export default function PinPage() {
             <span><EyeIcon size={15} /> {num(pin.viewsCount)}</span>
             {pin.ordersCount > 0 && (<><span className="dot-sep" /><span><BagIcon size={15} /> {num(pin.ordersCount)} sargyt</span></>)}
           </div>
-          <Price price={product.price} oldPrice={product.oldPrice} big />
+          <Price price={product.price} oldPrice={product.oldPrice} big type={product.listingType} />
           <div className="pdp-perks">
-            {product.deliveryDays > 0 && <span><TruckIcon size={18} /> Eltip bermek: {days(product.deliveryDays)}</span>}
-            <span><ShieldIcon size={18} /> Töleg gowşurylanda</span>
+            {product.listingType === "rent" ? (
+              <>
+                <span><ShieldIcon size={18} /> Girew: {product.deposit ? money(product.deposit) : "ýok"}</span>
+                {product.minDays > 0 && <span><CalendarIcon size={18} /> Iň az: {days(product.minDays)}</span>}
+              </>
+            ) : product.listingType === "custom" ? (
+              <>
+                <span><CalendarIcon size={18} /> {product.readyDays ? `${days(product.readyDays)}de taýýar` : "Möhlet ylalaşyk boýunça"}</span>
+                <span><RulerIcon size={18} /> Ölçegiňize görä</span>
+              </>
+            ) : (
+              <>
+                {product.deliveryDays > 0 && <span><TruckIcon size={18} /> Eltip bermek: {days(product.deliveryDays)}</span>}
+                <span><ShieldIcon size={18} /> Töleg gowşurylanda</span>
+              </>
+            )}
+            <Link href={`/visual?pin=${pin.id}`} className="similar-link"><ScanIcon size={18} /> Meňzeşini tap</Link>
           </div>
 
           {isOwner ? (
@@ -412,7 +508,7 @@ export default function PinPage() {
                 <span><b>{num(pin.viewsCount)}</b> görülme</span>
                 <span><b>{num(pin.likesCount)}</b> halanma</span>
                 <span><b>{num(pin.ordersCount)}</b> sargyt</span>
-                <span><b>{stockText(product.stock)}</b> galyndy</span>
+                <span><b>{product.listingType === "sale" ? stockText(product.stock) : product.listingType === "rent" ? "Kärende" : "Tikin"}</b> {product.listingType === "sale" ? "galyndy" : "görnüşi"}</span>
               </div>
               <div className="owner-bar">
                 <Link href={`/pin/${pin.id}/edit`} className="btn btn-secondary btn-sm"><EditIcon size={16} /> Harydy üýtget</Link>
@@ -422,11 +518,7 @@ export default function PinPage() {
           ) : isForSale(product) ? (
             <BuyBox pin={pin} />
           ) : (
-            <div className="owner-panel">
-              <strong>Bu haryt sebede goşulmaýar</strong>
-              <span className="muted small">Şertleri anyklamak üçin dükan bilen habarlaşyň.</span>
-              <Link href={`/u/${pin.author.username}`} className="btn btn-primary">Dükan bilen habarlaş</Link>
-            </div>
+            <ContactBox pin={pin} business={author?.business ?? null} />
           )}
 
           <section className="how-to">
@@ -438,7 +530,7 @@ export default function PinPage() {
               </div>
             </div>
             <ol className="steps">
-              {STEPS.map((s, i) => (
+              {(STEPS_BY_TYPE[product.listingType] ?? STEPS).map((s, i) => (
                 <li key={i}>
                   <span className="step-num">{i + 1}</span>
                   <div><strong>{s.title}</strong><span>{s.text}</span></div>

@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { MasonrySkeleton, PinFeed } from "@/components/Masonry";
+import { FEED_VIEWS, PostFeed, ViewSwitch } from "@/components/FeedViews";
 import StoriesBar from "@/components/StoriesBar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useCategories, usePaged } from "@/lib/hooks";
+import { useCategories, usePaged, useStoredState } from "@/lib/hooks";
 
 function hrefWith(params: URLSearchParams, changes: Record<string, string | null>) {
   const next = new URLSearchParams(params.toString());
@@ -29,9 +30,15 @@ function Feed() {
   const cats = useCategories();
   const following = wantsFollowing && !!user;
 
-  const key = ready ? JSON.stringify({ q, c, following, products, u: user?.id ?? 0 }) : null;
+  const [view, setView] = useStoredState("mh_view", "pinterest", FEED_VIEWS);
+  const insta = view === "instagram";
+
+  const key = ready ? JSON.stringify({ q, c, following, products, insta, u: user?.id ?? 0 }) : null;
   const paged = usePaged(key, (page) =>
-    api.pins({ q, category: c, feed: following ? "following" : undefined, type: products ? "products" : undefined, page }));
+    api.pins({
+      q, category: c, feed: following ? "following" : undefined, type: products ? "products" : undefined, page,
+      withComments: insta, limit: insta ? 12 : undefined,
+    }));
 
   const catName = cats?.find((x) => x.slug === c)?.name;
 
@@ -39,12 +46,15 @@ function Feed() {
     <div className="page">
       {!q && <StoriesBar />}
       <div className="home-bar">
+      <div className="home-tabs">
       <div className="feed-toggle" role="tablist" aria-label="Lenta">
         <Link role="tab" aria-selected={!following && !products} href={hrefWith(params, { feed: null })} className={!following && !products ? "active" : ""}>Saňa</Link>
         {user && (
           <Link role="tab" aria-selected={following} href={hrefWith(params, { feed: "following" })} className={following ? "active" : ""}>Yzarlanýanlar</Link>
         )}
         <Link role="tab" aria-selected={products} href={hrefWith(params, { feed: "products" })} className={products ? "active" : ""}>Harytlar</Link>
+      </div>
+      <ViewSwitch value={view} onChange={setView} />
       </div>
       <div className="chips" role="list">
         <Link href={hrefWith(params, { c: null })} className={`chip ${!c ? "active" : ""}`} role="listitem">Hemmesi</Link>
@@ -69,9 +79,9 @@ function Feed() {
         </p>
       )}
 
-      <PinFeed
-        paged={paged}
-        empty={
+      {(() => {
+        const empty = (
+
           following && !q && !c ? (
             <div className="empty">
               <h2>Lentaňyz entek boş</h2>
@@ -91,8 +101,9 @@ function Feed() {
               <Link href="/" className="btn btn-primary">Ähli pinlere gaýt</Link>
             </div>
           )
-        }
-      />
+        );
+        return insta ? <PostFeed paged={paged} empty={empty} /> : <PinFeed paged={paged} empty={empty} />;
+      })()}
     </div>
   );
 }

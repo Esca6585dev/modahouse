@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, errorMessage } from "./api";
+import { BUSINESS_CATEGORIES } from "./format";
 import { useAuth } from "./auth";
 import type { Category, Page } from "./types";
 
@@ -122,4 +123,45 @@ export function useLoginHref() {
     const here = typeof window !== "undefined" ? window.location.pathname + window.location.search : path;
     return `/login?next=${encodeURIComponent(here)}`;
   }, [path]);
+}
+
+let bizCatsCache: { value: string; label: string }[] | null = null;
+
+/** Business categories from GET /business-categories (falls back to the built-in list while loading or offline). */
+export function useBusinessCategories(): { value: string; label: string }[] {
+  const [cats, setCats] = useState(bizCatsCache ?? BUSINESS_CATEGORIES);
+  useEffect(() => {
+    if (bizCatsCache) return;
+    let alive = true;
+    api.businessCategories().then((l) => {
+      if (!Array.isArray(l) || !l.length) return;
+      bizCatsCache = l.map((c) => ({ value: c.slug, label: c.name }));
+      if (alive) setCats(bizCatsCache);
+    }, () => {});
+    return () => { alive = false; };
+  }, []);
+  return cats;
+}
+
+/** A value remembered in localStorage (per browser), e.g. the feed view. */
+export function useStoredState<T extends string>(key: string, initial: T, allowed: readonly T[]): [T, (v: T) => void] {
+  const [value, setValue] = useState<T>(initial);
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(key) as T | null;
+      if (v && allowed.includes(v)) setValue(v);
+    } catch {
+      /* storage unavailable */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const set = useCallback((v: T) => {
+    setValue(v);
+    try {
+      window.localStorage.setItem(key, v);
+    } catch {
+      /* ignore */
+    }
+  }, [key]);
+  return [value, set];
 }

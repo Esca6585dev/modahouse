@@ -56,13 +56,19 @@ export function discountPercent(price: number, oldPrice: number): number {
   return Math.round(((oldPrice - price) / oldPrice) * 100);
 }
 
-export const BUSINESS_CATEGORIES = [
+/** Fallback list; the live one comes from GET /business-categories (useBusinessCategories). */
+export const BUSINESS_CATEGORIES: { value: string; label: string }[] = [
   { value: "dress", label: "Köýnek dükany" },
   { value: "tailor", label: "Tikinçi" },
+  { value: "atelier", label: "Atelýe" },
+  { value: "bridal", label: "Gelin salony" },
+  { value: "rental", label: "Kärende salony" },
   { value: "boutique", label: "Butik" },
   { value: "designer", label: "Dizaýner" },
+  { value: "jewelry", label: "Şaý-sep ussasy" },
+  { value: "beauty", label: "Gözellik salony" },
   { value: "accessories", label: "Aksessuarlar" },
-] as const;
+];
 
 export function businessCategoryLabel(c: string | undefined | null): string {
   return BUSINESS_CATEGORIES.find((x) => x.value === c)?.label ?? (c ?? "");
@@ -115,4 +121,30 @@ export function stockText(stock: number | null): string {
 /** Cart/checkout only accept "sale" listings (pins without a listing type are sales). */
 export function isForSale(p: { listingType?: string } | null | undefined): boolean {
   return !!p && (!p.listingType || p.listingType === "sale");
+}
+
+export const LISTING_TYPES = [
+  { value: "post", label: "Diňe paýlaşmak", hint: "Ideýa ýa-da surat" },
+  { value: "sale", label: "Satlyk", hint: "Sebet we sargyt" },
+  { value: "rent", label: "Kärende", hint: "Günlük baha, girew" },
+  { value: "custom", label: "Sargyt bilen tikmek", hint: "…-dan başlap, möhlet" },
+] as const;
+
+/** Main price line for a product, depending on its listing type. */
+export function priceLabel(p: { price: number; listingType?: string }): string {
+  if (p.listingType === "rent") return `${money(p.price)} / gün`;
+  if (p.listingType === "custom") return `${money(p.price)}-dan`;
+  return money(p.price);
+}
+
+/** "1:05" style video length. */
+export function duration(sec: number): string {
+  if (!sec || sec < 0) return "";
+  const s = Math.round(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Digits (and a leading +) of a phone number for tel:/wa.me links. */
+export function phoneDigits(phone: string): string {
+  return phone.replace(/[^\d+]/g, "");
 }

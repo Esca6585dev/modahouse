@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { api, errorMessage, setToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useRequireAuth } from "@/lib/hooks";
+import type { UserBrief } from "@/lib/types";
 
 const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -126,6 +127,48 @@ function AvatarForm() {
   );
 }
 
+function BlockedUsers() {
+  const toast = useToast();
+  const [list, setList] = useState<UserBrief[] | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  useEffect(() => {
+    api.myBlocks().then(setList, () => setList([]));
+  }, []);
+  if (!list) return <div className="skeleton" style={{ height: 56 }} />;
+  if (list.length === 0) return <p className="muted small">Petiklenen ulanyjy ýok. Profildäki «⋯» menýusyndan petikläp bilersiňiz.</p>;
+  return (
+    <ul className="user-list">
+      {list.map((u) => (
+        <li key={u.id} className="user-row">
+          <Link href={`/u/${u.username}`}><Avatar user={u} size={40} /></Link>
+          <span className="blocked-name">
+            <strong>{u.name}</strong>
+            <span className="muted">@{u.username}</span>
+          </span>
+          <button
+            className="btn btn-secondary btn-sm"
+            disabled={busy === u.username}
+            onClick={async () => {
+              setBusy(u.username);
+              try {
+                await api.unblock(u.username);
+                setList((l) => l?.filter((x) => x.id !== u.id) ?? l);
+                toast(`@${u.username} petikden aýryldy`);
+              } catch (e) {
+                toast(errorMessage(e), "error");
+              } finally {
+                setBusy(null);
+              }
+            }}
+          >
+            Petigi aýyr
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function PasswordForm() {
   const toast = useToast();
   const { setUser } = useAuth();
@@ -219,6 +262,11 @@ export default function SettingsPage() {
       <section className="card" id="business">
         <h2>Biznes hasaby</h2>
         <BusinessSection key={`${user.id}:${user.isBusiness}`} />
+      </section>
+
+      <section className="card" id="blocked">
+        <h2>Petiklenen ulanyjylar</h2>
+        <BlockedUsers />
       </section>
 
       <section className="card">

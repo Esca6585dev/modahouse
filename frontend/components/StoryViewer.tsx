@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { compact, timeAgo } from "@/lib/format";
 import type { StoryGroup } from "@/lib/types";
 import Avatar from "./Avatar";
-import { BagIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, EyeIcon, PauseIcon, PlayIcon, TrashIcon, VerifiedIcon } from "./Icons";
+import { BagIcon, ChevronLeftIcon, ChevronRightIcon, CloseIcon, EyeIcon, MuteIcon, PauseIcon, PlayIcon, TrashIcon, VerifiedIcon, VolumeIcon } from "./Icons";
 import { useToast } from "./Toast";
 
 const DURATION = 5000;
@@ -21,6 +21,12 @@ type StoriesState = {
   /** Increments whenever stories change (viewed, added, deleted) so lists can refresh. */
   version: number;
   bump: () => void;
+  /** Active story groups (GET /stories), null while loading. */
+  groups: StoryGroup[] | null;
+  /** Ring state for a user's avatar. */
+  ringFor: (userId: number) => "unseen" | "seen" | "none";
+  /** Opens the user's group from the loaded list (falls back to fetching it). */
+  openFor: (user: { id: number; username: string }) => void;
 };
 
 const StoriesContext = createContext<StoriesState | null>(null);
@@ -34,8 +40,18 @@ export function useStories(): StoriesState {
 export function StoriesProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<{ groups: StoryGroup[]; index: number } | null>(null);
   const [version, setVersion] = useState(0);
+  const [groups, setGroups] = useState<StoryGroup[] | null>(null);
   const toast = useToast();
+  const { user, ready } = useAuth();
   const bump = useCallback(() => setVersion((v) => v + 1), []);
+
+  const viewer = user?.id ?? 0;
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    api.stories().then((g) => alive && setGroups(Array.isArray(g) ? g : []), () => alive && setGroups([]));
+    return () => { alive = false; };
+  }, [ready, viewer, version]);
 
   const open = useCallback((groups: StoryGroup[], index = 0) => {
     const usable = groups.filter((g) => g.stories.length > 0);
@@ -57,7 +73,21 @@ export function StoriesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [toast]);
 
-  const value = useMemo(() => ({ open, openUser, version, bump }), [open, openUser, version, bump]);
+  const ringFor = useCallback((userId: number) => {
+    const g = groups?.find((x) => x.user.id === userId);
+    return g ? (g.allSeen ? "seen" : "unseen") : "none";
+  }, [groups]);
+
+  const openFor = useCallback((u: { id: number; username: string }) => {
+    const i = groups?.findIndex((x) => x.user.id === u.id) ?? -1;
+    if (groups && i >= 0) open(groups, i);
+    else openUser(u.username);
+  }, [groups, open, openUser]);
+
+  const value = useMemo(
+    () => ({ open, openUser, version, bump, groups, ringFor, openFor }),
+    [open, openUser, version, bump, groups, ringFor, openFor],
+  );
 
   return (
     <StoriesContext.Provider value={value}>
@@ -91,6 +121,8 @@ function StoryViewer({ groups: initial, startGroup, onClose }: { groups: StoryGr
   const [loaded, setLoaded] = useState(false);
   const [progress, setProgress] = useState(0);
   const holdTimer = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [svMuted, setSvMuted] = useState(true);
   const held = useRef(false);
   const elapsed = useRef(0);
   const closeRef = useRef(onClose);
@@ -98,6 +130,7 @@ function StoryViewer({ groups: initial, startGroup, onClose }: { groups: StoryGr
 
   const group = groups[gi];
   const story = group?.stories[si];
+  const isVideo = story?.mediaType === "video" && !!story.videoUrl;
   const isOwner = !!user && group?.user.id === user.id;
 
   const next = useCallback(() => {
@@ -139,9 +172,21 @@ function StoryViewer({ groups: initial, startGroup, onClose }: { groups: StoryGr
     })));
   }, [story, loaded, user, gi]);
 
-  // Progress animation.
+  // Video stories: progress follows the video and it advances when the video ends.
   useEffect(() => {
-    if (!story || paused || !loaded) return;
+    const v = videoRef.current;
+    if (!isVideo || !v) return;
+    if (paused || !loaded) v.pause();
+    else v.play().catch(() => {
+      v.muted = true;
+      setSvMuted(true);
+      v.play().catch(() => {});
+    });
+  }, [isVideo, paused, loaded, storyId]);
+
+  // Progress animation (images).
+  useEffect(() => {
+    if (!story || paused || !loaded || isVideo) return;
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -154,7 +199,7 @@ function StoryViewer({ groups: initial, startGroup, onClose }: { groups: StoryGr
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [story, paused, loaded, next]);
+  }, [story, paused, loaded, next, isVideo]);
 
   // Keyboard + scroll lock.
   useEffect(() => {
@@ -248,6 +293,11 @@ function StoryViewer({ groups: initial, startGroup, onClose }: { groups: StoryGr
             <span>{timeAgo(story.createdAt)}</span>
           </Link>
           <div className="sv-tools">
+            {isVideo && (
+              <button className="sv-tool" onClick={() => setSvMuted((m) => !m)} aria-label={svMuted ? "Sesi aç" : "Sesi öçür"}>
+                {svMuted ? <MuteIcon size={18} /> : <VolumeIcon size={18} />}
+              </button>
+            )}
             <button className="sv-tool" onClick={() => setPaused((p) => !p)} aria-label={paused ? "Dowam et" : "Saklat"}>
               {paused ? <PlayIcon size={18} /> : <PauseIcon size={18} />}
             </button>
@@ -264,15 +314,34 @@ function StoryViewer({ groups: initial, startGroup, onClose }: { groups: StoryGr
           onPointerCancel={() => { if (holdTimer.current) window.clearTimeout(holdTimer.current); setPaused(false); }}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            key={story.id}
-            src={story.imageUrl}
-            alt={story.caption || "Story"}
-            draggable={false}
-            onLoad={() => setLoaded(true)}
-            onError={() => setLoaded(true)}
-          />
+          {isVideo ? (
+            <video
+              key={story.id}
+              ref={videoRef}
+              src={story.videoUrl}
+              poster={story.imageUrl || undefined}
+              muted={svMuted}
+              playsInline
+              preload="auto"
+              onLoadedData={() => setLoaded(true)}
+              onError={() => setLoaded(true)}
+              onTimeUpdate={(e) => {
+                const v = e.currentTarget;
+                if (v.duration > 0) setProgress(Math.min(1, v.currentTime / v.duration));
+              }}
+              onEnded={() => next()}
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={story.id}
+              src={story.imageUrl}
+              alt={story.caption || "Story"}
+              draggable={false}
+              onLoad={() => setLoaded(true)}
+              onError={() => setLoaded(true)}
+            />
+          )}
           {!loaded && <span className="spinner sv-spinner" />}
         </div>
         <div className="sv-foot">

@@ -7,9 +7,9 @@ import { useAddToCart } from "@/lib/cart";
 import { isForSale } from "@/lib/format";
 import type { Paged } from "@/lib/hooks";
 import type { Pin } from "@/lib/types";
-import { CartIcon, GridIcon } from "./Icons";
+import { CartIcon, GridIcon, PlayIcon } from "./Icons";
 import { InfiniteFooter } from "./Masonry";
-import { Badge, Price } from "./Price";
+import { Badge, ListingChip, Price } from "./Price";
 import QuickAddModal from "./QuickAddModal";
 import Stars from "./Stars";
 import { useToast } from "./Toast";
@@ -22,7 +22,7 @@ export function ProductTile({ pin }: { pin: Pin }) {
   const [busy, setBusy] = useState(false);
   const product = pin.product;
   const own = !!user && user.id === pin.author.id;
-  const out = !!product && product.stock !== null && product.stock <= 0;
+  const out = !!product && isForSale(product) && product.stock !== null && product.stock <= 0;
 
   const onCart = async () => {
     if (!product) return;
@@ -40,15 +40,15 @@ export function ProductTile({ pin }: { pin: Pin }) {
       <Link href={`/pin/${pin.id}`} className="ptile-media" style={{ background: pin.color || "var(--surface)" }} aria-label={pin.title}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={pin.imageUrl} alt={pin.title} loading="lazy" />
-        {product && <Badge badge={out ? "" : product.badge} className="pin-badge" />}
+        {product && (isForSale(product) ? <Badge badge={out ? "" : product.badge} className="pin-badge" /> : <ListingChip type={product.listingType} className="pin-badge" />)}
         {out && <span className="pbadge pbadge-out pin-badge">Gutardy</span>}
-        {pin.images.length > 1 && <span className="pin-multi"><GridIcon size={13} /> {pin.images.length}</span>}
+        {pin.mediaType === "video" ? <span className="pin-video"><PlayIcon size={11} /></span> : pin.images.length > 1 && <span className="pin-multi"><GridIcon size={13} /> {pin.images.length}</span>}
       </Link>
       <div className="ptile-body">
         <Link href={`/pin/${pin.id}`} className="ptile-title">{pin.title}</Link>
         {pin.reviewsCount > 0 && <Stars value={pin.rating} size={12} count={pin.reviewsCount} />}
         <div className="pin-price-row">
-          {product ? <Price price={product.price} oldPrice={product.oldPrice} /> : <span className="muted small">Ideýa</span>}
+          {product ? <Price price={product.price} oldPrice={product.oldPrice} type={product.listingType} /> : <span className="muted small">Ideýa</span>}
           {product && !own && isForSale(product) && (
             <button className="cart-mini" onClick={onCart} disabled={busy || out} aria-label="Sebede goş" title={out ? "Gutardy" : "Sebede goş"}>
               {busy ? <span className="spinner" /> : <CartIcon size={18} />}

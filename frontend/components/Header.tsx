@@ -7,8 +7,8 @@ import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
 import Avatar from "./Avatar";
 import {
-  BagIcon, BellIcon, CartIcon, ChartIcon, ChevronDownIcon, HomeIcon, LogoutIcon, PlusIcon, SearchIcon, SettingsIcon,
-  StoreIcon, TrophyIcon, UserIcon,
+  BagIcon, BellIcon, CartIcon, ChartIcon, ChevronDownIcon, HeartIcon, HomeIcon, LogoutIcon, PlusIcon, ReelsIcon, SearchIcon,
+  SettingsIcon, StoreIcon, TrophyIcon, UserIcon,
 } from "./Icons";
 import { LogoWordmark } from "./Logo";
 import SearchBar from "./SearchBar";
@@ -57,6 +57,7 @@ function UserMenu() {
             </div>
           </Link>
           <Link role="menuitem" href={`/u/${user.username}`} className="menu-item"><UserIcon size={18} /> Profil</Link>
+          <Link role="menuitem" href={`/u/${user.username}?tab=liked`} className="menu-item"><HeartIcon size={18} /> Halanlarym</Link>
           <Link role="menuitem" href="/orders" className="menu-item"><BagIcon size={18} /> Sargytlarym</Link>
           {user.isBusiness ? (
             <Link role="menuitem" href="/business" className="menu-item"><ChartIcon size={18} /> Biznes paneli</Link>
@@ -97,6 +98,7 @@ export default function Header() {
   const { user, ready, unread } = useAuth();
   const nav = [
     { href: "/", label: "Baş sahypa" },
+    { href: "/reels", label: "Reels" },
     { href: "/top", label: "Top 10" },
     { href: "/shops", label: "Dükanlar" },
     { href: "/create", label: "Döret" },
@@ -133,11 +135,13 @@ export default function Header() {
                 <BellIcon />
                 {unread > 0 && <span className="badge">{unread > 99 ? "99+" : unread}</span>}
               </Link>
+              <Link href="/top" className={`icon-btn show-sm ${path === "/top" ? "current" : ""}`} aria-label="Top 10"><TrophyIcon size={22} /></Link>
               <CartLink path={path} />
               <span className="hide-sm"><UserMenu /></span>
             </>
           ) : (
             <>
+              <Link href="/top" className={`icon-btn show-sm ${path === "/top" ? "current" : ""}`} aria-label="Top 10"><TrophyIcon size={22} /></Link>
               <Link href={loginHref} className="btn btn-secondary btn-sm">Giriş</Link>
               <Link href="/register" className="btn btn-primary btn-sm hide-sm">Hasaba al</Link>
             </>
@@ -156,14 +160,14 @@ export function BottomNav() {
   const profileHref = user ? `/u/${user.username}` : "/login?next=%2Fprofile";
   const items = [
     { href: "/", label: "Baş sahypa", icon: <HomeIcon size={24} />, active: path === "/" },
-    { href: "/search", label: "Gözleg", icon: <SearchIcon size={24} />, active: path === "/search" || path === "/shops" },
+    { href: "/search", label: "Gözleg", icon: <SearchIcon size={24} />, active: path === "/search" || path === "/shops" || path === "/visual" || path.startsWith("/tag/") },
     { href: "/create", label: "Döret", icon: <PlusIcon size={24} />, active: path === "/create", create: true },
-    { href: "/top", label: "Top 10", icon: <TrophyIcon size={24} />, active: path === "/top" },
+    { href: "/reels", label: "Reels", icon: <ReelsIcon size={24} />, active: path === "/reels" },
     {
       href: profileHref,
       label: "Profil",
       icon: user ? <Avatar user={user} size={26} /> : <UserIcon size={24} />,
-      active: !!user && (path === `/u/${user.username}` || path === "/settings" || path === "/orders" || path === "/business"),
+      active: !!user && (path === `/u/${user.username}` || path === "/settings" || path.startsWith("/orders") || path === "/business"),
     },
   ];
   return (

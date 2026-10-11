@@ -8,7 +8,7 @@ import BoardCard from "@/components/BoardCard";
 import BoardFormModal from "@/components/BoardFormModal";
 import FollowButton from "@/components/FollowButton";
 import {
-  BagIcon, BoardsIcon, CameraIcon, ChartIcon, ChatIcon, ClockIcon, GridIcon, MasonryIcon, PhoneIcon, PinMapIcon, PlusIcon,
+  BagIcon, BanIcon, BoardsIcon, CommentIcon, HeartIcon, CameraIcon, ChartIcon, ChatIcon, ClockIcon, GridIcon, MasonryIcon, PhoneIcon, PinMapIcon, PlusIcon,
   SettingsIcon, ShareIcon, StoreIcon, TruckIcon, VerifiedIcon,
 } from "@/components/Icons";
 import { PinFeed } from "@/components/Masonry";
@@ -21,14 +21,30 @@ import UserListModal from "@/components/UserListModal";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { businessCategoryLabel, compact, days } from "@/lib/format";
-import { usePaged } from "@/lib/hooks";
+import { usePaged, useStoredState } from "@/lib/hooks";
+import { socialLinks } from "@/components/ContactSheet";
+import { PROFILE_VIEWS, ProfileViewSwitch, SquareGrid, type ProfileView } from "@/components/FeedViews";
+import ProfileMenu from "@/components/ProfileMenu";
 import { shareUrl } from "@/lib/share";
 import type { Board, Profile } from "@/lib/types";
 
-function CreatedPins({ username, viewer, isMe }: { username: string; viewer: number; isMe: boolean }) {
+function LikedPins({ viewer, view }: { viewer: number; view: ProfileView }) {
+  const paged = usePaged(`liked:${viewer}`, (page) => api.myLikes(page));
+  const empty = (
+    <div className="empty">
+      <h2>Entek halan postuňyz ýok</h2>
+      <p>Halan postlaryňyzyň ýüregine basyň — olar şu ýerde ýygnanar.</p>
+      <Link href="/" className="btn btn-primary">Postlara seret</Link>
+    </div>
+  );
+  return view === "grid" ? <SquareGrid paged={paged} empty={empty} /> : <PinFeed paged={paged} empty={empty} />;
+}
+
+function CreatedPins({ username, viewer, isMe, view }: { username: string; viewer: number; isMe: boolean; view: ProfileView }) {
   const paged = usePaged(`upins:${username}:${viewer}`, (page) => api.userPins(username, page));
+  const Feed = view === "grid" ? SquareGrid : PinFeed;
   return (
-    <PinFeed
+    <Feed
       paged={paged}
       empty={
         <div className="empty">
@@ -131,7 +147,7 @@ function SavedBoards({ username, viewer, isMe }: { username: string; viewer: num
   );
 }
 
-type Tab = "products" | "pins" | "boards";
+type Tab = "products" | "pins" | "boards" | "liked";
 
 function phoneHref(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
@@ -151,6 +167,7 @@ function ProfileView() {
   const [list, setList] = useState<"followers" | "following" | null>(null);
   const [addingStory, setAddingStory] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [pview, setPview] = useStoredState("mh_pview", "grid", PROFILE_VIEWS);
   const viewer = user?.id ?? 0;
 
   useEffect(() => {
@@ -208,6 +225,7 @@ function ProfileView() {
   const biz = profile.business;
   const rawTab = params.get("tab");
   const tab: Tab = rawTab === "saved" || rawTab === "boards" ? "boards"
+    : rawTab === "liked" && isMe ? "liked"
     : rawTab === "pins" || rawTab === "created" ? "pins"
       : rawTab === "products" && biz ? "products"
         : biz ? "products" : "pins";
@@ -219,14 +237,16 @@ function ProfileView() {
     if (msg) toast(msg);
   };
 
-  const contactHref = biz?.instagram
-    ? `https://instagram.com/${biz.instagram.replace(/^@/, "")}`
-    : biz?.phone ? `sms:${biz.phone.replace(/[^\d+]/g, "")}` : null;
+  const links = biz ? socialLinks(biz, `Salam! ModaHouse-da profilňizi gördüm.`) : [];
+  const chat = links.find((l) => l.key === "whatsapp") ?? links.find((l) => l.key === "telegram") ?? links.find((l) => l.key === "instagram");
+  const contactHref = chat?.href ?? (biz?.phone ? `sms:${biz.phone.replace(/[^\d+]/g, "")}` : null);
+  const socials = links.filter((l) => l.key !== "phone");
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
     ...(biz ? [{ key: "products" as Tab, label: "Harytlar", icon: <GridIcon size={16} /> }] : []),
     { key: "pins", label: "Pinler", icon: <MasonryIcon size={16} /> },
     { key: "boards", label: "Tagtalar", icon: <BoardsIcon size={16} /> },
+    ...(isMe ? [{ key: "liked" as Tab, label: "Halanlarym", icon: <HeartIcon size={16} /> }] : []),
   ];
 
   return (
@@ -252,8 +272,10 @@ function ProfileView() {
             {profile.verified && <VerifiedIcon size={20} />}
           </h1>
           <span className="ig-username">@{profile.username}</span>
-          {isMe && (
+          {isMe ? (
             <Link href="/settings" className="icon-btn ig-gear" aria-label="Sazlamalar" title="Sazlamalar"><SettingsIcon size={22} /></Link>
+          ) : (
+            <ProfileMenu profile={profile} onBlockedChange={(b) => setProfile((cur) => (cur ? { ...cur, isBlocked: b, isFollowing: b ? false : cur.isFollowing } : cur))} />
           )}
         </div>
 
@@ -284,6 +306,15 @@ function ProfileView() {
               {biz.ordersCount > 0 && <li><BagIcon size={16} /> {compact(biz.ordersCount)} sargyt ýerine ýetirildi</li>}
             </ul>
           )}
+          {socials.length > 0 && (
+            <div className="social-row">
+              {socials.map((l) => (
+                <a key={l.key} href={l.href} className={`social-btn c-${l.key}`} target={l.external ? "_blank" : undefined} rel={l.external ? "noopener noreferrer" : undefined} aria-label={`${l.label}: ${l.value}`} title={`${l.label}: ${l.value}`}>
+                  {l.icon}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="ig-actions">
@@ -308,8 +339,8 @@ function ProfileView() {
               />
               {biz?.phone && <a href={phoneHref(biz.phone)} className="btn btn-secondary"><PhoneIcon size={16} /> Jaň et</a>}
               {contactHref && (
-                <a href={contactHref} className="btn btn-secondary" target={biz?.instagram ? "_blank" : undefined} rel="noopener noreferrer">
-                  <ChatIcon size={16} /> Habarlaş
+                <a href={contactHref} className="btn btn-secondary" target={chat?.external ? "_blank" : undefined} rel="noopener noreferrer">
+                  <CommentIcon size={17} /> Habarlaş
                 </a>
               )}
               <button className="btn btn-secondary icon-only" onClick={share} aria-label="Paýlaş"><ShareIcon size={18} /></button>
@@ -318,20 +349,51 @@ function ProfileView() {
         </div>
       </section>
 
-      <div className="ig-tabs" role="tablist">
-        {tabs.map((t) => (
-          <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? "active" : ""} onClick={() => setTab(t.key)}>
-            {t.icon} {t.label}
+      {profile.isBlocked ? (
+        <div className="empty empty-card blocked-note">
+          <span className="empty-icon"><BanIcon size={32} /></span>
+          <h2>Siz @{profile.username} ulanyjyny petiklediňiz</h2>
+          <p>Onuň postlary lentaňyzda görünmeýär we ol size ýazyp bilmeýär.</p>
+          <button
+            className="btn btn-secondary"
+            onClick={async () => {
+              try {
+                await api.unblock(profile.username);
+                setProfile((cur) => (cur ? { ...cur, isBlocked: false } : cur));
+                toast("Petik aýryldy");
+              } catch (e) {
+                toast(errorMessage(e), "error");
+              }
+            }}
+          >
+            Petigi aýyr
           </button>
-        ))}
-      </div>
-
-      {tab === "products" ? (
-        <Products username={profile.username} viewer={viewer} isMe={isMe} />
-      ) : tab === "pins" ? (
-        <CreatedPins username={profile.username} viewer={viewer} isMe={isMe} />
+        </div>
       ) : (
-        <SavedBoards username={profile.username} viewer={viewer} isMe={isMe} />
+        <>
+          <div className="ig-tabs" role="tablist">
+            {tabs.map((t) => (
+              <button key={t.key} role="tab" aria-selected={tab === t.key} className={tab === t.key ? "active" : ""} onClick={() => setTab(t.key)}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+          {(tab === "pins" || tab === "liked") && (
+            <div className="profile-toolbar">
+              <ProfileViewSwitch value={pview} onChange={setPview} />
+            </div>
+          )}
+
+          {tab === "products" ? (
+            <Products username={profile.username} viewer={viewer} isMe={isMe} />
+          ) : tab === "pins" ? (
+            <CreatedPins username={profile.username} viewer={viewer} isMe={isMe} view={pview} />
+          ) : tab === "liked" ? (
+            <LikedPins viewer={viewer} view={pview} />
+          ) : (
+            <SavedBoards username={profile.username} viewer={viewer} isMe={isMe} />
+          )}
+        </>
       )}
 
       {list && (

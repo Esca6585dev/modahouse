@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { useState } from "react";
 import { useAuth } from "@/lib/auth";
-import type { StoryGroup } from "@/lib/types";
 import AddStoryModal from "./AddStoryModal";
 import { PlusIcon } from "./Icons";
 import StoryAvatar from "./StoryAvatar";
@@ -11,17 +9,8 @@ import { useStories } from "./StoryViewer";
 
 export default function StoriesBar() {
   const { user, ready } = useAuth();
-  const { open, version, bump } = useStories();
-  const [groups, setGroups] = useState<StoryGroup[] | null>(null);
+  const { open, bump, groups } = useStories();
   const [adding, setAdding] = useState(false);
-
-  const viewer = user?.id ?? 0;
-  useEffect(() => {
-    if (!ready) return;
-    let alive = true;
-    api.stories().then((g) => alive && setGroups(Array.isArray(g) ? g : []), () => alive && setGroups([]));
-    return () => { alive = false; };
-  }, [ready, viewer, version]);
 
   if (!ready) return null;
   if (groups === null) {

@@ -8,10 +8,10 @@ import { InfiniteFooter } from "@/components/Masonry";
 import ShopCard from "@/components/ShopCard";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { BUSINESS_CATEGORIES } from "@/lib/format";
-import { usePaged } from "@/lib/hooks";
+import { useBusinessCategories, usePaged } from "@/lib/hooks";
 
 function ShopsView() {
+  const bizCats = useBusinessCategories();
   const params = useSearchParams();
   const router = useRouter();
   const { ready } = useAuth();
@@ -47,7 +47,7 @@ function ShopsView() {
       </div>
       <div className="chips" role="list">
         <button className={`chip ${!category ? "active" : ""}`} onClick={() => go({ category: "" })}>Hemmesi</button>
-        {BUSINESS_CATEGORIES.map((c) => (
+        {bizCats.map((c) => (
           <button key={c.value} className={`chip ${category === c.value ? "active" : ""}`} onClick={() => go({ category: c.value })}>{c.label}</button>
         ))}
       </div>

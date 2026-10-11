@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ColorOption } from "@/lib/types";
+import type { ColorOption, ProductListingType } from "@/lib/types";
 import { CloseIcon, PlusIcon } from "./Icons";
 
 export type ProductValues = {
@@ -13,11 +13,14 @@ export type ProductValues = {
   material: string;
   colors: ColorOption[];
   sizes: string[];
+  deposit: string;
+  minDays: string;
+  readyDays: string;
 };
 
 export const emptyProduct = (deliveryDays = 3, returnDays = 14): ProductValues => ({
   price: "", oldPrice: "", stock: "", deliveryDays: String(deliveryDays), returnDays: String(returnDays),
-  material: "", colors: [], sizes: [],
+  material: "", colors: [], sizes: [], deposit: "", minDays: "", readyDays: "",
 });
 
 const PRESET_COLORS: ColorOption[] = [
@@ -36,17 +39,36 @@ const PRESET_SIZES = ["XS", "S", "M", "L", "XL", "40", "42", "44", "46", "48", "
 const int = (s: string) => Math.round(Number(s));
 
 /** Client checks mirroring the server rules; returns a Turkmen message or null. */
-export function validateProduct(v: ProductValues): string | null {
+export function validateProduct(v: ProductValues, type: ProductListingType = "sale"): string | null {
   const price = int(v.price);
-  if (!v.price.trim() || !(price > 0)) return "Bahany ýazyň (0-dan uly)";
-  if (v.oldPrice.trim() && int(v.oldPrice) > 0 && int(v.oldPrice) <= price) return "Köne baha häzirki bahadan uly bolmaly";
+  if (!v.price.trim() || !(price > 0)) return type === "rent" ? "Günlük bahany ýazyň (0-dan uly)" : "Bahany ýazyň (0-dan uly)";
+  if (type === "sale" && v.oldPrice.trim() && int(v.oldPrice) > 0 && int(v.oldPrice) <= price) return "Köne baha häzirki bahadan uly bolmaly";
+  for (const [k, label] of [["deposit", "Girew"], ["minDays", "Iň az gün"], ["readyDays", "Taýýar bolýan gün"]] as const) {
+    if (v[k].trim() && !(int(v[k]) >= 0)) return `${label} san bolmaly`;
+  }
   if (v.stock.trim() && !(int(v.stock) >= 0)) return "Galyndy san bolmaly";
   return null;
 }
 
 /** Multipart fields for POST /pins. */
-export function appendProduct(form: FormData, v: ProductValues) {
+export function appendProduct(form: FormData, v: ProductValues, type: ProductListingType = "sale") {
+  form.append("listingType", type);
   form.append("price", String(int(v.price)));
+  if (type === "rent") {
+    if (v.deposit.trim()) form.append("deposit", String(int(v.deposit) || 0));
+    if (v.minDays.trim()) form.append("minDays", String(int(v.minDays) || 0));
+    if (v.colors.length) form.append("colors", JSON.stringify(v.colors));
+    if (v.sizes.length) form.append("sizes", v.sizes.join(","));
+    if (v.material.trim()) form.append("material", v.material.trim());
+    return;
+  }
+  if (type === "custom") {
+    if (v.readyDays.trim()) form.append("readyDays", String(int(v.readyDays) || 0));
+    if (v.material.trim()) form.append("material", v.material.trim());
+    if (v.colors.length) form.append("colors", JSON.stringify(v.colors));
+    if (v.sizes.length) form.append("sizes", v.sizes.join(","));
+    return;
+  }
   if (v.oldPrice.trim()) form.append("oldPrice", String(int(v.oldPrice) || 0));
   if (v.stock.trim()) form.append("stock", String(int(v.stock)));
   if (v.deliveryDays.trim()) form.append("deliveryDays", String(int(v.deliveryDays) || 0));
@@ -57,10 +79,14 @@ export function appendProduct(form: FormData, v: ProductValues) {
 }
 
 /** JSON body for PUT /pins/:id. */
-export function productBody(v: ProductValues) {
+export function productBody(v: ProductValues, type: ProductListingType = "sale") {
   return {
+    listingType: type,
+    deposit: type === "rent" ? int(v.deposit) || 0 : 0,
+    minDays: type === "rent" ? int(v.minDays) || 0 : 0,
+    readyDays: type === "custom" ? int(v.readyDays) || 0 : 0,
     price: int(v.price),
-    oldPrice: v.oldPrice.trim() ? int(v.oldPrice) || 0 : 0,
+    oldPrice: type === "sale" && v.oldPrice.trim() ? int(v.oldPrice) || 0 : 0,
     stock: v.stock.trim() ? int(v.stock) : null,
     deliveryDays: int(v.deliveryDays) || 0,
     returnDays: int(v.returnDays) || 0,
@@ -70,7 +96,9 @@ export function productBody(v: ProductValues) {
   };
 }
 
-export default function ProductFields({ value, onChange }: { value: ProductValues; onChange: (v: ProductValues) => void }) {
+export default function ProductFields({
+  value, onChange, type = "sale",
+}: { value: ProductValues; onChange: (v: ProductValues) => void; type?: ProductListingType }) {
   const [colorName, setColorName] = useState("");
   const [colorHex, setColorHex] = useState("#D7263D");
   const [size, setSize] = useState("");
@@ -90,18 +118,51 @@ export default function ProductFields({ value, onChange }: { value: ProductValue
 
   return (
     <fieldset className="product-fields">
-      <legend>Haryt maglumatlary</legend>
-      <div className="form-row">
-        <label>
-          <span>Baha, TMT <span className="req">*</span></span>
-          <input type="number" min={1} inputMode="numeric" value={value.price} onChange={set("price")} placeholder="450" />
-        </label>
-        <label>
-          Köne baha, TMT
-          <input type="number" min={0} inputMode="numeric" value={value.oldPrice} onChange={set("oldPrice")} placeholder="Arzanladyş üçin" />
-          <small className="hint">Doldurylsa «Aksiýa» bellik goşulýar</small>
-        </label>
-      </div>
+      <legend>{type === "rent" ? "Kärende maglumatlary" : type === "custom" ? "Tikin sargydy" : "Haryt maglumatlary"}</legend>
+      {type === "sale" && (
+        <div className="form-row">
+          <label>
+            <span>Baha, TMT <span className="req">*</span></span>
+            <input type="number" min={1} inputMode="numeric" value={value.price} onChange={set("price")} placeholder="450" />
+          </label>
+          <label>
+            Köne baha, TMT
+            <input type="number" min={0} inputMode="numeric" value={value.oldPrice} onChange={set("oldPrice")} placeholder="Arzanladyş üçin" />
+            <small className="hint">Doldurylsa «Aksiýa» bellik goşulýar</small>
+          </label>
+        </div>
+      )}
+      {type === "rent" && (
+        <>
+          <div className="form-row">
+            <label>
+              <span>Günlük baha, TMT <span className="req">*</span></span>
+              <input type="number" min={1} inputMode="numeric" value={value.price} onChange={set("price")} placeholder="250" />
+            </label>
+            <label>
+              Girew, TMT
+              <input type="number" min={0} inputMode="numeric" value={value.deposit} onChange={set("deposit")} placeholder="500" />
+              <small className="hint">Boş = girewsiz</small>
+            </label>
+          </div>
+          <label>
+            Iň az möhlet (gün)
+            <input type="number" min={0} inputMode="numeric" value={value.minDays} onChange={set("minDays")} placeholder="1" />
+          </label>
+        </>
+      )}
+      {type === "custom" && (
+        <div className="form-row">
+          <label>
+            <span>Baha «…-dan başlap», TMT <span className="req">*</span></span>
+            <input type="number" min={1} inputMode="numeric" value={value.price} onChange={set("price")} placeholder="600" />
+          </label>
+          <label>
+            Taýýar bolýar (gün)
+            <input type="number" min={0} inputMode="numeric" value={value.readyDays} onChange={set("readyDays")} placeholder="10" />
+          </label>
+        </div>
+      )}
 
       <div className="opt-edit">
         <span className="opt-label">Reňkler</span>
@@ -186,17 +247,24 @@ export default function ProductFields({ value, onChange }: { value: ProductValue
         </div>
       </div>
 
-      <div className="form-row">
+      {type === "sale" ? (
+        <div className="form-row">
+          <label>
+            Galyndy (sany)
+            <input type="number" min={0} inputMode="numeric" value={value.stock} onChange={set("stock")} placeholder="Boş = hasaba alynmaýar" />
+          </label>
+          <label>
+            Material
+            <input value={value.material} onChange={set("material")} maxLength={100} placeholder="Mysal: Atlas, ýüpek" />
+          </label>
+        </div>
+      ) : (
         <label>
-          Galyndy (sany)
-          <input type="number" min={0} inputMode="numeric" value={value.stock} onChange={set("stock")} placeholder="Boş = hasaba alynmaýar" />
+          {type === "custom" ? "Mata görnüşleri" : "Material"}
+          <input value={value.material} onChange={set("material")} maxLength={100} placeholder={type === "custom" ? "Mysal: atlas, barhat, kešde ýüpegi" : "Mysal: Atlas, ýüpek"} />
         </label>
-        <label>
-          Material
-          <input value={value.material} onChange={set("material")} maxLength={100} placeholder="Mysal: Atlas, ýüpek" />
-        </label>
-      </div>
-      <div className="form-row">
+      )}
+      {type === "sale" && <div className="form-row">
         <label>
           Eltip bermek (gün)
           <input type="number" min={0} inputMode="numeric" value={value.deliveryDays} onChange={set("deliveryDays")} />
@@ -205,7 +273,7 @@ export default function ProductFields({ value, onChange }: { value: ProductValue
           Gaýtaryp bermek (gün)
           <input type="number" min={0} inputMode="numeric" value={value.returnDays} onChange={set("returnDays")} />
         </label>
-      </div>
+      </div>}
     </fieldset>
   );
 }

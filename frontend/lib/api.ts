@@ -3,8 +3,8 @@
 
 import type {
   AuthResponse, Board, BusinessCard, BusinessInput, BusinessStats, Cart, Category, ColorOption, Comment, LikeState, Me,
-  Notification, Order, OrderInput, OrderStatus, Page, Pin, Profile, Review, ReviewsPage, StatsPeriod, Story, StoryGroup,
-  TopEntry, UserBrief,
+  ListingType, Notification, Order, OrderInput, OrderStatus, Page, Pin, PinImage, Profile, ReportReason, Review, ReviewsPage,
+  SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UserBrief, VisualResult,
 } from "./types";
 
 const TOKEN_KEY = "mh_token";
@@ -107,9 +107,15 @@ function normUser<T extends Partial<UserBrief>>(u: T): T & UserBrief {
 }
 
 export function normPin(p: Pin): Pin {
-  const images = Array.isArray(p.images) && p.images.length
+  const images: PinImage[] = (Array.isArray(p.images) && p.images.length
     ? p.images
-    : [{ url: p.imageUrl, width: p.width, height: p.height, color: p.color }];
+    : [{ url: p.imageUrl, width: p.width, height: p.height, color: p.color } as PinImage]
+  ).map((im) => ({
+    ...im,
+    type: im.type === "video" ? "video" : "image",
+    posterUrl: im.posterUrl ?? "",
+    duration: im.duration ?? 0,
+  }));
   const product = p.product
     ? {
       ...p.product,
@@ -121,6 +127,10 @@ export function normPin(p: Pin): Pin {
       returnDays: p.product.returnDays ?? 0,
       material: p.product.material ?? "",
       badge: p.product.badge ?? "",
+      listingType: p.product.listingType ?? "sale",
+      deposit: p.product.deposit ?? 0,
+      minDays: p.product.minDays ?? 0,
+      readyDays: p.product.readyDays ?? 0,
     }
     : null;
   return {
@@ -128,6 +138,7 @@ export function normPin(p: Pin): Pin {
     tags: p.tags ?? [],
     savedBoardIds: p.savedBoardIds ?? [],
     images,
+    mediaType: p.mediaType ?? images[0].type,
     product,
     viewsCount: p.viewsCount ?? 0,
     ordersCount: p.ordersCount ?? 0,
@@ -138,7 +149,20 @@ export function normPin(p: Pin): Pin {
 }
 
 export function normProfile<T extends Profile>(p: T): T {
-  return { ...normUser(p), hasStory: !!p.hasStory, storySeen: !!p.storySeen, business: p.business ?? null };
+  const b = p.business;
+  return {
+    ...normUser(p),
+    hasStory: !!p.hasStory,
+    storySeen: !!p.storySeen,
+    isBlocked: !!p.isBlocked,
+    business: b
+      ? {
+        ...b,
+        tiktok: b.tiktok ?? "", telegram: b.telegram ?? "", whatsapp: b.whatsapp ?? "", imo: b.imo ?? "",
+        youtube: b.youtube ?? "", website: b.website ?? "", instagram: b.instagram ?? "",
+      }
+      : null,
+  };
 }
 
 const pinPage = (pg: Page<Pin>): Page<Pin> => ({ ...pg, items: (pg.items ?? []).map(normPin) });
@@ -150,13 +174,19 @@ export type PinsQuery = {
   q?: string;
   category?: string;
   feed?: string;
-  type?: "products" | "ideas";
+  type?: "products" | "ideas" | "videos";
   author?: string;
+  tag?: string;
+  withComments?: boolean;
   page: number;
   limit?: number;
 };
 
 export type ProductUpdate = {
+  listingType?: ListingType;
+  deposit?: number;
+  minDays?: number;
+  readyDays?: number;
   price?: number;
   oldPrice?: number;
   stock?: number | null;
@@ -200,7 +230,8 @@ export const api = {
   unfollow: (u: string) => request<Profile>(`/users/${enc(u)}/follow`, { method: "DELETE" }).then(normProfile),
 
   // pins
-  pins: ({ limit, ...p }: PinsQuery) => request<Page<Pin>>(`/pins${qs({ ...p, limit: limit ?? PAGE_SIZE })}`).then(pinPage),
+  pins: ({ limit, withComments, ...p }: PinsQuery) =>
+    request<Page<Pin>>(`/pins${qs({ ...p, withComments: withComments ? 1 : undefined, limit: limit ?? PAGE_SIZE })}`).then(pinPage),
   createPin: (form: FormData) => request<Pin>("/pins", { method: "POST", form }).then(normPin),
   pin: (id: number | string) => request<Pin>(`/pins/${enc(String(id))}`).then(normPin),
   updatePin: (id: number, b: { title?: string; description?: string; link?: string; category?: string; tags?: string } & ProductUpdate) =>
@@ -272,7 +303,34 @@ export const api = {
   createStory: (form: FormData) => request<Story>("/stories", { method: "POST", form }),
   viewStory: (id: number) => request<void>(`/stories/${id}/view`, { method: "POST" }),
   deleteStory: (id: number) => request<void>(`/stories/${id}`, { method: "DELETE" }),
+
+  // v3: discovery
+  businessCategories: () => request<Category[]>("/business-categories"),
+  search: (q: string) =>
+    request<SearchResult>(`/search${qs({ q })}`).then((r) => ({ users: (r.users ?? []).map(normUser), tags: r.tags ?? [] })),
+  myLikes: (page: number) => request<Page<Pin>>(`/me/likes${qs({ page, limit: PAGE_SIZE })}`).then(pinPage),
+  searchImage: (form: FormData) =>
+    request<VisualResult>("/search/image", { method: "POST", form }).then(visualRes),
+  visual: (id: number, products: boolean) =>
+    request<VisualResult>(`/pins/${id}/visual${qs({ type: products ? "products" : undefined, limit: 40 })}`).then(visualRes),
+
+  // v3: moderation
+  report: (id: number, reason: ReportReason, note?: string) =>
+    request<void>(`/pins/${id}/report`, { method: "POST", body: { reason, note: note || undefined } }),
+  hidePin: (id: number) => request<void>(`/pins/${id}/hide`, { method: "POST" }),
+  unhidePin: (id: number) => request<void>(`/pins/${id}/hide`, { method: "DELETE" }),
+  block: (u: string) => request<{ blocked: boolean }>(`/users/${enc(u)}/block`, { method: "POST" }),
+  unblock: (u: string) => request<{ blocked: boolean }>(`/users/${enc(u)}/block`, { method: "DELETE" }),
+  myBlocks: () => request<UserBrief[]>("/me/blocks").then((l) => (l ?? []).map(normUser)),
+
+  // v3: AI writing assistant
+  aiStatus: () => request<{ enabled: boolean }>("/ai/status"),
+  aiSuggest: (form: FormData) => request<Suggestion>("/ai/suggest", { method: "POST", form }),
 };
+
+function visualRes(r: VisualResult): VisualResult {
+  return { ...r, items: (r.items ?? []).map(normPin), scores: r.scores ?? [], category: r.category ?? "" };
+}
 
 export function errorMessage(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;

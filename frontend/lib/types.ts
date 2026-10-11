@@ -9,7 +9,8 @@ export type UserBrief = {
   verified: boolean;
 };
 
-export type BusinessCategory = "dress" | "tailor" | "boutique" | "designer" | "accessories";
+export type BusinessCategory =
+  | "dress" | "tailor" | "atelier" | "bridal" | "rental" | "boutique" | "designer" | "jewelry" | "beauty" | "accessories";
 
 export type Business = {
   category: BusinessCategory;
@@ -17,6 +18,12 @@ export type Business = {
   address: string;
   city: string;
   instagram: string;
+  tiktok: string;
+  telegram: string;
+  whatsapp: string;
+  imo: string;
+  youtube: string;
+  website: string;
   workingHours: string;
   deliveryDays: number;
   returnDays: number;
@@ -36,6 +43,8 @@ export type Profile = UserBrief & {
   createdAt: string;
   hasStory: boolean;
   storySeen: boolean;
+  /** v3: I blocked this user. */
+  isBlocked: boolean;
   business: Business | null;
 };
 
@@ -55,11 +64,27 @@ export type Product = {
   returnDays: number;
   material: string;
   badge: ProductBadge;
-  /** v3 (optional here): only "sale" products can go into the cart. */
-  listingType?: "sale" | "rent" | "custom";
+  /** Only "sale" products can go into the cart; rent/custom open a contact sheet. */
+  listingType: ProductListingType;
+  deposit: number;
+  minDays: number;
+  readyDays: number;
 };
 
-export type PinImage = { url: string; width: number; height: number; color: string };
+export type ProductListingType = "sale" | "rent" | "custom";
+export type ListingType = "post" | ProductListingType;
+
+export type PinImage = {
+  type: "image" | "video";
+  url: string;
+  /** video: poster image ("" for images) */
+  posterUrl: string;
+  /** video: seconds (0 = unknown) */
+  duration: number;
+  width: number;
+  height: number;
+  color: string;
+};
 
 export type Pin = {
   id: number;
@@ -73,6 +98,9 @@ export type Pin = {
   height: number;
   color: string;
   images: PinImage[];
+  mediaType: "image" | "video";
+  /** only with ?withComments=1 */
+  latestComments?: Comment[];
   product: Product | null;
   viewsCount: number;
   ordersCount: number;
@@ -128,6 +156,12 @@ export type BusinessInput = {
   address?: string;
   city?: string;
   instagram?: string;
+  tiktok?: string;
+  telegram?: string;
+  whatsapp?: string;
+  imo?: string;
+  youtube?: string;
+  website?: string;
   workingHours?: string;
   deliveryDays?: number;
   returnDays?: number;
@@ -239,6 +273,8 @@ export type OrderInput = {
 export type Story = {
   id: number;
   imageUrl: string;
+  mediaType: "image" | "video";
+  videoUrl: string;
   width: number;
   height: number;
   color: string;
@@ -251,3 +287,21 @@ export type Story = {
 };
 
 export type StoryGroup = { user: UserBrief; stories: Story[]; allSeen: boolean };
+
+// ---------- v3 ----------
+
+export type ReportReason = "spam" | "inappropriate" | "copyright" | "fake" | "other";
+
+export type Suggestion = {
+  title: string;
+  description: string;
+  hashtags: string[];
+  category: string;
+  priceLine: string;
+  details: string[];
+  source: "ai" | "template";
+};
+
+export type SearchResult = { users: UserBrief[]; tags: { tag: string; count: number }[] };
+
+export type VisualResult = { items: Pin[]; scores: number[]; category: string; source: "local" | "ai+local" };
