@@ -7,23 +7,26 @@ ModaHouse Pinterest bilen Instagram-yň garyndysy:
 
 ## Logo
 
+Logo eýesiniň öz nusgasyna esaslanýar. "moda" sözi inçe we tegelek harplar bilen ýazylýar. "d" harpynyň üstünde gyzyl öý üçegi (^) bar, aşagynda bolsa gyzyl "HOUSE" ýazgysy.
+
 | Faýl | Ulanylyşy |
 |---|---|
-| `logo-mark.svg` | Gyzyl tegelek, ak "M" we üstünde öýüň üçegi. Programma nyşany, favicon we kiçi logo. |
-| `logo-wordmark.svg` | Nyşan we "ModaHouse" ýazgysy, "H" harpynyň üstünde üçek bar. Web sözbaşysy we giriş sahypasy. |
-
-Logo hemişe esasy gyzyl reňkde bolýar. Garaňky fonda nyşan üýtgemeýär, ýazgy bolsa ak bolýar.
+| `logo-wordmark.svg` | Esasy logo, ak ýa-da açyk fonda. Web sözbaşysy, giriş sahypasy we splash ekrany üçin. |
+| `logo-wordmark-light.svg` | Garaňky fon üçin, harplary ak. |
+| `logo-mark.svg` | Programma nyşany: ak tegelekde üçekli "d". Favicon, programma ikonkasy we kiçi logo üçin. |
+| `logo-badge.svg` | Tegelek nyşan: ak tegelekde doly logo. Sosial ulgamlarda profil suraty üçin. |
 
 ## Reňkler
 
 | Token | Açyk | Garaňky | Ulanylyşy |
 |---|---|---|---|
-| `brand` | `#E60023` | `#E60023` | logo, esasy düwmeler, bahalar, işjeň nyşanlar |
-| `brand-hover` | `#AD081B` | `#FF3355` | basylanda |
+| `brand` | `#D7263D` | `#E8455A` | logodaky "HOUSE" gyzyly: esasy düwmeler, bahalar, işjeň nyşanlar |
+| `brand-hover` | `#B01E31` | `#FF5A6E` | basylanda |
+| `ink` | `#262B2F` | `#F5F5F5` | logodaky harplaryň reňki, sözbaşylar |
 | `bg` | `#FFFFFF` | `#111111` | sahypa |
 | `surface` | `#EFEFEF` | `#262626` | çipler, giriş meýdanlary, ikinji düwmeler |
 | `card` | `#FFFFFF` | `#1A1A1A` | kartoçkalar |
-| `text` | `#111111` | `#F5F5F5` | esasy tekst |
+| `text` | `#262B2F` | `#F5F5F5` | esasy tekst |
 | `muted` | `#767676` | `#A8A8A8` | goşmaça tekst |
 | `border` | `#E5E5E5` | `#333333` | çyzyklar |
 | `gold` | `#F5B400` | `#F5B400` | ýyldyzlar we 1-nji orun |

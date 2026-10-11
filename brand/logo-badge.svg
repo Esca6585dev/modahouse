@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="moda HOUSE">
+  <!-- round badge like the owner's original: white disc with dark ring -->
+  <circle cx="100" cy="100" r="96" fill="#FFFFFF" stroke="#262B2F" stroke-width="5"/>
+  <g transform="translate(23 55) scale(0.55)">
+    <g fill="none" stroke="#262B2F" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 110 V76 A16 16 0 0 1 46 76 V110 M46 76 A16 16 0 0 1 78 76 V110"/>
+      <circle cx="114" cy="85" r="24"/>
+      <circle cx="176" cy="85" r="24"/>
+      <path d="M200 110 V38"/>
+      <circle cx="238" cy="85" r="24"/>
+      <path d="M262 62 V110"/>
+    </g>
+    <path d="M184 30 L200 15 L216 30" fill="none" stroke="#D7263D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="264" y="147" text-anchor="end" font-family="Montserrat, 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="2.5" fill="#D7263D">HOUSE</text>
+  </g>
+</svg>
