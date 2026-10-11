@@ -13,6 +13,7 @@ import '../state/providers.dart';
 import '../widgets/avatar.dart';
 import '../widgets/board_form.dart';
 import '../widgets/states.dart';
+import 'business_screens.dart';
 import 'create_screen.dart' show pickImage;
 
 final _usernameRe = RegExp(r'^[a-z0-9._]{3,30}$');
@@ -37,6 +38,8 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 _AvatarCard(me: me),
                 _ProfileCard(me: me),
+                BusinessSettingsCard(me: me),
+                const _ShopLinksCard(),
                 const _PasswordCard(),
                 const _LogoutCard(),
               ],
@@ -398,4 +401,30 @@ class _LogoutCard extends ConsumerWidget {
       ),
     ),
   );
+}
+
+/// Quick links: my orders, cart.
+class _ShopLinksCard extends StatelessWidget {
+  const _ShopLinksCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    Widget link(IconData icon, String label, String path) => ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: p.text),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      trailing: Icon(Icons.chevron_right_rounded, color: p.muted),
+      onTap: () => context.push(path),
+    );
+    return _Card(
+      title: S.myOrders,
+      child: Column(
+        children: [
+          link(Icons.receipt_long_outlined, S.myOrders, '/orders'),
+          link(Icons.shopping_bag_outlined, S.cart, '/cart'),
+        ],
+      ),
+    );
+  }
 }

@@ -13,10 +13,12 @@ import '../state/paged_controller.dart';
 import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/avatar.dart';
+import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
+import '../widgets/top_actions.dart';
 
-String notificationText(NotificationType type) {
-  switch (type) {
+String notificationText(Notification n) {
+  switch (n.type) {
     case NotificationType.like:
       return S.notifLike;
     case NotificationType.comment:
@@ -25,6 +27,13 @@ String notificationText(NotificationType type) {
       return S.notifSave;
     case NotificationType.follow:
       return S.notifFollow;
+    case NotificationType.order:
+      return S.notifOrder;
+    case NotificationType.orderStatus:
+      // The pill below shows the order's current status.
+      return S.notifOrderStatus;
+    case NotificationType.review:
+      return S.notifReview;
     case NotificationType.unknown:
       return '';
   }
@@ -37,7 +46,10 @@ class NotificationsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userId = ref.watch(currentUserIdProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text(S.notifications)),
+      appBar: AppBar(
+        title: const Text(S.notifications),
+        actions: [if (userId != null) const CartButton()],
+      ),
       body: userId == null
           ? const LoginPrompt(
               text: S.loginPromptNotifications,
@@ -157,7 +169,13 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final pin = n.pin;
+    final order = n.order;
     final profilePath = '/user/${Uri.encodeComponent(n.actor.username)}';
+    final target = order != null
+        ? '/orders/${order.id}'
+        : pin != null
+        ? '/pin/${pin.id}'
+        : profilePath;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -167,8 +185,7 @@ class _NotificationTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () =>
-              context.push(pin != null ? '/pin/${pin.id}' : profilePath),
+          onTap: () => context.push(target),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
@@ -192,11 +209,31 @@ class _NotificationTile extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
-                            TextSpan(text: ' ${notificationText(n.type)}'),
+                            TextSpan(text: ' ${notificationText(n)}'),
                           ],
                         ),
                         style: const TextStyle(fontSize: 15, height: 1.3),
                       ),
+                      if (order != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 2),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              OrderStatusPill(status: order.status),
+                              Text(
+                                '${S.orderNumber(order.id)} · ${formatPrice(order.total)}',
+                                style: TextStyle(
+                                  color: p.muted,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       if (pin != null && pin.title.isNotEmpty)
                         Text(
                           pin.title,
@@ -212,7 +249,7 @@ class _NotificationTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (pin != null) ...[
+                if (pin != null && pin.imageUrl.isNotEmpty) ...[
                   const SizedBox(width: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),

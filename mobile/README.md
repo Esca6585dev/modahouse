@@ -71,7 +71,7 @@ flutter build appbundle --release --dart-define=API_URL=https://api.example.com
 
 ```bash
 flutter analyze   # ýalňyşlyk we duýduryş bolmaly däl
-flutter test      # JSON modelleri, API ýalňyşlyklary, pin kartoçkasy, giriş formasy
+flutter test      # JSON modelleri (v1 we v2), API ýalňyşlyklary, haryt we Top 10 kartoçkalary, giriş formasy
 ```
 
 Web görnüşinde barlamak hem mümkin (meselem, brauzer bilen awtomatik synag üçin):
@@ -85,9 +85,10 @@ hemişe açyk bolýar, bu bolsa Playwright ýaly gurallar bilen düwmeleri tapma
 
 ## Programma nyşany
 
-Nyşan aksent reňkinde (`#d6336c`) ak "M" harpy. PNG faýllary goşmaça
-kitaphanasyz döredilýär, soňra `flutter_launcher_icons` olary Android ölçeglerine
-öwürýär:
+Nyşan `brand/logo-mark.svg` esasynda çyzylýar: ak tegelekde gara (`#262B2F`)
+"d" harpy we onuň üstünde gyzyl (`#D7263D`) öý üçegi. Programmanyň içindäki
+logo (`assets/brand/`) "moda HOUSE" ýazgysy. PNG faýllary goşmaça kitaphanasyz
+döredilýär, soňra `flutter_launcher_icons` olary Android ölçeglerine öwürýär:
 
 ```bash
 python3 tool/make_icon.py --web     # assets/icon/*.png we web/icons/*.png
@@ -108,15 +109,19 @@ mobile/
 │   │   └── material_tk.dart   # Flutter-iň öz düwmeleri üçin türkmençe ýazgylar
 │   ├── core/                  # Dio müşderisi, ApiException, tema, format, SnackBar
 │   ├── models/                # UserBrief, Profile, Me, Pin, Board, Comment,
-│   │                          # Notification, Category, Page<T>
+│   │                          # Notification, Category, Page<T>, Business,
+│   │                          # Product, Cart, Order, Review, Story, TopEntry
 │   ├── data/                  # repozitoriýalar: auth, users, pins, boards,
-│   │                          # comments, notifications
+│   │                          # comments, notifications, business, cart,
+│   │                          # orders, reviews, stories
 │   ├── state/                 # Riverpod: giriş ýagdaýy, bildiriş sanawy,
 │   │                          # sahypalaýyn ýükleýji, pin üýtgeşmeleri
 │   ├── widgets/               # pin kartoçkasy, masonry tor, sakla paneli,
 │   │                          # awatar, tagta kartoçkasy, ýagdaý görnüşleri
-│   └── screens/               # baş sahypa, gözleg, pin, döret, profil, tagta,
-│                              # bildirişler, giriş/hasaba alyş, sazlamalar
+│   └── screens/               # baş sahypa (story), gözleg, pin/haryt, döret,
+│                              # Top 10, dükanlar, profil, sebet, sargyt,
+│                              # sargytlarym, biznes paneli, bildirişler,
+│                              # giriş/hasaba alyş, sazlamalar
 ├── test/                      # unit we widget testleri
 ├── assets/icon/               # nyşanyň çeşme PNG faýllary
 ├── tool/make_icon.py          # nyşan döredijisi

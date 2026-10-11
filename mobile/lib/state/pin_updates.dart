@@ -35,6 +35,14 @@ class PinUpdatesNotifier extends Notifier<PinUpdates> {
     created: state.created,
   );
 
+  /// Asks every feed to reload (e.g. the account switched to personal and
+  /// products became ideas).
+  void reloadFeeds() => state = PinUpdates(
+    updated: const {},
+    deleted: state.deleted,
+    created: state.created + 1,
+  );
+
   void created(Pin pin) => state = PinUpdates(
     updated: {...state.updated, pin.id: pin},
     deleted: state.deleted,

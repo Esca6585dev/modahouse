@@ -71,8 +71,37 @@ String compactCount(int n) {
   return '${one(n / 1000000)} ${S.million}';
 }
 
+/// 12450 → "12 450".
+String groupDigits(int n) {
+  final neg = n < 0;
+  final digits = n.abs().toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) buf.write(' ');
+    buf.write(digits[i]);
+  }
+  return neg ? '-$buf' : buf.toString();
+}
+
+/// 450 → "450 TMT", 1250 → "1 250 TMT".
+String formatPrice(int amount) => '${groupDigits(amount)} ${S.currency}';
+
+/// Full numbers up to 99 999, then compact ("120 müň").
+String statCount(int n) => n < 100000 ? groupDigits(n) : compactCount(n);
+
+/// "05.10.2026 14:30" in local time.
+String formatDateTime(DateTime? d) {
+  if (d == null) return '';
+  final l = d.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${two(l.day)}.${two(l.month)}.${l.year} ${two(l.hour)}:${two(l.minute)}';
+}
+
+/// Rating with one decimal and a comma: 4.66 → "4,7".
+String formatRating(double r) => r.toStringAsFixed(1).replaceAll('.', ',');
+
 const _avatarColors = <Color>[
-  Color(0xFFD6336C),
+  Color(0xFFD7263D),
   Color(0xFF7A3E2B),
   Color(0xFFC98A10),
   Color(0xFF1B4965),

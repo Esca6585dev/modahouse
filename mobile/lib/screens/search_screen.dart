@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme.dart';
+import '../data/pins_repository.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/auth.dart';
@@ -11,7 +12,11 @@ import '../state/paged_controller.dart';
 import '../state/providers.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/pin_grid.dart';
+import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
+import 'shops_screen.dart';
+
+enum SearchTab { ideas, products, shops }
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key, this.initialQuery, this.initialCategory});
@@ -27,7 +32,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   late final _text = TextEditingController(text: widget.initialQuery ?? '');
   late String _query = widget.initialQuery?.trim() ?? '';
   late String? _category = widget.initialCategory;
+  SearchTab _tab = SearchTab.ideas;
+  BusinessCategory? _shopCategory;
   late PagedController<Pin> _results = _make();
+  late PagedController<BusinessCard> _shops = _makeShops();
   final _focus = FocusNode();
   Timer? _debounce;
 
@@ -35,13 +43,33 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final repo = ref.read(pinsRepositoryProvider);
     final q = _query;
     final c = _category;
-    return PagedController((page) => repo.list(q: q, category: c, page: page));
+    final type = _tab == SearchTab.products ? PinType.products : PinType.any;
+    return PagedController(
+      (page) => repo.list(q: q, category: c, type: type, page: page),
+    );
+  }
+
+  PagedController<BusinessCard> _makeShops() {
+    final repo = ref.read(businessRepositoryProvider);
+    final q = _query;
+    final c = _shopCategory;
+    return PagedController(
+      (page) => repo.list(q: q, category: c, page: page),
+      autoload: _tab == SearchTab.shops,
+    );
   }
 
   void _reset() {
     final old = _results;
-    setState(() => _results = _make());
-    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+    final oldShops = _shops;
+    setState(() {
+      _results = _make();
+      _shops = _makeShops();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      old.dispose();
+      oldShops.dispose();
+    });
   }
 
   @override
@@ -77,6 +105,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     _text.dispose();
     _focus.dispose();
     _results.dispose();
+    _shops.dispose();
     super.dispose();
   }
 
@@ -91,7 +120,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         bottom: false,
         child: RefreshIndicator(
           color: AppPalette.accent,
-          onRefresh: () => _results.refresh(),
+          onRefresh: () =>
+              _tab == SearchTab.shops ? _shops.refresh() : _results.refresh(),
           child: CustomScrollView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             physics: const AlwaysScrollableScrollPhysics(),
@@ -111,7 +141,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     onChanged: _onChanged,
                     onSubmitted: _submit,
                     decoration: InputDecoration(
-                      hintText: S.searchHint,
+                      hintText: _tab == SearchTab.shops
+                          ? S.searchShopsHint
+                          : S.searchHint,
                       filled: true,
                       fillColor: p.surface,
                       prefixIcon: Icon(Icons.search_rounded, color: p.muted),
@@ -147,24 +179,56 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
               SliverToBoxAdapter(
-                child: CategoryChips(
-                  selected: _category,
-                  onSelected: (c) {
-                    if (c == _category) return;
-                    _category = c;
-                    _reset();
-                  },
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ChoiceChips<SearchTab>(
+                    values: SearchTab.values,
+                    selected: _tab,
+                    brand: true,
+                    label: (t) => switch (t) {
+                      SearchTab.ideas => S.searchTabIdeas,
+                      SearchTab.products => S.feedProducts,
+                      SearchTab.shops => S.shops,
+                    },
+                    onSelected: (t) {
+                      if (t == _tab) return;
+                      _tab = t;
+                      _reset();
+                    },
+                  ),
                 ),
+              ),
+              SliverToBoxAdapter(
+                child: _tab == SearchTab.shops
+                    ? BusinessCategoryChips(
+                        selected: _shopCategory,
+                        onSelected: (c) {
+                          if (c == _shopCategory) return;
+                          _shopCategory = c;
+                          _reset();
+                        },
+                      )
+                    : CategoryChips(
+                        selected: _category,
+                        onSelected: (c) {
+                          if (c == _category) return;
+                          _category = c;
+                          _reset();
+                        },
+                      ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              PinGridSliver(
-                controller: _results,
-                empty: const EmptyView(
-                  icon: Icons.search_off_rounded,
-                  title: S.noResultsTitle,
-                  text: S.noResultsText,
+              if (_tab == SearchTab.shops)
+                ShopListSliver(controller: _shops)
+              else
+                PinGridSliver(
+                  controller: _results,
+                  empty: const EmptyView(
+                    icon: Icons.search_off_rounded,
+                    title: S.noResultsTitle,
+                    text: S.noResultsText,
+                  ),
                 ),
-              ),
             ],
           ),
         ),

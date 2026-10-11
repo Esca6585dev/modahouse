@@ -1,7 +1,17 @@
 import 'json.dart';
+import 'order.dart';
 import 'user.dart';
 
-enum NotificationType { like, comment, follow, save, unknown }
+enum NotificationType {
+  like,
+  comment,
+  follow,
+  save,
+  order,
+  orderStatus,
+  review,
+  unknown,
+}
 
 NotificationType notificationTypeFrom(String v) {
   switch (v) {
@@ -13,6 +23,12 @@ NotificationType notificationTypeFrom(String v) {
       return NotificationType.follow;
     case 'save':
       return NotificationType.save;
+    case 'order':
+      return NotificationType.order;
+    case 'order_status':
+      return NotificationType.orderStatus;
+    case 'review':
+      return NotificationType.review;
     default:
       return NotificationType.unknown;
   }
@@ -37,6 +53,25 @@ class NotificationPin {
   final String imageUrl;
 }
 
+/// The order attached to `order` / `order_status` notifications.
+class NotificationOrder {
+  const NotificationOrder({
+    required this.id,
+    required this.status,
+    this.total = 0,
+  });
+
+  factory NotificationOrder.fromJson(Json j) => NotificationOrder(
+    id: asInt(j['id']),
+    status: OrderStatus.parse(asString(j['status'])),
+    total: asInt(j['total']),
+  );
+
+  final int id;
+  final OrderStatus status;
+  final int total;
+}
+
 /// Named after the API type. Flutter also has a `Notification` widget class,
 /// so files that use both import material with `hide Notification`.
 class Notification {
@@ -46,6 +81,7 @@ class Notification {
     required this.read,
     required this.actor,
     this.pin,
+    this.order,
     this.createdAt,
   });
 
@@ -55,6 +91,9 @@ class Notification {
     read: asBool(j['read']),
     actor: UserBrief.fromJson(asJson(j['actor'])),
     pin: j['pin'] is Map ? NotificationPin.fromJson(asJson(j['pin'])) : null,
+    order: j['order'] is Map
+        ? NotificationOrder.fromJson(asJson(j['order']))
+        : null,
     createdAt: asDate(j['createdAt']),
   );
 
@@ -63,5 +102,6 @@ class Notification {
   final bool read;
   final UserBrief actor;
   final NotificationPin? pin;
+  final NotificationOrder? order;
   final DateTime? createdAt;
 }

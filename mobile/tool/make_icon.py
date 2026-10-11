@@ -1,7 +1,16 @@
 #!/usr/bin/env python3
-"""Generates the ModaHouse launcher icon PNGs (accent #d6336c, white "M").
+"""Generates the ModaHouse launcher icon PNGs from the brand mark.
 
-No third-party packages: a tiny scanline rasterizer + zlib PNG writer.
+The mark (brand/logo-mark.svg, viewBox 0 0 100 100) is a white circle with a
+dark #262B2F ring, a dark "d" (round bowl + stem) and a red #D7263D roof:
+
+    ring:  circle cx=50 cy=50 r=48, stroke 4
+    bowl:  circle cx=44 cy=62 r=15, stroke 7
+    stem:  M59 77 V33, stroke 7
+    roof:  M47 25 L59 14 L71 25, stroke 6.5 (red)
+
+No third-party packages: every stroke is rendered as a signed distance field
+with 1px anti-aliasing and composited, then written with a zlib PNG writer.
 
     python3 tool/make_icon.py            # writes assets/icon/*.png
     python3 tool/make_icon.py --mipmaps  # also writes android/app/src/main/res/mipmap-*/ic_launcher.png
@@ -16,83 +25,98 @@ import struct
 import sys
 import zlib
 
-ACCENT = (0xD6, 0x33, 0x6C)
+INK = (0x26, 0x2B, 0x2F)
+BRAND = (0xD7, 0x26, 0x3D)
 WHITE = (255, 255, 255)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Bold "M" outline in a unit box (x right, y down).
-M_SHAPE = [
-    (0.00, 1.00), (0.00, 0.00), (0.22, 0.00), (0.50, 0.42), (0.78, 0.00),
-    (1.00, 0.00), (1.00, 1.00), (0.79, 1.00), (0.79, 0.36), (0.57, 0.68),
-    (0.43, 0.68), (0.21, 0.36), (0.21, 1.00),
+# The "d" with its roof, in SVG units: (kind, color, params, stroke width).
+GLYPH = [
+    ('ring', INK, (44, 62, 15), 7.0),
+    ('line', INK, [(59, 77), (59, 33)], 7.0),
+    ('line', BRAND, [(47, 25), (59, 14), (71, 25)], 6.5),
 ]
+# Visual center of the glyph (so it can be centered without the outer ring).
+GLYPH_CENTER = (50, 47.5)
+OUTER_RING = ('ring', INK, (50, 50, 48), 4.0)
 
 
-def polygon_coverage(size, poly, sub=4):
-    """Anti-aliased coverage (0..1) of a polygon given in pixel coordinates."""
-    cov = [[0.0] * size for _ in range(size)]
-    n = len(poly)
-    for py in range(size):
-        row = cov[py]
-        for s in range(sub):
-            y = py + (s + 0.5) / sub
-            xs = []
-            for i in range(n):
-                x1, y1 = poly[i]
-                x2, y2 = poly[(i + 1) % n]
-                if (y1 <= y < y2) or (y2 <= y < y1):
-                    xs.append(x1 + (y - y1) * (x2 - x1) / (y2 - y1))
-            xs.sort()
-            for a, b in zip(xs[0::2], xs[1::2]):
-                a = max(0.0, a)
-                b = min(float(size), b)
-                if b <= a:
-                    continue
-                ia, ib = int(a), int(math.ceil(b))
-                for px in range(ia, min(ib, size)):
-                    left = max(a, px)
-                    right = min(b, px + 1)
-                    if right > left:
-                        row[px] += (right - left) / sub
-    return cov
+def seg_dist(px, py, ax, ay, bx, by):
+    dx, dy = bx - ax, by - ay
+    l2 = dx * dx + dy * dy
+    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
+    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
 
 
-def m_polygon(size, box):
-    """The M scaled into box=(x0, y0, w, h) of a size x size canvas."""
-    x0, y0, w, h = box
-    return [(x0 + x * w, y0 + y * h) for x, y in M_SHAPE]
+def shape_coverage(shape, px, py):
+    kind, _, params, half = shape
+    if kind == 'ring':
+        cx, cy, r = params
+        d = abs(math.hypot(px - cx, py - cy) - r)
+    else:
+        d = min(seg_dist(px, py, *a, *b) for a, b in zip(params, params[1:]))
+    return max(0.0, min(1.0, half - d + 0.5))
 
 
-def render(size, background, m_scale):
-    """background: 'circle', 'square' (full bleed) or None (transparent)."""
-    m_w = size * m_scale
-    m_h = m_w * 0.86
-    poly = m_polygon(size, ((size - m_w) / 2, (size - m_h) / 2, m_w, m_h))
-    m_cov = polygon_coverage(size, poly)
+def transform(shapes, unit, ox, oy):
+    out = []
+    for kind, color, params, width in shapes:
+        if kind == 'ring':
+            cx, cy, r = params
+            p = (ox + cx * unit, oy + cy * unit, r * unit)
+        else:
+            p = [(ox + x * unit, oy + y * unit) for x, y in params]
+        out.append((kind, color, p, width * unit / 2))
+    return out
+
+
+def render(size, background, scale=1.0, ring=True):
+    """background: 'circle' (white disc), 'square' (full-bleed white) or None.
+
+    scale: size of the glyph relative to the SVG (1.0 = as in logo-mark.svg).
+    ring:  draw the dark outer ring (only with the circle background).
+    """
+    unit = size / 100.0 * scale
+    # Center the glyph's visual center on the canvas.
+    gx, gy = GLYPH_CENTER
+    ox = size / 2 - gx * unit
+    oy = size / 2 - gy * unit
+    if background == 'circle' and scale == 1.0:
+        ox = oy = 0.0  # exactly the SVG layout
+    shapes = transform(GLYPH, unit, ox, oy)
+    if background == 'circle' and ring:
+        shapes = transform([OUTER_RING], size / 100.0, 0, 0) + shapes
     c = size / 2
-    r = size / 2 - 0.5
+    r = size / 2
     pixels = bytearray()
     for y in range(size):
-        pixels.append(0)  # filter: none
+        pixels.append(0)  # PNG filter: none
+        py = y + 0.5
         for x in range(size):
+            px = x + 0.5
             if background == 'circle':
-                d = math.hypot(x + 0.5 - c, y + 0.5 - c)
-                bg_a = max(0.0, min(1.0, r - d + 0.5))
+                a = max(0.0, min(1.0, r - math.hypot(px - c, py - c) + 0.5))
             elif background == 'square':
-                bg_a = 1.0
+                a = 1.0
             else:
-                bg_a = 0.0
-            m = min(1.0, m_cov[y][x])
-            # white M over the background
-            a = m + bg_a * (1 - m)
+                a = 0.0
+            rgb = [float(v) for v in WHITE]
+            for shape in shapes:
+                cov = shape_coverage(shape, px, py)
+                if cov <= 0:
+                    continue
+                if background == 'circle':
+                    cov = min(cov, a)
+                color = shape[1]
+                # "over" compositing with premultiplied math
+                na = cov + a * (1 - cov)
+                if na > 0:
+                    rgb = [(color[i] * cov + rgb[i] * a * (1 - cov)) / na for i in range(3)]
+                a = na
             if a <= 0:
                 pixels += b'\x00\x00\x00\x00'
                 continue
-            rgb = [
-                round((WHITE[i] * m + ACCENT[i] * bg_a * (1 - m)) / a)
-                for i in range(3)
-            ]
-            pixels += bytes(rgb) + bytes([round(a * 255)])
+            pixels += bytes(round(v) for v in rgb) + bytes([round(a * 255)])
     return png(size, size, bytes(pixels))
 
 
@@ -115,23 +139,25 @@ def write(path, data):
 
 def main():
     icon_dir = os.path.join(ROOT, 'assets', 'icon')
-    # Legacy icon: accent circle with a white M (same as the in-app logo).
-    write(os.path.join(icon_dir, 'icon.png'), render(512, 'circle', 0.50))
-    # Adaptive icon foreground: M only, inside the 66% safe zone.
-    write(os.path.join(icon_dir, 'icon_foreground.png'), render(432, None, 0.50))
+    # Legacy icon: the full mark (white disc, dark ring, "d" and red roof).
+    write(os.path.join(icon_dir, 'icon.png'), render(512, 'circle'))
+    # Adaptive icon foreground: the "d" and roof on transparent, drawn over the
+    # white adaptive_icon_background; the launcher mask replaces the ring.
+    write(os.path.join(icon_dir, 'icon_foreground.png'), render(432, None, 1.0))
 
     if '--mipmaps' in sys.argv:
         res = os.path.join(ROOT, 'android', 'app', 'src', 'main', 'res')
         for name, px in [('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)]:
-            write(os.path.join(res, f'mipmap-{name}', 'ic_launcher.png'), render(px, 'circle', 0.50))
+            write(os.path.join(res, f'mipmap-{name}', 'ic_launcher.png'), render(px, 'circle'))
 
     if '--web' in sys.argv:
         web = os.path.join(ROOT, 'web')
-        write(os.path.join(web, 'favicon.png'), render(32, 'circle', 0.50))
-        write(os.path.join(web, 'icons', 'Icon-192.png'), render(192, 'circle', 0.50))
-        write(os.path.join(web, 'icons', 'Icon-512.png'), render(512, 'circle', 0.50))
-        write(os.path.join(web, 'icons', 'Icon-maskable-192.png'), render(192, 'square', 0.40))
-        write(os.path.join(web, 'icons', 'Icon-maskable-512.png'), render(512, 'square', 0.40))
+        write(os.path.join(web, 'favicon.png'), render(32, 'circle'))
+        write(os.path.join(web, 'icons', 'Icon-192.png'), render(192, 'circle'))
+        write(os.path.join(web, 'icons', 'Icon-512.png'), render(512, 'circle'))
+        # Maskable icons: full-bleed white, glyph inside the 80% safe zone.
+        write(os.path.join(web, 'icons', 'Icon-maskable-192.png'), render(192, 'square', 0.95))
+        write(os.path.join(web, 'icons', 'Icon-maskable-512.png'), render(512, 'square', 0.95))
 
 
 if __name__ == '__main__':

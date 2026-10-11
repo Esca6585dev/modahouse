@@ -5,18 +5,26 @@ import 'package:go_router/go_router.dart';
 import 'core/snack.dart';
 import 'l10n/strings.dart';
 import 'screens/auth_screens.dart';
+import 'models/models.dart';
 import 'screens/board_screen.dart';
+import 'screens/business_screens.dart';
+import 'screens/cart_screens.dart';
 import 'screens/create_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
+import 'screens/orders_screens.dart';
 import 'screens/pin_detail_screen.dart';
 import 'screens/pin_edit_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shell.dart';
+import 'screens/shops_screen.dart';
+import 'screens/story_screens.dart';
+import 'screens/top_screen.dart';
 import 'screens/user_list_screen.dart';
 import 'state/auth.dart';
+import 'widgets/cart_flow.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -57,10 +65,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(
-                path: '/notifications',
-                builder: (_, _) => const NotificationsScreen(),
-              ),
+              GoRoute(path: '/top', builder: (_, _) => const TopScreen()),
             ],
           ),
           StatefulShellBranch(
@@ -74,6 +79,74 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
+        path: '/notifications',
+        builder: (_, _) => const NotificationsScreen(),
+      ),
+      GoRoute(
+        path: '/cart',
+        redirect: requireLogin,
+        builder: (_, _) => const CartScreen(),
+      ),
+      GoRoute(
+        path: '/checkout',
+        redirect: requireLogin,
+        builder: (_, s) => CheckoutScreen(
+          args: s.extra is CheckoutArgs
+              ? s.extra! as CheckoutArgs
+              : const CheckoutArgs(),
+        ),
+      ),
+      GoRoute(
+        path: '/orders',
+        redirect: requireLogin,
+        builder: (_, _) => const MyOrdersScreen(),
+      ),
+      GoRoute(
+        path: '/orders/:id',
+        redirect: requireLogin,
+        builder: (_, s) => OrderDetailScreen(
+          id: _intParam(s, 'id') ?? 0,
+          initial: s.extra is Order ? s.extra! as Order : null,
+        ),
+      ),
+      GoRoute(
+        path: '/business',
+        redirect: requireLogin,
+        builder: (_, _) => const DashboardScreen(),
+      ),
+      GoRoute(
+        path: '/business/setup',
+        redirect: requireLogin,
+        builder: (_, _) => const BusinessSetupScreen(),
+      ),
+      GoRoute(path: '/shops', builder: (_, _) => const ShopsScreen()),
+      GoRoute(
+        path: '/story/new',
+        redirect: requireLogin,
+        builder: (_, _) => const AddStoryScreen(),
+      ),
+      GoRoute(
+        path: '/stories/:username',
+        pageBuilder: (_, s) => CustomTransitionPage(
+          key: s.pageKey,
+          opaque: true,
+          transitionDuration: const Duration(milliseconds: 220),
+          transitionsBuilder: (_, a, _, child) => FadeTransition(
+            opacity: a,
+            child: ScaleTransition(
+              scale: Tween(begin: 0.94, end: 1.0).animate(a),
+              child: child,
+            ),
+          ),
+          child: StoryViewerScreen(
+            username: s.pathParameters['username'] ?? '',
+            args: s.extra is StoryViewerArgs
+                ? s.extra! as StoryViewerArgs
+                : null,
+          ),
+        ),
+      ),
+      GoRoute(
         path: '/pin/:id',
         builder: (_, s) => PinDetailScreen(id: _intParam(s, 'id') ?? 0),
       ),
@@ -84,8 +157,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/user/:username',
-        builder: (_, s) =>
-            UserProfileScreen(username: s.pathParameters['username'] ?? ''),
+        builder: (_, s) => UserProfileScreen(
+          username: s.pathParameters['username'] ?? '',
+          initialTab: s.uri.queryParameters['tab'],
+        ),
       ),
       GoRoute(
         path: '/user/:username/followers',

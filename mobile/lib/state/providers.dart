@@ -4,9 +4,14 @@ import '../core/api_client.dart';
 import '../core/token_storage.dart';
 import '../data/auth_repository.dart';
 import '../data/boards_repository.dart';
+import '../data/business_repository.dart';
+import '../data/cart_repository.dart';
 import '../data/comments_repository.dart';
 import '../data/notifications_repository.dart';
+import '../data/orders_repository.dart';
 import '../data/pins_repository.dart';
+import '../data/reviews_repository.dart';
+import '../data/stories_repository.dart';
 import '../data/users_repository.dart';
 import '../models/models.dart';
 import 'auth.dart';
@@ -41,6 +46,21 @@ final commentsRepositoryProvider = Provider(
 );
 final notificationsRepositoryProvider = Provider(
   (ref) => NotificationsRepository(ref.watch(apiClientProvider)),
+);
+final businessRepositoryProvider = Provider(
+  (ref) => BusinessRepository(ref.watch(apiClientProvider)),
+);
+final reviewsRepositoryProvider = Provider(
+  (ref) => ReviewsRepository(ref.watch(apiClientProvider)),
+);
+final cartRepositoryProvider = Provider(
+  (ref) => CartRepository(ref.watch(apiClientProvider)),
+);
+final ordersRepositoryProvider = Provider(
+  (ref) => OrdersRepository(ref.watch(apiClientProvider)),
+);
+final storiesRepositoryProvider = Provider(
+  (ref) => StoriesRepository(ref.watch(apiClientProvider)),
 );
 
 /// Categories rarely change: load once and keep.

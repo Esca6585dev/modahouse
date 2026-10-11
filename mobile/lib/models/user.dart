@@ -1,3 +1,4 @@
+import 'business.dart';
 import 'json.dart';
 
 class UserBrief {
@@ -6,6 +7,8 @@ class UserBrief {
     required this.username,
     required this.name,
     this.avatarUrl = '',
+    this.isBusiness = false,
+    this.verified = false,
   });
 
   factory UserBrief.fromJson(Json j) => UserBrief(
@@ -13,6 +16,8 @@ class UserBrief {
     username: asString(j['username']),
     name: asString(j['name']),
     avatarUrl: asString(j['avatarUrl']),
+    isBusiness: asBool(j['isBusiness']),
+    verified: asBool(j['verified']),
   );
 
   final int id;
@@ -21,6 +26,12 @@ class UserBrief {
 
   /// Relative path, empty when the user has no avatar.
   final String avatarUrl;
+
+  /// Instagram-style professional (shop) account.
+  final bool isBusiness;
+
+  /// Blue check next to the name.
+  final bool verified;
 
   String get displayName => name.isNotEmpty ? name : username;
 
@@ -38,6 +49,8 @@ class Profile extends UserBrief {
     required super.username,
     required super.name,
     super.avatarUrl,
+    super.isBusiness,
+    super.verified,
     this.bio = '',
     this.followersCount = 0,
     this.followingCount = 0,
@@ -45,6 +58,9 @@ class Profile extends UserBrief {
     this.isFollowing = false,
     this.isMe = false,
     this.createdAt,
+    this.hasStory = false,
+    this.storySeen = false,
+    this.business,
   });
 
   factory Profile.fromJson(Json j) => Profile(
@@ -52,6 +68,8 @@ class Profile extends UserBrief {
     username: asString(j['username']),
     name: asString(j['name']),
     avatarUrl: asString(j['avatarUrl']),
+    isBusiness: asBool(j['isBusiness']),
+    verified: asBool(j['verified']),
     bio: asString(j['bio']),
     followersCount: asInt(j['followersCount']),
     followingCount: asInt(j['followingCount']),
@@ -59,6 +77,11 @@ class Profile extends UserBrief {
     isFollowing: asBool(j['isFollowing']),
     isMe: asBool(j['isMe']),
     createdAt: asDate(j['createdAt']),
+    hasStory: asBool(j['hasStory']),
+    storySeen: asBool(j['storySeen']),
+    business: j['business'] is Map
+        ? Business.fromJson(asJson(j['business']))
+        : null,
   );
 
   final String bio;
@@ -69,19 +92,32 @@ class Profile extends UserBrief {
   final bool isMe;
   final DateTime? createdAt;
 
-  Profile copyWith({bool? isFollowing, int? followersCount}) => Profile(
-    id: id,
-    username: username,
-    name: name,
-    avatarUrl: avatarUrl,
-    bio: bio,
-    followersCount: followersCount ?? this.followersCount,
-    followingCount: followingCount,
-    pinsCount: pinsCount,
-    isFollowing: isFollowing ?? this.isFollowing,
-    isMe: isMe,
-    createdAt: createdAt,
-  );
+  /// The user has an active (24 h) story; [storySeen] = the viewer saw it all.
+  final bool hasStory;
+  final bool storySeen;
+
+  /// Shop details, set when [isBusiness].
+  final Business? business;
+
+  Profile copyWith({bool? isFollowing, int? followersCount, bool? storySeen}) =>
+      Profile(
+        id: id,
+        username: username,
+        name: name,
+        avatarUrl: avatarUrl,
+        isBusiness: isBusiness,
+        verified: verified,
+        bio: bio,
+        followersCount: followersCount ?? this.followersCount,
+        followingCount: followingCount,
+        pinsCount: pinsCount,
+        isFollowing: isFollowing ?? this.isFollowing,
+        isMe: isMe,
+        createdAt: createdAt,
+        hasStory: hasStory,
+        storySeen: storySeen ?? this.storySeen,
+        business: business,
+      );
 }
 
 class Me extends Profile {
@@ -90,6 +126,8 @@ class Me extends Profile {
     required super.username,
     required super.name,
     super.avatarUrl,
+    super.isBusiness,
+    super.verified,
     super.bio,
     super.followersCount,
     super.followingCount,
@@ -97,6 +135,9 @@ class Me extends Profile {
     super.isFollowing,
     super.isMe = true,
     super.createdAt,
+    super.hasStory,
+    super.storySeen,
+    super.business,
     this.email = '',
   });
 
@@ -107,6 +148,8 @@ class Me extends Profile {
       username: p.username,
       name: p.name,
       avatarUrl: p.avatarUrl,
+      isBusiness: p.isBusiness,
+      verified: p.verified,
       bio: p.bio,
       followersCount: p.followersCount,
       followingCount: p.followingCount,
@@ -114,6 +157,9 @@ class Me extends Profile {
       isFollowing: p.isFollowing,
       isMe: true,
       createdAt: p.createdAt,
+      hasStory: p.hasStory,
+      storySeen: p.storySeen,
+      business: p.business,
       email: asString(j['email']),
     );
   }

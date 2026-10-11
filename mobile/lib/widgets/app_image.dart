@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -17,12 +18,17 @@ class AppImage extends ConsumerWidget {
     this.placeholder,
     this.fit = BoxFit.cover,
     this.semanticLabel,
+    this.cacheWidth,
   });
 
   final String url;
   final Color? placeholder;
   final BoxFit fit;
   final String? semanticLabel;
+
+  /// Decode raster images at this logical width (thumbnails). Saves memory
+  /// and gives the thumbnail its own decoded image.
+  final double? cacheWidth;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,6 +47,9 @@ class AppImage extends ConsumerWidget {
       ),
     );
 
+    final cache = cacheWidth == null
+        ? null
+        : (cacheWidth! * MediaQuery.devicePixelRatioOf(context)).round();
     final Widget image = isSvgUrl(full)
         ? SvgPicture.network(
             full,
@@ -52,12 +61,34 @@ class AppImage extends ConsumerWidget {
             semanticsLabel: semanticLabel,
             excludeFromSemantics: semanticLabel == null,
           )
+        // On the web the browser's HTTP cache already caches images, and
+        // cached_network_image's decoded images can be released while another
+        // screen still draws them (blank / broken tiles in CanvasKit).
+        : kIsWeb
+        ? Image.network(
+            full,
+            fit: fit,
+            width: double.infinity,
+            height: double.infinity,
+            cacheWidth: cache,
+            semanticLabel: semanticLabel,
+            excludeFromSemantics: semanticLabel == null,
+            frameBuilder: (context, child, frame, sync) => sync
+                ? child
+                : AnimatedOpacity(
+                    opacity: frame == null ? 0 : 1,
+                    duration: const Duration(milliseconds: 150),
+                    child: child,
+                  ),
+            errorBuilder: (context, e, _) => error(context, e, null),
+          )
         : CachedNetworkImage(
             imageUrl: full,
             fit: fit,
             width: double.infinity,
             height: double.infinity,
             fadeInDuration: const Duration(milliseconds: 150),
+            memCacheWidth: cache,
             placeholder: (_, _) => box,
             errorWidget: error,
           );

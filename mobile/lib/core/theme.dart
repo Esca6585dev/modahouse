@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens mirrored from `frontend/app/globals.css`.
+/// Design tokens from `brand/README.md` (ModaHouse design system).
 class AppPalette extends ThemeExtension<AppPalette> {
   const AppPalette({
     required this.bg,
@@ -10,6 +10,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     required this.text,
     required this.muted,
     required this.border,
+    required this.brandHover,
+    required this.success,
+    required this.tint,
   });
 
   final Color bg;
@@ -19,13 +22,42 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final Color text;
   final Color muted;
   final Color border;
+  final Color brandHover;
+  final Color success;
 
-  static const accent = Color(0xFFD6336C);
-  static const accentHover = Color(0xFFB8285A);
+  /// Very light brand-tinted background (info boxes, unread rows).
+  final Color tint;
+
+  /// Brand red: logo, primary buttons, prices, active icons.
+  static const accent = Color(0xFFD7263D);
+
+  /// Brand red on dark backgrounds.
+  static const accentDark = Color(0xFFE8455A);
+
+  /// Logo letters and headings (light mode text).
+  static const ink = Color(0xFF262B2F);
+  static const accentHover = Color(0xFFB01E31);
   static const onAccent = Colors.white;
-  static const danger = Color(0xFFE03131);
-  static const errorToast = Color(0xFFC92A2A);
+  static const danger = Color(0xFFD7263D);
+  static const errorToast = Color(0xFFB01E31);
+
+  /// Stars and the 1st place.
+  static const gold = Color(0xFFF5B400);
+  static const silver = Color(0xFFA7ADB7);
+  static const bronze = Color(0xFFCD7F32);
+  static const successLight = Color(0xFF1E8E3E);
+
+  /// Instagram story ring gradient.
+  static const storyGradient = [
+    Color(0xFFFEDA75),
+    Color(0xFFFA7E1E),
+    Color(0xFFD62976),
+    Color(0xFF962FBF),
+    Color(0xFF4F5BD5),
+  ];
+
   static const radius = 16.0;
+  static const cardRadius = 22.0;
   static const gutter = 16.0;
 
   static const light = AppPalette(
@@ -33,19 +65,25 @@ class AppPalette extends ThemeExtension<AppPalette> {
     surface: Color(0xFFEFEFEF),
     surface2: Color(0xFFE2E2E2),
     card: Color(0xFFFFFFFF),
-    text: Color(0xFF111111),
-    muted: Color(0xFF5F5F5F),
-    border: Color(0xFFDDDDDD),
+    text: Color(0xFF262B2F),
+    muted: Color(0xFF767676),
+    border: Color(0xFFE5E5E5),
+    brandHover: Color(0xFFB01E31),
+    success: Color(0xFF1E8E3E),
+    tint: Color(0xFFFDF0F2),
   );
 
   static const dark = AppPalette(
-    bg: Color(0xFF121212),
+    bg: Color(0xFF111111),
     surface: Color(0xFF262626),
     surface2: Color(0xFF333333),
-    card: Color(0xFF1C1C1C),
-    text: Color(0xFFF2F2F2),
+    card: Color(0xFF1A1A1A),
+    text: Color(0xFFF5F5F5),
     muted: Color(0xFFA8A8A8),
-    border: Color(0xFF383838),
+    border: Color(0xFF333333),
+    brandHover: Color(0xFFFF5A6E),
+    success: Color(0xFF4CC26A),
+    tint: Color(0xFF2A1418),
   );
 
   static AppPalette of(BuildContext context) =>
@@ -60,6 +98,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     Color? text,
     Color? muted,
     Color? border,
+    Color? brandHover,
+    Color? success,
+    Color? tint,
   }) => AppPalette(
     bg: bg ?? this.bg,
     surface: surface ?? this.surface,
@@ -68,6 +109,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
     text: text ?? this.text,
     muted: muted ?? this.muted,
     border: border ?? this.border,
+    brandHover: brandHover ?? this.brandHover,
+    success: success ?? this.success,
+    tint: tint ?? this.tint,
   );
 
   @override
@@ -81,6 +125,9 @@ class AppPalette extends ThemeExtension<AppPalette> {
       text: Color.lerp(text, other.text, t)!,
       muted: Color.lerp(muted, other.muted, t)!,
       border: Color.lerp(border, other.border, t)!,
+      brandHover: Color.lerp(brandHover, other.brandHover, t)!,
+      success: Color.lerp(success, other.success, t)!,
+      tint: Color.lerp(tint, other.tint, t)!,
     );
   }
 }
@@ -89,7 +136,9 @@ ThemeData buildTheme(Brightness brightness) {
   final p = brightness == Brightness.light ? AppPalette.light : AppPalette.dark;
   final scheme = ColorScheme(
     brightness: brightness,
-    primary: AppPalette.accent,
+    primary: brightness == Brightness.light
+        ? AppPalette.accent
+        : AppPalette.accentDark,
     onPrimary: AppPalette.onAccent,
     secondary: p.text,
     onSecondary: p.bg,
@@ -112,9 +161,9 @@ ThemeData buildTheme(Brightness brightness) {
   const btnSize = Size(64, 44);
   const btnPadding = EdgeInsets.symmetric(horizontal: 18);
 
-  OutlineInputBorder field(Color c) => OutlineInputBorder(
+  OutlineInputBorder field(Color c, [double w = 1.5]) => OutlineInputBorder(
     borderRadius: BorderRadius.circular(AppPalette.radius),
-    borderSide: BorderSide(color: c, width: 2),
+    borderSide: BorderSide(color: c, width: w),
   );
 
   return ThemeData(
@@ -185,10 +234,12 @@ ThemeData buildTheme(Brightness brightness) {
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: p.bg,
+      prefixIconColor: p.muted,
+      suffixIconColor: p.muted,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: field(p.border),
       enabledBorder: field(p.border),
-      focusedBorder: field(AppPalette.accent),
+      focusedBorder: field(AppPalette.accent, 2),
       errorBorder: field(AppPalette.danger),
       focusedErrorBorder: field(AppPalette.danger),
       disabledBorder: field(p.border.withValues(alpha: 0.5)),
@@ -268,8 +319,8 @@ ThemeData buildTheme(Brightness brightness) {
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: p.bg,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: p.surface,
-      height: 66,
+      indicatorColor: Colors.transparent,
+      height: 64,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       labelTextStyle: WidgetStateProperty.resolveWith(
         (s) => TextStyle(
@@ -277,15 +328,33 @@ ThemeData buildTheme(Brightness brightness) {
           fontWeight: s.contains(WidgetState.selected)
               ? FontWeight.w800
               : FontWeight.w600,
-          color: s.contains(WidgetState.selected) ? p.text : p.muted,
+          color: s.contains(WidgetState.selected) ? AppPalette.accent : p.muted,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
         (s) => IconThemeData(
-          color: s.contains(WidgetState.selected) ? p.text : p.muted,
+          size: 26,
+          color: s.contains(WidgetState.selected) ? AppPalette.accent : p.text,
         ),
       ),
     ),
+    chipTheme: ChipThemeData(
+      backgroundColor: p.surface,
+      selectedColor: p.text,
+      side: BorderSide.none,
+      shape: const StadiumBorder(),
+      labelStyle: TextStyle(color: p.text, fontWeight: FontWeight.w600),
+      secondaryLabelStyle: TextStyle(color: p.bg, fontWeight: FontWeight.w700),
+      checkmarkColor: p.bg,
+    ),
+    tabBarTheme: TabBarThemeData(
+      labelColor: p.text,
+      unselectedLabelColor: p.muted,
+      indicatorColor: p.text,
+      dividerColor: p.border,
+      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+    ),
+    dividerTheme: DividerThemeData(color: p.border, space: 1, thickness: 1),
     dropdownMenuTheme: DropdownMenuThemeData(
       menuStyle: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(p.card),

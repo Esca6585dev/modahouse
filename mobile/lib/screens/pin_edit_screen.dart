@@ -14,6 +14,7 @@ import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/board_form.dart';
 import '../widgets/pin_fields.dart';
+import '../widgets/product_form.dart';
 import '../widgets/states.dart';
 
 class PinEditScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
   Pin? _pin;
   Object? _error;
   PinFieldControllers? _fields;
+  ProductFormControllers? _product;
   bool _busy = false;
   String? _formError;
 
@@ -42,6 +44,7 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
   @override
   void dispose() {
     _fields?.dispose();
+    _product?.dispose();
     super.dispose();
   }
 
@@ -51,8 +54,17 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
       final pin = await ref.read(pinsRepositoryProvider).get(widget.id);
       if (!mounted) return;
       _fields?.dispose();
+      _product?.dispose();
+      final me = ref.read(authProvider).user;
       setState(() {
         _pin = pin;
+        _product = pin.product != null
+            ? ProductFormControllers(
+                initial: pin.product,
+                deliveryDays: me?.business?.deliveryDays,
+                returnDays: me?.business?.returnDays,
+              )
+            : null;
         _fields = PinFieldControllers(
           title: pin.title,
           description: pin.description,
@@ -89,6 +101,7 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
             link: f.link.text.trim(),
             category: f.category,
             tags: splitTags(f.tags.text).join(','),
+            product: _product?.toInput(),
           );
       ref.read(pinUpdatesProvider.notifier).updated(updated);
       showSnack(S.changesSaved);
@@ -150,6 +163,25 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
               enabled: !_busy,
               onCategoryChanged: (v) => setState(() => f.category = v),
             ),
+            if (_product != null) ...[
+              const SizedBox(height: 12),
+              Divider(color: p.border),
+              const Padding(
+                padding: EdgeInsets.only(top: 8, bottom: 4),
+                child: Text(
+                  S.productInfo,
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  S.productEditHelp,
+                  style: TextStyle(color: p.muted, fontSize: 12.5),
+                ),
+              ),
+              ProductFields(controllers: _product!, enabled: !_busy),
+            ],
             if (_formError != null) ...[
               const SizedBox(height: 16),
               FormErrorBox(message: _formError!),

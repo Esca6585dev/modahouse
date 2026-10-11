@@ -1,24 +1,30 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api_exception.dart';
 import '../core/format.dart';
+import '../core/labels.dart';
 import '../core/snack.dart';
 import '../core/theme.dart';
+import '../data/pins_repository.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/auth.dart';
 import '../state/paged_controller.dart';
 import '../state/pin_updates.dart';
 import '../state/providers.dart';
-import '../widgets/avatar.dart';
+import '../widgets/app_image.dart';
 import '../widgets/board_card.dart';
 import '../widgets/board_form.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
+import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 
 /// The "Profil" tab: the logged-in user's own profile.
@@ -39,29 +45,63 @@ class MyProfileScreen extends ConsumerWidget {
       );
     }
     return ProfileView(
-      key: ValueKey('me-${me.username}'),
+      key: ValueKey('me-${me.username}-${me.isBusiness}'),
       username: me.username,
       isTab: true,
     );
   }
 }
 
-/// `/user/:username`.
+/// `/user/:username` (`?tab=products` opens the shop's products).
 class UserProfileScreen extends StatelessWidget {
-  const UserProfileScreen({super.key, required this.username});
+  const UserProfileScreen({super.key, required this.username, this.initialTab});
 
   final String username;
+  final String? initialTab;
 
   @override
-  Widget build(BuildContext context) =>
-      ProfileView(key: ValueKey('u-$username'), username: username);
+  Widget build(BuildContext context) => ProfileView(
+    key: ValueKey('u-$username'),
+    username: username,
+    initialTab: initialTab,
+  );
 }
 
+enum ProfileTab { products, pins, boards }
+
+/// Opens a phone/SMS/web link; shows a message when nothing can handle it.
+Future<void> launchExternal(Uri uri, {String error = S.cannotOpenLink}) async {
+  var ok = false;
+  try {
+    ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    ok = false;
+  }
+  if (!ok) showSnack(error, error: true);
+}
+
+/// "City, address" without repeating the city when the address has it.
+String shopLocation(Business b) {
+  if (b.address.isEmpty) return b.city;
+  if (b.city.isEmpty || b.address.contains(b.city)) return b.address;
+  return '${b.city}, ${b.address}';
+}
+
+/// `tel:` URI for a phone like "+993 61 234567".
+Uri telUri(String phone) =>
+    Uri(scheme: 'tel', path: phone.replaceAll(RegExp(r'[^0-9+]'), ''));
+
 class ProfileView extends ConsumerStatefulWidget {
-  const ProfileView({super.key, required this.username, this.isTab = false});
+  const ProfileView({
+    super.key,
+    required this.username,
+    this.isTab = false,
+    this.initialTab,
+  });
 
   final String username;
   final bool isTab;
+  final String? initialTab;
 
   @override
   ConsumerState<ProfileView> createState() => _ProfileViewState();
@@ -70,8 +110,9 @@ class ProfileView extends ConsumerStatefulWidget {
 class _ProfileViewState extends ConsumerState<ProfileView> {
   Profile? _profile;
   Object? _error;
-  int _tab = 0;
-  late final PagedController<Pin> _pins;
+  ProfileTab? _tab;
+  PagedController<Pin>? _products;
+  PagedController<Pin>? _pins;
   List<Board>? _boards;
   Object? _boardsError;
 
@@ -80,24 +121,48 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
   @override
   void initState() {
     super.initState();
-    _pins = PagedController(
-      (page) => ref.read(usersRepositoryProvider).pins(username, page),
-    );
     _loadProfile();
     _loadBoards();
   }
 
   @override
   void dispose() {
-    _pins.dispose();
+    _products?.dispose();
+    _pins?.dispose();
     super.dispose();
+  }
+
+  void _setupFeeds(Profile p) {
+    if (_pins != null) return;
+    final pins = ref.read(pinsRepositoryProvider);
+    final users = ref.read(usersRepositoryProvider);
+    if (p.isBusiness) {
+      _products = PagedController(
+        (page) =>
+            pins.list(author: username, type: PinType.products, page: page),
+      );
+      _pins = PagedController(
+        (page) => pins.list(author: username, type: PinType.ideas, page: page),
+      );
+    } else {
+      _pins = PagedController((page) => users.pins(username, page));
+    }
+    _tab ??= p.isBusiness
+        ? (widget.initialTab == 'boards'
+              ? ProfileTab.boards
+              : ProfileTab.products)
+        : (widget.initialTab == 'boards' ? ProfileTab.boards : ProfileTab.pins);
   }
 
   Future<void> _loadProfile() async {
     setState(() => _error = null);
     try {
       final p = await ref.read(usersRepositoryProvider).profile(username);
-      if (mounted) setState(() => _profile = p);
+      if (!mounted) return;
+      setState(() {
+        _profile = p;
+        _setupFeeds(p);
+      });
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
@@ -114,7 +179,12 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
   }
 
   Future<void> _refresh() async {
-    await Future.wait([_loadProfile(), _loadBoards(), _pins.refresh()]);
+    await Future.wait([
+      _loadProfile(),
+      _loadBoards(),
+      if (_pins != null) _pins!.refresh(),
+      if (_products != null) _products!.refresh(),
+    ]);
   }
 
   Future<void> _createBoard() async {
@@ -124,14 +194,95 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     await _loadBoards();
   }
 
+  Future<void> _share(Profile profile) async {
+    final text = '${profile.displayName} (@${profile.username}) · ${S.appName}';
+    try {
+      final res = await SharePlus.instance.share(ShareParams(text: text));
+      if (res.status == ShareResultStatus.unavailable) {
+        throw Exception('unavailable');
+      }
+    } catch (_) {
+      await Clipboard.setData(ClipboardData(text: text));
+      showSnack(S.linkCopied);
+    }
+  }
+
+  void _contact(Profile profile) {
+    final b = profile.business;
+    if (b == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (b.phone.isNotEmpty) ...[
+              ListTile(
+                leading: const Icon(Icons.call_outlined),
+                title: const Text(S.call),
+                subtitle: Text(b.phone),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  launchExternal(telUri(b.phone), error: S.cannotCall);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.sms_outlined),
+                title: const Text(S.sendSms),
+                subtitle: Text(b.phone),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  launchExternal(
+                    Uri(
+                      scheme: 'sms',
+                      path: b.phone.replaceAll(RegExp(r'[^0-9+]'), ''),
+                    ),
+                  );
+                },
+              ),
+            ],
+            if (b.instagram.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined),
+                title: const Text(S.openInstagram),
+                subtitle: Text('@${b.instagram.replaceFirst('@', '')}'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  launchExternal(
+                    Uri.https(
+                      'instagram.com',
+                      '/${b.instagram.replaceFirst('@', '')}',
+                    ),
+                  );
+                },
+              ),
+            if (b.address.isNotEmpty || b.city.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.location_on_outlined),
+                title: const Text(S.copyAddress),
+                subtitle: Text(shopLocation(b)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Clipboard.setData(ClipboardData(text: shopLocation(b)));
+                  showSnack(S.addressCopied);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(boardsVersionProvider, (_, _) => _loadBoards());
     ref.listen(pinUpdatesProvider.select((u) => u.created), (_, _) {
-      _pins.refresh();
+      _pins?.refresh();
+      _products?.refresh();
       _loadProfile();
     });
-    // A pin was deleted somewhere: refresh the counters and board covers.
     ref.listen(pinUpdatesProvider.select((u) => u.deleted.length), (_, _) {
       _loadProfile();
       _loadBoards();
@@ -157,15 +308,53 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
       );
     }
 
+    final tabs = [
+      if (profile.isBusiness) ProfileTab.products,
+      ProfileTab.pins,
+      ProfileTab.boards,
+    ];
+    final tab = tabs.contains(_tab) ? _tab! : tabs.first;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: canPop,
+        titleSpacing: canPop ? 0 : AppPalette.gutter,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                profile.username,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+            if (profile.verified) ...[
+              const SizedBox(width: 6),
+              const VerifiedIcon(size: 18),
+            ],
+          ],
+        ),
         actions: [
-          if (profile.isMe)
+          if (profile.isMe) ...[
+            IconButton(
+              tooltip: S.create,
+              onPressed: () => context.go('/create'),
+              icon: const Icon(Icons.add_box_outlined),
+            ),
             IconButton(
               tooltip: S.settings,
               onPressed: () => context.push('/settings'),
-              icon: const Icon(Icons.settings_outlined),
+              icon: const Icon(Icons.menu_rounded),
+            ),
+          ] else
+            IconButton(
+              tooltip: S.shareProfile,
+              onPressed: () => _share(profile),
+              icon: const Icon(Icons.ios_share_rounded),
             ),
         ],
       ),
@@ -176,25 +365,9 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _header(profile)),
-            SliverToBoxAdapter(child: _tabs()),
-            if (_tab == 0)
-              PinGridSliver(
-                controller: _pins,
-                empty: EmptyView(
-                  icon: Icons.image_outlined,
-                  title: S.noPinsTitle,
-                  text: profile.isMe ? S.noOwnPinsText : S.noUserPinsText,
-                  compact: true,
-                  action: profile.isMe
-                      ? FilledButton(
-                          onPressed: () => context.go('/create'),
-                          child: const Text(S.createPin),
-                        )
-                      : null,
-                ),
-              )
-            else
-              ..._boardSlivers(profile),
+            SliverToBoxAdapter(child: _tabBar(tabs, tab)),
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+            ..._tabSlivers(profile, tab),
             SliverToBoxAdapter(
               child: SizedBox(
                 height: 24 + MediaQuery.paddingOf(context).bottom,
@@ -206,149 +379,336 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     );
   }
 
+  Widget _count(String value, String label, {VoidCallback? onTap}) => Expanded(
+    child: Semantics(
+      button: onTap != null,
+      label: '$value $label',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Column(
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  color: AppPalette.of(context).muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
   Widget _header(Profile profile) {
     final p = AppPalette.of(context);
     final enc = Uri.encodeComponent(profile.username);
+    final b = profile.business;
+    Widget info(IconData icon, String text, {Color? color}) => Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color ?? p.muted),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(fontSize: 13.5, color: p.text, height: 1.3),
+            ),
+          ),
+        ],
+      ),
+    );
+    final buttonStyle = ElevatedButton.styleFrom(
+      minimumSize: const Size(0, 38),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+    );
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppPalette.gutter,
-        0,
+        4,
         AppPalette.gutter,
         8,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          UserAvatar(user: profile, size: 104),
-          const SizedBox(height: 12),
-          Text(
-            profile.displayName,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            '@${profile.username}',
-            style: TextStyle(color: p.muted, fontSize: 15),
-          ),
-          if (profile.bio.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Text(
-                profile.bio,
-                textAlign: TextAlign.center,
-                style: const TextStyle(height: 1.4),
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              _StatButton(
-                text: S.followersCount(compactCount(profile.followersCount)),
+              Semantics(
+                button: profile.hasStory,
+                label: profile.displayName,
+                child: StoryAvatar(
+                  user: profile,
+                  size: 88,
+                  hasStory: profile.hasStory,
+                  seen: profile.storySeen,
+                  onTap: profile.hasStory
+                      ? () async {
+                          await context.push('/stories/$enc');
+                          if (mounted) {
+                            setState(
+                              () =>
+                                  _profile = profile.copyWith(storySeen: true),
+                            );
+                          }
+                        }
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              _count(compactCount(profile.pinsCount), S.posts),
+              _count(
+                compactCount(profile.followersCount),
+                S.followers,
                 onTap: () => context.push('/user/$enc/followers'),
               ),
-              Text(' · ', style: TextStyle(color: p.muted)),
-              _StatButton(
-                text: S.followingCount(compactCount(profile.followingCount)),
+              _count(
+                compactCount(profile.followingCount),
+                S.followingTitle,
                 onTap: () => context.push('/user/$enc/following'),
-              ),
-              Text(' · ', style: TextStyle(color: p.muted)),
-              Text(
-                S.pinsCount(compactCount(profile.pinsCount)),
-                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          UserName(
+            user: profile,
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          if (b != null && b.category != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Text(
+                businessCategoryLabel(b.category),
+                style: TextStyle(color: p.muted, fontSize: 13.5),
+              ),
+            ),
+          if (profile.bio.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(profile.bio, style: const TextStyle(height: 1.4)),
+          ],
+          if (b != null) ...[
+            const SizedBox(height: 4),
+            if (b.city.isNotEmpty || b.address.isNotEmpty)
+              info(Icons.location_on_outlined, shopLocation(b)),
+            if (b.workingHours.isNotEmpty)
+              info(Icons.schedule_rounded, b.workingHours),
+            if (b.phone.isNotEmpty) info(Icons.call_outlined, b.phone),
+            if (b.reviewsCount > 0 || b.ordersCount > 0)
+              info(
+                Icons.star_rounded,
+                [
+                  if (b.reviewsCount > 0)
+                    '${formatRating(b.rating)} · ${S.reviewsCount(b.reviewsCount)}',
+                  if (b.ordersCount > 0)
+                    S.soldCount(compactCount(b.ordersCount)),
+                ].join(' · '),
+                color: AppPalette.gold,
+              ),
+          ],
+          const SizedBox(height: 14),
           if (profile.isMe)
-            ElevatedButton(
-              onPressed: () => context.push('/settings'),
-              child: const Text(S.editProfile),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    style: buttonStyle,
+                    onPressed: () => context.push('/settings'),
+                    child: const Text(S.editProfile),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: profile.isBusiness
+                      ? ElevatedButton.icon(
+                          style: buttonStyle,
+                          onPressed: () => context.push('/business'),
+                          icon: const Icon(Icons.insights_rounded, size: 18),
+                          label: const Text(S.dashboard),
+                        )
+                      : ElevatedButton(
+                          style: buttonStyle,
+                          onPressed: () => context.push('/orders'),
+                          child: const Text(S.myOrders),
+                        ),
+                ),
+              ],
             )
           else
-            FollowButton(
-              username: profile.username,
-              isFollowing: profile.isFollowing,
-              onChanged: (following, updated) {
-                setState(() {
-                  _profile =
-                      updated ??
-                      profile.copyWith(
-                        isFollowing: following,
-                        followersCount: math.max(
-                          0,
-                          profile.followersCount +
-                              (following == profile.isFollowing
-                                  ? 0
-                                  : (following ? 1 : -1)),
-                        ),
-                      );
-                });
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: FollowButton(
+                    username: profile.username,
+                    isFollowing: profile.isFollowing,
+                    small: true,
+                    onChanged: (following, updated) {
+                      setState(() {
+                        _profile =
+                            updated ??
+                            profile.copyWith(
+                              isFollowing: following,
+                              followersCount: math.max(
+                                0,
+                                profile.followersCount +
+                                    (following == profile.isFollowing
+                                        ? 0
+                                        : (following ? 1 : -1)),
+                              ),
+                            );
+                      });
+                    },
+                  ),
+                ),
+                if (b != null && b.phone.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      style: buttonStyle,
+                      onPressed: () =>
+                          launchExternal(telUri(b.phone), error: S.cannotCall),
+                      icon: const Icon(Icons.call_outlined, size: 18),
+                      label: const Text(S.call),
+                    ),
+                  ),
+                ],
+                if (b != null) ...[
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: buttonStyle,
+                      onPressed: () => _contact(profile),
+                      child: const Text(S.contact),
+                    ),
+                  ),
+                ],
+              ],
             ),
         ],
       ),
     );
   }
 
-  Widget _tabs() {
+  Widget _tabBar(List<ProfileTab> tabs, ProfileTab active) {
     final p = AppPalette.of(context);
-    Widget tab(String label, int index) {
-      final active = _tab == index;
-      return Semantics(
-        button: true,
-        selected: active,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => setState(() => _tab = index),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: active ? p.text : p.muted,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  height: 3,
-                  width: active ? 40 : 0,
-                  decoration: BoxDecoration(
-                    color: p.text,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
+    (IconData, String) meta(ProfileTab t) => switch (t) {
+      ProfileTab.products => (Icons.grid_view_rounded, S.tabProducts),
+      ProfileTab.pins => (Icons.dashboard_outlined, S.tabPins),
+      ProfileTab.boards => (Icons.bookmarks_outlined, S.tabBoards),
+    };
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: p.border)),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          tab(S.tabCreated, 0),
-          const SizedBox(width: 8),
-          tab(S.tabSaved, 1),
+          for (final t in tabs)
+            Expanded(
+              child: Semantics(
+                button: true,
+                selected: t == active,
+                label: meta(t).$2,
+                excludeSemantics: true,
+                onTap: () => setState(() => _tab = t),
+                child: InkWell(
+                  onTap: () => setState(() => _tab = t),
+                  child: Container(
+                    height: 48,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: t == active ? p.text : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          meta(t).$1,
+                          size: 20,
+                          color: t == active ? p.text : p.muted,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          meta(t).$2,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            color: t == active ? p.text : p.muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  List<Widget> _tabSlivers(Profile profile, ProfileTab tab) {
+    switch (tab) {
+      case ProfileTab.products:
+        return [
+          ProductGridSliver(
+            controller: _products!,
+            empty: EmptyView(
+              icon: Icons.shopping_bag_outlined,
+              title: S.noProductsTitle,
+              text: profile.isMe ? S.noProductsText : S.noShopProducts,
+              compact: true,
+              action: profile.isMe
+                  ? FilledButton(
+                      onPressed: () => context.go('/create'),
+                      child: const Text(S.addProduct),
+                    )
+                  : null,
+            ),
+          ),
+        ];
+      case ProfileTab.pins:
+        return [
+          PinGridSliver(
+            controller: _pins!,
+            empty: EmptyView(
+              icon: Icons.image_outlined,
+              title: S.noPinsTitle,
+              text: profile.isMe ? S.noOwnPinsText : S.noUserPinsText,
+              compact: true,
+              action: profile.isMe
+                  ? FilledButton(
+                      onPressed: () => context.go('/create'),
+                      child: const Text(S.createPin),
+                    )
+                  : null,
+            ),
+          ),
+        ];
+      case ProfileTab.boards:
+        return _boardSlivers(profile);
+    }
   }
 
   List<Widget> _boardSlivers(Profile profile) {
@@ -411,21 +771,136 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
   }
 }
 
-class _StatButton extends StatelessWidget {
-  const _StatButton({required this.text, required this.onTap});
+/// Two-column grid of product tiles (shop profile "Harytlar" tab).
+class ProductGridSliver extends ConsumerWidget {
+  const ProductGridSliver({
+    super.key,
+    required this.controller,
+    required this.empty,
+  });
 
-  final String text;
-  final VoidCallback onTap;
+  final PagedController<Pin> controller;
+  final Widget empty;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(8),
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w600)),
-    ),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final updates = ref.watch(pinUpdatesProvider);
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final items = controller.items
+            .where((p) => !updates.deleted.contains(p.id))
+            .map(updates.resolve)
+            .where((p) => p.product != null)
+            .toList();
+        if (!controller.loaded && controller.error == null) {
+          return const PinGridSkeleton();
+        }
+        if (controller.error != null && items.isEmpty) {
+          return SliverToBoxAdapter(
+            child: ErrorView(
+              error: controller.error!,
+              onRetry: controller.refresh,
+            ),
+          );
+        }
+        if (items.isEmpty) return SliverToBoxAdapter(child: empty);
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
+          sliver: SliverLayoutBuilder(
+            builder: (context, c) {
+              final columns = math.max(2, (c.crossAxisExtent / 240).floor());
+              const spacing = 10.0;
+              final w = (c.crossAxisExtent - spacing * (columns - 1)) / columns;
+              return SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: 16,
+                  mainAxisExtent: w * 1.25 + 62,
+                ),
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  if (i >= items.length - 4 &&
+                      controller.hasMore &&
+                      !controller.loading) {
+                    WidgetsBinding.instance.addPostFrameCallback(
+                      (_) => controller.loadMore(),
+                    );
+                  }
+                  return ProductGridTile(pin: items[i]);
+                }, childCount: items.length),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class ProductGridTile extends StatelessWidget {
+  const ProductGridTile({super.key, required this.pin});
+
+  final Pin pin;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    final product = pin.product!;
+    return Semantics(
+      button: true,
+      label: '${pin.title}, ${formatPrice(product.price)}',
+      excludeSemantics: true,
+      onTap: () => context.push('/pin/${pin.id}'),
+      child: GestureDetector(
+        onTap: () => context.push('/pin/${pin.id}'),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppPalette.radius),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppImage(
+                      pin.imageUrl,
+                      placeholder: parseHexColor(pin.color, p.surface),
+                    ),
+                    if (product.badge != ProductBadge.none)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: ProductBadgeChip(
+                          badge: product.badge,
+                          small: true,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              pin.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13.5,
+              ),
+            ),
+            const SizedBox(height: 3),
+            PriceText(
+              price: product.price,
+              oldPrice: product.oldPrice,
+              listingType: product.listingType,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Responsive 2+ column grid of [BoardCard]s.

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
+import '../data/pins_repository.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/auth.dart';
 import '../state/paged_controller.dart';
 import '../state/pin_updates.dart';
 import '../state/providers.dart';
+import '../state/shop_state.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/pin_grid.dart';
 import '../widgets/states.dart';
+import '../widgets/stories_row.dart';
+import '../widgets/top_actions.dart';
+
+/// Home feed modes: "Saňa", "Yzarlanýanlar", "Harytlar".
+enum FeedMode { forYou, following, products }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -22,16 +28,21 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _category;
-  bool _following = false;
+  FeedMode _mode = FeedMode.forYou;
   late PagedController<Pin> _feed = _makeFeed();
   final _scroll = ScrollController();
 
   PagedController<Pin> _makeFeed() {
     final repo = ref.read(pinsRepositoryProvider);
     final category = _category;
-    final following = _following;
+    final mode = _mode;
     return PagedController(
-      (page) => repo.list(category: category, following: following, page: page),
+      (page) => repo.list(
+        category: category,
+        following: mode == FeedMode.following,
+        type: mode == FeedMode.products ? PinType.products : PinType.any,
+        page: page,
+      ),
     );
   }
 
@@ -49,12 +60,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
+  void _setMode(FeedMode m) {
+    if (m == _mode) return;
+    _mode = m;
+    _reset();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Viewer-specific fields change with the account: reload the feed.
     ref.listen(currentUserIdProvider, (prev, next) {
       if (prev == next) return;
-      if (next == null) _following = false;
+      if (next == null && _mode == FeedMode.following) _mode = FeedMode.forYou;
       _reset();
     });
     ref.listen(
@@ -65,174 +82,141 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final p = AppPalette.of(context);
 
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          color: AppPalette.accent,
-          onRefresh: () {
-            if (ref.read(categoriesProvider).hasError) {
-              ref.invalidate(categoriesProvider);
-            }
-            return _feed.refresh();
-          },
-          child: CustomScrollView(
-            controller: _scroll,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppPalette.gutter,
-                    12,
-                    AppPalette.gutter,
-                    12,
-                  ),
-                  child: Row(
-                    children: [
-                      const LogoMark(),
-                      const SizedBox(width: 8),
-                      const Text(
-                        S.appName,
-                        style: TextStyle(
-                          color: AppPalette.accent,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                          letterSpacing: -0.4,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: S.tabSearch,
-                        onPressed: () => context.go('/search'),
-                        icon: Icon(Icons.search_rounded, color: p.muted),
-                      ),
-                    ],
-                  ),
-                ),
+      body: RefreshIndicator(
+        color: AppPalette.accent,
+        edgeOffset: 64,
+        onRefresh: () {
+          if (ref.read(categoriesProvider).hasError) {
+            ref.invalidate(categoriesProvider);
+          }
+          ref.read(storiesProvider.notifier).reload();
+          return _feed.refresh();
+        },
+        child: CustomScrollView(
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              toolbarHeight: 60,
+              titleSpacing: AppPalette.gutter,
+              title: const LogoWordmark(height: 42),
+              actions: topActions(),
+            ),
+            const SliverToBoxAdapter(child: StoriesRow()),
+            SliverToBoxAdapter(child: Divider(color: p.border, height: 1)),
+            SliverToBoxAdapter(
+              child: FeedTabs(
+                mode: _mode,
+                showFollowing: loggedIn,
+                onChanged: _setMode,
               ),
-              SliverToBoxAdapter(
-                child: CategoryChips(
-                  selected: _category,
-                  onSelected: (c) {
-                    if (c == _category) return;
-                    _category = c;
-                    _reset();
-                  },
-                ),
+            ),
+            SliverToBoxAdapter(
+              child: CategoryChips(
+                selected: _category,
+                onSelected: (c) {
+                  if (c == _category) return;
+                  _category = c;
+                  _reset();
+                },
               ),
-              if (loggedIn)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppPalette.gutter,
-                      12,
-                      AppPalette.gutter,
-                      0,
-                    ),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: FeedToggle(
-                        following: _following,
-                        onChanged: (v) {
-                          if (v == _following) return;
-                          _following = v;
-                          _reset();
-                        },
-                      ),
-                    ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 14)),
+            PinGridSliver(
+              controller: _feed,
+              empty: switch (_mode) {
+                FeedMode.following => EmptyView(
+                  icon: Icons.people_outline_rounded,
+                  title: S.emptyFollowingTitle,
+                  text: S.emptyFollowingText,
+                  action: FilledButton(
+                    onPressed: () => _setMode(FeedMode.forYou),
+                    child: const Text(S.browseIdeas),
                   ),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-              PinGridSliver(
-                controller: _feed,
-                empty: _following
-                    ? EmptyView(
-                        icon: Icons.people_outline_rounded,
-                        title: S.emptyFollowingTitle,
-                        text: S.emptyFollowingText,
-                        action: FilledButton(
-                          onPressed: () {
-                            _following = false;
-                            _reset();
-                          },
-                          child: const Text(S.browseIdeas),
-                        ),
-                      )
-                    : const EmptyView(
-                        icon: Icons.image_outlined,
-                        title: S.emptyFeedTitle,
-                        text: S.emptyFeedText,
-                      ),
-              ),
-            ],
-          ),
+                FeedMode.products => const EmptyView(
+                  icon: Icons.shopping_bag_outlined,
+                  title: S.emptyProductsTitle,
+                  text: S.emptyProductsText,
+                ),
+                FeedMode.forYou => const EmptyView(
+                  icon: Icons.image_outlined,
+                  title: S.emptyFeedTitle,
+                  text: S.emptyFeedText,
+                ),
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// "Saňa" / "Yzarlanýanlar" segmented switch.
-class FeedToggle extends StatelessWidget {
-  const FeedToggle({
+/// "Saňa" / "Yzarlanýanlar" / "Harytlar" tabs (Pinterest-style underline).
+class FeedTabs extends StatelessWidget {
+  const FeedTabs({
     super.key,
-    required this.following,
+    required this.mode,
     required this.onChanged,
+    this.showFollowing = true,
   });
 
-  final bool following;
-  final ValueChanged<bool> onChanged;
+  final FeedMode mode;
+  final ValueChanged<FeedMode> onChanged;
+  final bool showFollowing;
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    Widget item(String label, bool active, VoidCallback onTap) => Semantics(
-      button: true,
-      selected: active,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: active ? p.bg : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: active
-                ? const [
-                    BoxShadow(
-                      color: Color(0x1F000000),
-                      blurRadius: 4,
-                      offset: Offset(0, 1),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              color: active ? p.text : p.muted,
+    Widget tab(String label, FeedMode m) {
+      final active = m == mode;
+      return Semantics(
+        button: true,
+        selected: active,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => onChanged(m),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                    fontSize: 15.5,
+                    color: active ? p.text : p.muted,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  height: 3,
+                  width: active ? 28 : 0,
+                  decoration: BoxDecoration(
+                    color: p.text,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      ),
-    );
+      );
+    }
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: p.surface,
-        borderRadius: BorderRadius.circular(24),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          item(S.feedForYou, !following, () => onChanged(false)),
-          const SizedBox(width: 4),
-          item(S.feedFollowing, following, () => onChanged(true)),
+          tab(S.feedForYou, FeedMode.forYou),
+          if (showFollowing) tab(S.feedFollowing, FeedMode.following),
+          tab(S.feedProducts, FeedMode.products),
         ],
       ),
     );

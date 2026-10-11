@@ -21,10 +21,14 @@ import '../state/pin_updates.dart';
 import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/avatar.dart';
+import '../widgets/cart_flow.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
+import '../widgets/product_sections.dart';
 import '../widgets/save_sheet.dart';
+import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
+import '../widgets/top_actions.dart';
 
 class PinDetailScreen extends ConsumerStatefulWidget {
   const PinDetailScreen({super.key, required this.id});
@@ -41,6 +45,11 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
   Profile? _author;
   bool _likeBusy = false;
   bool _deleting = false;
+  bool _viewCounted = false;
+  String _color = '';
+  String _size = '';
+  int _qty = 1;
+  bool _cartBusy = false;
   late final PagedController<Comment> _comments;
   late final PagedController<Pin> _similar;
 
@@ -71,8 +80,16 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
       final pin = await ref.read(pinsRepositoryProvider).get(id);
       if (!mounted) return;
       ref.read(pinUpdatesProvider.notifier).updated(pin);
-      setState(() => _loaded = true);
+      final product = pin.product;
+      setState(() {
+        _loaded = true;
+        if (product != null) {
+          if (product.colors.length == 1) _color = product.colors.first.name;
+          if (product.sizes.length == 1) _size = product.sizes.first;
+        }
+      });
       unawaited(_loadAuthor(pin.author.username));
+      unawaited(_countView());
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
@@ -85,6 +102,61 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     } catch (_) {
       // The author row still works without the follower count.
     }
+  }
+
+  /// `POST /pins/:id/view` once per opening (the server dedupes per day).
+  Future<void> _countView() async {
+    if (_viewCounted) return;
+    _viewCounted = true;
+    try {
+      final n = await ref.read(pinsRepositoryProvider).view(id);
+      final current = ref.read(pinUpdatesProvider).updated[id];
+      if (current != null && mounted) {
+        _publish(current.copyWith(viewsCount: n));
+      }
+    } catch (_) {
+      // Views are best effort.
+    }
+  }
+
+  bool _optionsChosen(Product product) {
+    final ok =
+        (product.colors.isEmpty || _color.isNotEmpty) &&
+        (product.sizes.isEmpty || _size.isNotEmpty);
+    if (!ok) showSnack(S.chooseOptions, error: true);
+    return ok;
+  }
+
+  Future<void> _addToCart(Pin pin) async {
+    final product = pin.product!;
+    if (_cartBusy || !_requireLogin() || !_optionsChosen(product)) return;
+    setState(() => _cartBusy = true);
+    await addToCart(
+      context,
+      ref,
+      pin,
+      color: _color,
+      size: _size,
+      quantity: _qty,
+    );
+    if (mounted) setState(() => _cartBusy = false);
+  }
+
+  void _buyNow(Pin pin) {
+    final product = pin.product!;
+    if (!_requireLogin() || !_optionsChosen(product)) return;
+    context.push(
+      '/checkout',
+      extra: CheckoutArgs(
+        pin: pin,
+        buyNow: BuyNow(
+          pinId: pin.id,
+          color: _color,
+          size: _size,
+          quantity: _qty,
+        ),
+      ),
+    );
   }
 
   void _publish(Pin pin) => ref.read(pinUpdatesProvider.notifier).updated(pin);
@@ -208,6 +280,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     }
 
     final isOwner = me != null && me.id == pin.author.id;
+    if (pin.product != null) return _productScaffold(pin, me, isOwner);
     return Scaffold(
       body: RefreshIndicator(
         color: AppPalette.accent,
@@ -477,6 +550,513 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                     ),
                   );
                 },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _ownerMenu() => _deleting
+      ? const RoundIconButton(
+          icon: Icons.hourglass_top_rounded,
+          tooltip: S.deleting,
+          onPressed: null,
+        )
+      : PopupMenuButton<String>(
+          tooltip: S.pinOptions,
+          onSelected: (v) => v == 'edit' ? _edit() : _delete(),
+          itemBuilder: (_) => [
+            const PopupMenuItem(
+              value: 'edit',
+              child: ListTile(
+                leading: Icon(Icons.edit_outlined),
+                title: Text(S.edit),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppPalette.danger,
+                ),
+                title: Text(
+                  S.delete,
+                  style: TextStyle(color: AppPalette.danger),
+                ),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
+          child: const IgnorePointer(
+            child: RoundIconButton(
+              icon: Icons.more_horiz_rounded,
+              tooltip: S.pinOptions,
+              onPressed: null,
+            ),
+          ),
+        );
+
+  Widget _productScaffold(Pin pin, Me? me, bool isOwner) {
+    final product = pin.product!;
+    final top = MediaQuery.paddingOf(context).top;
+    return Scaffold(
+      body: RefreshIndicator(
+        color: AppPalette.accent,
+        onRefresh: () async {
+          await Future.wait([_load(), _comments.refresh(), _similar.refresh()]);
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: ProductGallery(
+                    pin: pin,
+                    overlay: [
+                      Positioned(
+                        left: 12,
+                        top: top + 10,
+                        child: RoundIconButton(
+                          icon: Icons.arrow_back_rounded,
+                          tooltip: S.back,
+                          onPressed: () => context.canPop()
+                              ? context.pop()
+                              : context.go('/'),
+                        ),
+                      ),
+                      Positioned(
+                        right: 12,
+                        top: top + 10,
+                        child: Row(
+                          children: [
+                            RoundIconButton(
+                              icon: pin.liked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              tooltip: pin.liked ? S.unlike : S.like,
+                              color: pin.liked ? AppPalette.accent : null,
+                              onPressed: _likeBusy
+                                  ? null
+                                  : () => _toggleLike(pin),
+                            ),
+                            const SizedBox(width: 8),
+                            RoundIconButton(
+                              icon: Icons.ios_share_rounded,
+                              tooltip: S.share,
+                              onPressed: () => _share(pin),
+                            ),
+                            if (isOwner) ...[
+                              const SizedBox(width: 8),
+                              _ownerMenu(),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(child: _productBody(pin, product, me, isOwner)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+                child: Text(
+                  S.similar,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+            PinGridSliver(
+              controller: _similar,
+              empty: const EmptyView(title: S.noSimilar, compact: true),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+          ],
+        ),
+      ),
+      bottomNavigationBar: isOwner ? null : _buyBar(pin, product),
+    );
+  }
+
+  Widget _productBody(Pin pin, Product product, Me? me, bool isOwner) {
+    final p = AppPalette.of(context);
+    final cats = ref.watch(categoriesProvider).value;
+    const gap = SizedBox(height: 18);
+    Widget label(String text) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+      ),
+    );
+    Widget infoChip(IconData icon, String text) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: p.text),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+        ],
+      ),
+    );
+    void openShop() =>
+        context.push('/user/${Uri.encodeComponent(pin.author.username)}');
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppPalette.gutter,
+            14,
+            AppPalette.gutter,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (product.badge != ProductBadge.none) ...[
+                    ProductBadgeChip(badge: product.badge),
+                    const SizedBox(width: 8),
+                  ],
+                  if (pin.category.isNotEmpty)
+                    Flexible(
+                      child: Text(
+                        categoryName(pin.category, cats).toUpperCase(),
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: p.muted,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                pin.title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  height: 1.2,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: openShop,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      UserAvatar(user: pin.author, size: 24),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: UserName(
+                          user: pin.author,
+                          style: TextStyle(
+                            color: p.muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (pin.reviewsCount > 0) ...[
+                        const SizedBox(width: 10),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 17,
+                          color: AppPalette.gold,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${formatRating(pin.rating)} (${pin.reviewsCount})',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              PriceText(
+                price: product.price,
+                oldPrice: product.oldPrice,
+                size: 28,
+                showDiscount: true,
+                listingType: product.listingType,
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (product.deliveryDays > 0)
+                    infoChip(
+                      Icons.local_shipping_outlined,
+                      S.deliveryIn(product.deliveryDays),
+                    ),
+                  if (product.returnDays > 0)
+                    infoChip(
+                      Icons.verified_user_outlined,
+                      S.returnShort(product.returnDays),
+                    ),
+                  if (pin.viewsCount > 0)
+                    infoChip(
+                      Icons.visibility_outlined,
+                      S.viewsCount(compactCount(pin.viewsCount)),
+                    ),
+                  if (pin.ordersCount > 0)
+                    infoChip(
+                      Icons.shopping_bag_outlined,
+                      S.soldCount(compactCount(pin.ordersCount)),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _LikeButton(
+                    pin: pin,
+                    busy: _likeBusy,
+                    onTap: () => _toggleLike(pin),
+                  ),
+                  Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 22,
+                    color: p.text,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${pin.commentsCount}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  FilledButton(
+                    style: pin.isSaved
+                        ? FilledButton.styleFrom(
+                            backgroundColor: p.text,
+                            foregroundColor: p.bg,
+                          )
+                        : null,
+                    onPressed: () => showSaveSheet(context, ref, pin),
+                    child: Text(pin.isSaved ? S.saved : S.saveAction),
+                  ),
+                ],
+              ),
+              if (product.colors.isNotEmpty) ...[
+                gap,
+                label(_color.isEmpty ? S.color : '${S.color}: $_color'),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final c in product.colors)
+                      ColorSwatchButton(
+                        option: c,
+                        selected: c.name == _color,
+                        onTap: () => setState(() => _color = c.name),
+                      ),
+                  ],
+                ),
+              ],
+              if (product.sizes.isNotEmpty) ...[
+                gap,
+                label(_size.isEmpty ? S.size : '${S.size}: $_size'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final sz in product.sizes)
+                      SizeChip(
+                        label: sz,
+                        selected: sz == _size,
+                        onTap: () => setState(() => _size = sz),
+                      ),
+                  ],
+                ),
+              ],
+              gap,
+              ProductInfoGrid(product: product),
+              const SizedBox(height: 14),
+              const HowToOrderCard(),
+              if (pin.description.isNotEmpty) ...[
+                gap,
+                Text(
+                  pin.description,
+                  style: const TextStyle(fontSize: 15.5, height: 1.5),
+                ),
+              ],
+              if (pin.tags.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final t in pin.tags)
+                      ActionChip(
+                        label: Text('#$t'),
+                        onPressed: () =>
+                            context.go('/search?q=${Uri.encodeComponent(t)}'),
+                      ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 22),
+              _authorRow(pin, isOwner),
+              const SizedBox(height: 24),
+              ReviewsSection(key: ValueKey('reviews-${pin.id}'), pin: pin),
+              const SizedBox(height: 24),
+              _CommentsSection(
+                pin: pin,
+                controller: _comments,
+                loggedIn: me != null,
+                onCountChanged: (delta) {
+                  final current =
+                      ref.read(pinUpdatesProvider).updated[id] ?? pin;
+                  _publish(
+                    current.copyWith(
+                      commentsCount: math.max(0, current.commentsCount + delta),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buyBar(Pin pin, Product product) {
+    final p = AppPalette.of(context);
+    if (!product.isSale) return _contactBar(pin);
+    final soldOut = !product.inStock;
+    final maxQty = product.stock == null ? 99 : product.stock!.clamp(1, 99);
+    return Container(
+      decoration: BoxDecoration(
+        color: p.bg,
+        border: Border(top: BorderSide(color: p.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            children: [
+              QuantityStepper(
+                value: _qty,
+                max: maxQty,
+                compact: true,
+                enabled: !soldOut,
+                onChanged: (v) => setState(() => _qty = v),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('buy-now'),
+                  onPressed: soldOut ? null : () => _buyNow(pin),
+                  icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+                  label: Text(soldOut ? S.outOfStock : S.buyNow),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Semantics(
+                button: true,
+                label: S.addToCart,
+                child: ExcludeSemantics(
+                  child: Material(
+                    color: p.surface,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      key: const Key('add-to-cart'),
+                      customBorder: const CircleBorder(),
+                      onTap: soldOut || _cartBusy
+                          ? null
+                          : () => _addToCart(pin),
+                      child: SizedBox.square(
+                        dimension: 46,
+                        child: _cartBusy
+                            ? const Center(child: Spinner(size: 18))
+                            : const Icon(
+                                Icons.add_shopping_cart_rounded,
+                                color: AppPalette.accent,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const CartButton(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Rent / custom listings: no cart, call or message the shop instead.
+  Widget _contactBar(Pin pin) {
+    final p = AppPalette.of(context);
+    final phone = _author?.business?.phone ?? '';
+    return Container(
+      decoration: BoxDecoration(
+        color: p.bg,
+        border: Border(top: BorderSide(color: p.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: phone.isEmpty
+                      ? null
+                      : () => launchUrl(
+                          Uri(
+                            scheme: 'tel',
+                            path: phone.replaceAll(RegExp(r'[^0-9+]'), ''),
+                          ),
+                        ),
+                  icon: const Icon(Icons.call_outlined, size: 20),
+                  label: const Text(S.call),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => context.push(
+                    '/user/${Uri.encodeComponent(pin.author.username)}',
+                  ),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
+                  label: const Text(S.contact),
+                ),
               ),
             ],
           ),

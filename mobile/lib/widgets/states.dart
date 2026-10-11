@@ -5,6 +5,8 @@ import '../core/api_exception.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
 
+export 'brand.dart' show LogoMark, LogoWordmark;
+
 class Spinner extends StatelessWidget {
   const Spinner({super.key, this.size = 22, this.color});
 
@@ -214,33 +216,6 @@ class _SkeletonState extends State<Skeleton>
   }
 }
 
-/// Accent logo mark ("M" in a circle).
-class LogoMark extends StatelessWidget {
-  const LogoMark({super.key, this.size = 34});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    alignment: Alignment.center,
-    decoration: const BoxDecoration(
-      color: AppPalette.accent,
-      shape: BoxShape.circle,
-    ),
-    child: Text(
-      'M',
-      style: TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.w800,
-        fontSize: size * 0.52,
-        height: 1,
-      ),
-    ),
-  );
-}
-
 /// Yes/no dialog. Returns true when confirmed.
 Future<bool> confirmDialog(
   BuildContext context, {
@@ -281,9 +256,11 @@ class RoundIconButton extends StatelessWidget {
     required this.onPressed,
     required this.tooltip,
     this.size = 40,
+    this.color,
   });
 
   final IconData icon;
+  final Color? color;
   final VoidCallback? onPressed;
   final String tooltip;
   final double size;
@@ -300,7 +277,11 @@ class RoundIconButton extends StatelessWidget {
         onTap: onPressed,
         child: SizedBox.square(
           dimension: size,
-          child: Icon(icon, color: const Color(0xFF111111), size: size * 0.55),
+          child: Icon(
+            icon,
+            color: color ?? const Color(0xFF111111),
+            size: size * 0.55,
+          ),
         ),
       ),
     ),

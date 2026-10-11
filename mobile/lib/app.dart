@@ -41,7 +41,7 @@ class SplashView extends StatelessWidget {
     child: const Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: [LogoMark(size: 64), SizedBox(height: 24), Spinner()],
+        children: [LogoWordmark(height: 110), SizedBox(height: 28), Spinner()],
       ),
     ),
   );
