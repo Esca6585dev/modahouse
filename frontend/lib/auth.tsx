@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { api, ApiError, getToken, setToken, UNAUTHORIZED_EVENT } from "./api";
+import { api, ApiError, getToken, normProfile, setToken, UNAUTHORIZED_EVENT } from "./api";
 import type { Me } from "./types";
 
 const USER_KEY = "mh_user";
@@ -29,7 +29,7 @@ const AuthContext = createContext<AuthState | null>(null);
 function readCachedUser(): Me | null {
   try {
     const raw = window.localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as Me) : null;
+    return raw ? normProfile(JSON.parse(raw) as Me) : null;
   } catch {
     return null;
   }

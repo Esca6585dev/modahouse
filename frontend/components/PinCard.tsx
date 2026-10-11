@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { categoryName } from "@/lib/format";
-import { useCategories } from "@/lib/hooks";
+import { useAuth } from "@/lib/auth";
+import { useAddToCart } from "@/lib/cart";
+import { isForSale } from "@/lib/format";
 import { shareUrl } from "@/lib/share";
 import type { Pin } from "@/lib/types";
 import Avatar from "./Avatar";
-import { ExternalIcon, ShareIcon } from "./Icons";
+import { CartIcon, ExternalIcon, GridIcon, ShareIcon, VerifiedIcon } from "./Icons";
 import PinImage from "./PinImage";
+import { Badge, Price } from "./Price";
+import QuickAddModal from "./QuickAddModal";
 import SavePicker from "./SavePicker";
 import { useToast } from "./Toast";
 
@@ -17,19 +20,45 @@ export type PinCardAction = { label: string; onClick: (pin: Pin) => void | Promi
 export default function PinCard({ pin, action }: { pin: Pin; action?: PinCardAction }) {
   const [saved, setSaved] = useState(pin.savedBoardIds);
   const [busy, setBusy] = useState(false);
-  const cats = useCategories();
+  const [quick, setQuick] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const { user } = useAuth();
   const toast = useToast();
+  const addToCart = useAddToCart(toast);
   const href = `/pin/${pin.id}`;
+  const product = pin.product;
+  const own = !!user && user.id === pin.author.id;
+  const out = !!product && product.stock !== null && product.stock <= 0;
+
+  const onCart = async () => {
+    if (!product) return;
+    if (product.colors.length > 1 || product.sizes.length > 1) {
+      setQuick(true);
+      return;
+    }
+    setAdding(true);
+    await addToCart({
+      pinId: pin.id,
+      color: product.colors[0]?.name,
+      size: product.sizes[0],
+      quantity: 1,
+    });
+    setAdding(false);
+  };
 
   return (
-    <article className="pin">
+    <article className={`pin ${product ? "is-product" : ""}`}>
       <div className="pin-media">
         <Link href={href} aria-label={pin.title}>
           <PinImage pin={pin} />
         </Link>
+        {product && <Badge badge={out ? "" : product.badge} className="pin-badge" />}
+        {out && <span className="pbadge pbadge-out pin-badge">Gutardy</span>}
+        {pin.images.length > 1 && (
+          <span className="pin-multi" aria-label={`${pin.images.length} surat`}><GridIcon size={13} /> {pin.images.length}</span>
+        )}
         <div className="pin-overlay">
-          <span className="pin-board">{categoryName(pin.category, cats)}</span>
-          <SavePicker pinId={pin.id} savedBoardIds={saved} onChange={setSaved} />
+          <SavePicker pinId={pin.id} savedBoardIds={saved} onChange={setSaved} className="pin-save" />
           <div className="pin-overlay-bottom">
             {pin.link && (
               <a className="round-btn" href={pin.link} target="_blank" rel="noopener noreferrer" aria-label="Çeşmä git">
@@ -65,11 +94,31 @@ export default function PinCard({ pin, action }: { pin: Pin; action?: PinCardAct
           )}
         </div>
       </div>
-      <Link href={href} className="pin-title">{pin.title}</Link>
-      <Link href={`/u/${pin.author.username}`} className="pin-author">
-        <Avatar user={pin.author} size={22} />
-        <span>{pin.author.name}</span>
-      </Link>
+      <div className="pin-meta">
+        <Link href={href} className="pin-title">{pin.title}</Link>
+        {product && (
+          <div className="pin-price-row">
+            <Price price={product.price} oldPrice={product.oldPrice} />
+            {!own && isForSale(product) && (
+              <button
+                className="cart-mini"
+                onClick={onCart}
+                disabled={adding || out}
+                aria-label="Sebede goş"
+                title={out ? "Gutardy" : "Sebede goş"}
+              >
+                {adding ? <span className="spinner" /> : <CartIcon size={18} />}
+              </button>
+            )}
+          </div>
+        )}
+        <Link href={`/u/${pin.author.username}`} className="pin-author">
+          <Avatar user={pin.author} size={22} />
+          <span>{pin.author.name}</span>
+          {pin.author.verified && <VerifiedIcon size={13} />}
+        </Link>
+      </div>
+      {quick && <QuickAddModal pin={pin} onClose={() => setQuick(false)} />}
     </article>
   );
 }

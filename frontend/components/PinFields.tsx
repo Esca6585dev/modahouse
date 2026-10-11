@@ -16,8 +16,8 @@ export function validatePinFields(v: PinFieldValues): string | null {
 }
 
 export default function PinFields({
-  value, onChange, children,
-}: { value: PinFieldValues; onChange: (v: PinFieldValues) => void; children?: React.ReactNode }) {
+  value, onChange, children, product,
+}: { value: PinFieldValues; onChange: (v: PinFieldValues) => void; children?: React.ReactNode; product?: boolean }) {
   const cats = useCategories();
   const set = (k: keyof PinFieldValues) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     onChange({ ...value, [k]: e.target.value });
@@ -26,11 +26,11 @@ export default function PinFields({
     <>
       <label>
         <span>Ady <span className="req" aria-hidden>*</span></span>
-        <input value={value.title} onChange={set("title")} maxLength={100} placeholder="Pine at beriň" required />
+        <input value={value.title} onChange={set("title")} maxLength={100} placeholder={product ? "Mysal: Zarif agşam köýnegi" : "Pine at beriň"} required />
       </label>
       <label>
         Düşündiriş
-        <textarea rows={4} value={value.description} onChange={set("description")} maxLength={1000} placeholder="Bu pin barada gysgaça ýazyň" />
+        <textarea rows={4} value={value.description} onChange={set("description")} maxLength={1000} placeholder={product ? "Haryt barada: fasony, aýratynlyklary, ideg" : "Bu pin barada gysgaça ýazyň"} />
       </label>
       <label>
         Baglanyşyk

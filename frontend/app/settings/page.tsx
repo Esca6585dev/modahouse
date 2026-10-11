@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import BusinessSection from "@/components/BusinessForm";
 import { useToast } from "@/components/Toast";
 import { api, errorMessage, setToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -187,6 +188,13 @@ export default function SettingsPage() {
 
   useEffect(() => { document.title = "Sazlamalar · ModaHouse"; }, []);
 
+  // Jump to #business (e.g. from "Biznes hasabyny aç" links) once the page is rendered.
+  const ready = !!user;
+  useEffect(() => {
+    if (!ready || window.location.hash !== "#business") return;
+    document.getElementById("business")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [ready]);
+
   if (!user) {
     return <div className="page narrow-sm"><div className="skeleton" style={{ height: 400, borderRadius: 24 }} /></div>;
   }
@@ -206,6 +214,11 @@ export default function SettingsPage() {
       <section className="card">
         <h2>Şahsy maglumatlar</h2>
         <ProfileForm key={user.id} />
+      </section>
+
+      <section className="card" id="business">
+        <h2>Biznes hasaby</h2>
+        <BusinessSection key={`${user.id}:${user.isBusiness}`} />
       </section>
 
       <section className="card">

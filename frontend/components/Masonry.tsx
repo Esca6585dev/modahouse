@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Paged } from "@/lib/hooks";
 import type { Pin } from "@/lib/types";
 import PinCard, { type PinCardAction } from "./PinCard";
@@ -9,7 +9,7 @@ const SKELETON_RATIOS = [1.4, 1, 1.25, 0.8, 1.5, 1.1, 0.9, 1.3, 1.2, 1, 1.45, 0.
 
 export function MasonrySkeleton({ count = 16 }: { count?: number }) {
   return (
-    <div className="masonry" aria-busy="true" aria-label="Ýüklenýär">
+    <div className="masonry-css" aria-busy="true" aria-label="Ýüklenýär">
       {SKELETON_RATIOS.slice(0, count).map((r, i) => (
         <div key={i} className="pin">
           <div className="skeleton" style={{ aspectRatio: `1 / ${r}` }} />
@@ -49,11 +49,57 @@ export function InfiniteFooter({ paged }: { paged: Pick<Paged<unknown>, "loading
   );
 }
 
+/** Column count for a container width: ≥2 columns, 236px minimum on desktop. */
+function columnsFor(width: number): { cols: number; gap: number } {
+  const gap = width < 600 ? 10 : 16;
+  const min = width < 600 ? 150 : 236;
+  return { cols: Math.max(2, Math.floor((width + gap) / (min + gap))), gap };
+}
+
+/**
+ * Pinterest-style masonry: pins go to the currently shortest column (estimated from their aspect ratio),
+ * so earlier pins never move when more pages are appended.
+ */
 export default function Masonry({ pins, action }: { pins: Pin[]; action?: PinCardAction }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [layout, setLayout] = useState<{ cols: number; gap: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const width = el.clientWidth;
+      const { cols, gap } = columnsFor(width);
+      setLayout((l) => (l && l.cols === cols && l.gap === gap && Math.abs(l.width - width) < 40 ? l : { cols, gap, width }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const columns = useMemo(() => {
+    if (!layout) return [];
+    const colW = (layout.width - layout.gap * (layout.cols - 1)) / layout.cols;
+    const heights = new Array<number>(layout.cols).fill(0);
+    const out: Pin[][] = Array.from({ length: layout.cols }, () => []);
+    for (const p of pins) {
+      const ratio = (p.height > 0 ? p.height : 1) / (p.width > 0 ? p.width : 1);
+      const h = colW * ratio + (p.product ? 96 : 66);
+      let best = 0;
+      for (let i = 1; i < heights.length; i++) if (heights[i] < heights[best] - 1) best = i;
+      out[best].push(p);
+      heights[best] += h;
+    }
+    return out;
+  }, [pins, layout]);
+
   return (
-    <div className="masonry">
-      {pins.map((p) => (
-        <PinCard key={p.id} pin={p} action={action} />
+    <div className="masonry" ref={ref} style={layout ? { gap: layout.gap } : undefined}>
+      {columns.map((col, i) => (
+        <div className="masonry-col" key={i}>
+          {col.map((p) => <PinCard key={p.id} pin={p} action={action} />)}
+        </div>
       ))}
     </div>
   );

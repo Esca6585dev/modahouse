@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 160" role="img" aria-label="moda HOUSE">
+  <g fill="none" stroke="#FFFFFF" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- m -->
+    <path d="M14 110 V76 A16 16 0 0 1 46 76 V110 M46 76 A16 16 0 0 1 78 76 V110"/>
+    <!-- o -->
+    <circle cx="114" cy="85" r="24"/>
+    <!-- d: bowl + tall stem -->
+    <circle cx="176" cy="85" r="24"/>
+    <path d="M200 110 V38"/>
+    <!-- a: bowl + stem -->
+    <circle cx="238" cy="85" r="24"/>
+    <path d="M262 62 V110"/>
+  </g>
+  <!-- the house roof above the d -->
+  <path d="M184 30 L200 15 L216 30" fill="none" stroke="#D7263D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="264" y="147" text-anchor="end" font-family="Montserrat, 'Helvetica Neue', Arial, sans-serif" font-size="30" font-weight="800" letter-spacing="2.5" fill="#D7263D">HOUSE</text>
+</svg>
