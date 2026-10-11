@@ -37,7 +37,7 @@ export default function SearchBar() {
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Gözle: moda, içki bezeg, tagamlar…"
+        placeholder="Gözle: köýnek, dükan, fason…"
         aria-label="Gözleg"
         enterKeyHint="search"
       />
