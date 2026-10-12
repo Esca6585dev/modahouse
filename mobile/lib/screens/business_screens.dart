@@ -44,11 +44,17 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   late final Me _me = ref.read(authProvider).user!;
   late final Business? _b = _me.business;
-  late BusinessCategory? _category = _b?.category;
+  late String? _category = (_b?.category ?? '').isEmpty ? null : _b!.category;
   late final _phone = TextEditingController(text: _b?.phone ?? '');
   late final _city = TextEditingController(text: _b?.city ?? '');
   late final _address = TextEditingController(text: _b?.address ?? '');
   late final _instagram = TextEditingController(text: _b?.instagram ?? '');
+  late final _tiktok = TextEditingController(text: _b?.tiktok ?? '');
+  late final _telegram = TextEditingController(text: _b?.telegram ?? '');
+  late final _whatsapp = TextEditingController(text: _b?.whatsapp ?? '');
+  late final _imo = TextEditingController(text: _b?.imo ?? '');
+  late final _youtube = TextEditingController(text: _b?.youtube ?? '');
+  late final _website = TextEditingController(text: _b?.website ?? '');
   late final _hours = TextEditingController(text: _b?.workingHours ?? '');
   late final _delivery = TextEditingController(
     text: _b == null ? '3' : '${_b.deliveryDays}',
@@ -69,6 +75,12 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
       _city,
       _address,
       _instagram,
+      _tiktok,
+      _telegram,
+      _whatsapp,
+      _imo,
+      _youtube,
+      _website,
       _hours,
       _delivery,
       _return,
@@ -95,6 +107,12 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
       workingHours: _hours.text.trim(),
       deliveryDays: int.tryParse(_delivery.text.trim()),
       returnDays: int.tryParse(_return.text.trim()),
+      tiktok: _tiktok.text.trim().replaceFirst('@', ''),
+      telegram: _telegram.text.trim().replaceFirst('@', ''),
+      whatsapp: _whatsapp.text.trim(),
+      imo: _imo.text.trim(),
+      youtube: _youtube.text.trim(),
+      website: _website.text.trim(),
     );
     try {
       final repo = ref.read(businessRepositoryProvider);
@@ -112,6 +130,33 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Widget _handleField(TextEditingController c, String label, IconData icon) =>
+      TextFormField(
+        controller: c,
+        enabled: !_busy,
+        autocorrect: false,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: S.instagramHint,
+          prefixText: '@',
+          prefixIcon: Icon(icon),
+        ),
+      );
+
+  static String? _optionalPhone(String? v) =>
+      (v ?? '').trim().isEmpty ? null : validatePhone(v);
+
+  static String? _optionalUrl(String? v) {
+    final s = (v ?? '').trim();
+    if (s.isEmpty) return null;
+    final u = Uri.tryParse(s);
+    return u != null &&
+            (u.scheme == 'http' || u.scheme == 'https') &&
+            u.host.isNotEmpty
+        ? null
+        : S.urlInvalid;
   }
 
   @override
@@ -170,14 +215,17 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
               crossAxisSpacing: 8,
               childAspectRatio: 2.9,
               children: [
-                for (final c in BusinessCategory.values)
+                for (final c
+                    in ref.watch(businessCategoriesProvider).value ??
+                        const <Category>[])
                   _CategoryTile(
-                    category: c,
-                    selected: c == _category,
+                    category: c.slug,
+                    label: c.name,
+                    selected: c.slug == _category,
                     onTap: _busy
                         ? null
                         : () => setState(() {
-                            _category = c;
+                            _category = c.slug;
                             _categoryMissing = false;
                           }),
                   ),
@@ -234,16 +282,64 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
               ),
             ),
             gap,
+            const SizedBox(height: 8),
+            const Text(
+              S.socialLinks,
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            _handleField(_instagram, S.instagram, Icons.camera_alt_outlined),
+            gap,
+            _handleField(_tiktok, S.tiktok, Icons.music_note_rounded),
+            gap,
+            _handleField(_telegram, S.telegram, Icons.send_rounded),
+            gap,
             TextFormField(
-              controller: _instagram,
+              controller: _whatsapp,
               enabled: !_busy,
-              autocorrect: false,
+              keyboardType: TextInputType.phone,
               decoration: const InputDecoration(
-                labelText: S.instagram,
-                hintText: S.instagramHint,
-                prefixText: '@',
-                prefixIcon: Icon(Icons.camera_alt_outlined),
+                labelText: S.whatsapp,
+                hintText: S.phoneHint,
+                prefixIcon: Icon(Icons.chat_rounded),
               ),
+              validator: _optionalPhone,
+            ),
+            gap,
+            TextFormField(
+              controller: _imo,
+              enabled: !_busy,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: S.imo,
+                hintText: S.phoneHint,
+                prefixIcon: Icon(Icons.videocam_outlined),
+              ),
+              validator: _optionalPhone,
+            ),
+            gap,
+            TextFormField(
+              controller: _youtube,
+              enabled: !_busy,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: S.youtube,
+                hintText: S.websiteHint,
+                prefixIcon: Icon(Icons.smart_display_outlined),
+              ),
+              validator: _optionalUrl,
+            ),
+            gap,
+            TextFormField(
+              controller: _website,
+              enabled: !_busy,
+              keyboardType: TextInputType.url,
+              decoration: const InputDecoration(
+                labelText: S.website,
+                hintText: S.websiteHint,
+                prefixIcon: Icon(Icons.language_rounded),
+              ),
+              validator: _optionalUrl,
             ),
             gap,
             Row(
@@ -292,11 +388,13 @@ class _BusinessSetupScreenState extends ConsumerState<BusinessSetupScreen> {
 class _CategoryTile extends StatelessWidget {
   const _CategoryTile({
     required this.category,
+    required this.label,
     required this.selected,
     required this.onTap,
   });
 
-  final BusinessCategory category;
+  final String category;
+  final String label;
   final bool selected;
   final VoidCallback? onTap;
 
@@ -330,7 +428,7 @@ class _CategoryTile extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    businessCategoryLabel(category),
+                    label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -492,15 +590,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   _DashTab _tab = _DashTab.orders;
   OrderStatus? _status;
   late PagedController<Order> _orders = _makeOrders();
-  late final PagedController<Pin> _products = PagedController(
-    (page) => ref
-        .read(pinsRepositoryProvider)
-        .list(
-          author: ref.read(authProvider).user?.username,
-          type: PinType.products,
-          page: page,
-        ),
-  );
+  late final PagedController<Pin> _products;
+
+  @override
+  void initState() {
+    super.initState();
+    _products = PagedController(
+      (page) => ref
+          .read(pinsRepositoryProvider)
+          .list(
+            author: ref.read(authProvider).user?.username,
+            type: PinType.products,
+            page: page,
+          ),
+    );
+  }
 
   PagedController<Order> _makeOrders() {
     final status = _status;
@@ -858,7 +962,7 @@ class _ProductsList extends ConsumerWidget {
       listenable: controller,
       builder: (context, _) {
         final items = controller.items
-            .where((x) => !updates.deleted.contains(x.id))
+            .where((x) => !updates.isGone(x.id))
             .map(updates.resolve)
             .toList();
         if (!controller.loaded) {

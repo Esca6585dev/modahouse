@@ -101,7 +101,7 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
             link: f.link.text.trim(),
             category: f.category,
             tags: splitTags(f.tags.text).join(','),
-            product: _product?.toInput(),
+            product: _product?.toInput(pin.product?.type ?? ListingType.sale),
           );
       ref.read(pinUpdatesProvider.notifier).updated(updated);
       showSnack(S.changesSaved);
@@ -180,7 +180,11 @@ class _PinEditScreenState extends ConsumerState<PinEditScreen> {
                   style: TextStyle(color: p.muted, fontSize: 12.5),
                 ),
               ),
-              ProductFields(controllers: _product!, enabled: !_busy),
+              ProductFields(
+                controllers: _product!,
+                enabled: !_busy,
+                type: pin.product?.type ?? ListingType.sale,
+              ),
             ],
             if (_formError != null) ...[
               const SizedBox(height: 16),

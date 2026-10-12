@@ -14,9 +14,21 @@ class BusinessInput {
     this.workingHours,
     this.deliveryDays,
     this.returnDays,
+    this.tiktok,
+    this.telegram,
+    this.whatsapp,
+    this.imo,
+    this.youtube,
+    this.website,
   });
 
-  final BusinessCategory? category;
+  final String? category;
+  final String? tiktok;
+  final String? telegram;
+  final String? whatsapp;
+  final String? imo;
+  final String? youtube;
+  final String? website;
   final String? phone;
   final String? address;
   final String? city;
@@ -26,7 +38,7 @@ class BusinessInput {
   final int? returnDays;
 
   Json toJson() => {
-    'category': ?category?.value,
+    'category': ?category,
     'phone': ?phone,
     'address': ?address,
     'city': ?city,
@@ -34,6 +46,12 @@ class BusinessInput {
     'workingHours': ?workingHours,
     'deliveryDays': ?deliveryDays,
     'returnDays': ?returnDays,
+    'tiktok': ?tiktok,
+    'telegram': ?telegram,
+    'whatsapp': ?whatsapp,
+    'imo': ?imo,
+    'youtube': ?youtube,
+    'website': ?website,
   };
 }
 
@@ -64,7 +82,7 @@ class BusinessRepository {
   /// Shops directory.
   Future<Page<BusinessCard>> list({
     String? q,
-    BusinessCategory? category,
+    String? category,
     int page = 1,
     int limit = AppConfig.pageSize,
   }) async => Page.fromJson(
@@ -73,7 +91,7 @@ class BusinessRepository {
         '/businesses',
         query: {
           'q': q?.trim(),
-          'category': category?.value,
+          'category': category,
           'page': page,
           'limit': limit,
         },
@@ -82,19 +100,19 @@ class BusinessRepository {
     BusinessCard.fromJson,
   );
 
+  /// `GET /business-categories`.
+  Future<List<Category>> categories() async =>
+      parseList(await _api.get('/business-categories'), Category.fromJson);
+
   /// Top 10 ranking.
   Future<List<TopEntry>> top({
     StatsPeriod period = StatsPeriod.week,
-    BusinessCategory? category,
+    String? category,
     int limit = 10,
   }) async => parseList(
     await _api.get(
       '/top',
-      query: {
-        'period': period.value,
-        'category': category?.value,
-        'limit': limit,
-      },
+      query: {'period': period.value, 'category': category, 'limit': limit},
     ),
     TopEntry.fromJson,
   );

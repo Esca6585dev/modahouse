@@ -22,7 +22,7 @@ class ShopsScreen extends ConsumerStatefulWidget {
 }
 
 class _ShopsScreenState extends ConsumerState<ShopsScreen> {
-  BusinessCategory? _category;
+  String? _category;
   late PagedController<BusinessCard> _shops = _make();
 
   PagedController<BusinessCard> _make() {
@@ -31,7 +31,7 @@ class _ShopsScreenState extends ConsumerState<ShopsScreen> {
     return PagedController((page) => repo.list(category: c, page: page));
   }
 
-  void _setCategory(BusinessCategory? c) {
+  void _setCategory(String? c) {
     if (c == _category) return;
     final old = _shops;
     setState(() {
@@ -70,24 +70,32 @@ class _ShopsScreenState extends ConsumerState<ShopsScreen> {
   );
 }
 
-/// "Hemmesi" + the five business categories.
-class BusinessCategoryChips extends StatelessWidget {
+/// "Hemmesi" + the business categories from the server.
+class BusinessCategoryChips extends ConsumerWidget {
   const BusinessCategoryChips({
     super.key,
     required this.selected,
     required this.onSelected,
   });
 
-  final BusinessCategory? selected;
-  final ValueChanged<BusinessCategory?> onSelected;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
 
   @override
-  Widget build(BuildContext context) => ChoiceChips<BusinessCategory?>(
-    values: const [null, ...BusinessCategory.values],
-    selected: selected,
-    label: (c) => c == null ? S.all : businessCategoryLabel(c),
-    onSelected: onSelected,
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cats =
+        ref.watch(businessCategoriesProvider).value ??
+        [
+          for (final e in businessCategoryNames.entries)
+            Category(slug: e.key, name: e.value),
+        ];
+    return ChoiceChips<String?>(
+      values: [null, for (final c in cats) c.slug],
+      selected: selected,
+      label: (c) => c == null ? S.all : businessCategoryLabel(c, cats),
+      onSelected: onSelected,
+    );
+  }
 }
 
 /// Paged list of [ShopCard]s with loading, empty and error states.

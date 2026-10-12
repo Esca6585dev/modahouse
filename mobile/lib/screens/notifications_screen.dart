@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/api_exception.dart';
 import '../core/format.dart';
+import '../core/labels.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
@@ -30,7 +31,11 @@ String notificationText(Notification n) {
     case NotificationType.order:
       return S.notifOrder;
     case NotificationType.orderStatus:
-      // The pill below shows the order's current status.
+      final o = n.order;
+      if (o != null && o.forSeller && o.status == OrderStatus.cancelled) {
+        return S.notifOrderCancelledByBuyer;
+      }
+      // The pill below shows the step this notification is about.
       return S.notifOrderStatus;
     case NotificationType.review:
       return S.notifReview;
@@ -223,6 +228,17 @@ class _NotificationTile extends StatelessWidget {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               OrderStatusPill(status: order.status),
+                              if (order.currentStatus != null &&
+                                  order.currentStatus != order.status)
+                                Text(
+                                  S.notifOrderNow(
+                                    orderStatusLabel(order.currentStatus!),
+                                  ),
+                                  style: TextStyle(
+                                    color: p.muted,
+                                    fontSize: 12,
+                                  ),
+                                ),
                               Text(
                                 '${S.orderNumber(order.id)} · ${formatPrice(order.total)}',
                                 style: TextStyle(

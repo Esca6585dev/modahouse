@@ -61,6 +61,7 @@ class Profile extends UserBrief {
     this.hasStory = false,
     this.storySeen = false,
     this.business,
+    this.isBlocked = false,
   });
 
   factory Profile.fromJson(Json j) => Profile(
@@ -82,6 +83,7 @@ class Profile extends UserBrief {
     business: j['business'] is Map
         ? Business.fromJson(asJson(j['business']))
         : null,
+    isBlocked: asBool(j['isBlocked']),
   );
 
   final String bio;
@@ -99,25 +101,33 @@ class Profile extends UserBrief {
   /// Shop details, set when [isBusiness].
   final Business? business;
 
-  Profile copyWith({bool? isFollowing, int? followersCount, bool? storySeen}) =>
-      Profile(
-        id: id,
-        username: username,
-        name: name,
-        avatarUrl: avatarUrl,
-        isBusiness: isBusiness,
-        verified: verified,
-        bio: bio,
-        followersCount: followersCount ?? this.followersCount,
-        followingCount: followingCount,
-        pinsCount: pinsCount,
-        isFollowing: isFollowing ?? this.isFollowing,
-        isMe: isMe,
-        createdAt: createdAt,
-        hasStory: hasStory,
-        storySeen: storySeen ?? this.storySeen,
-        business: business,
-      );
+  /// I blocked this user.
+  final bool isBlocked;
+
+  Profile copyWith({
+    bool? isFollowing,
+    int? followersCount,
+    bool? storySeen,
+    bool? isBlocked,
+  }) => Profile(
+    id: id,
+    username: username,
+    name: name,
+    avatarUrl: avatarUrl,
+    isBusiness: isBusiness,
+    verified: verified,
+    bio: bio,
+    followersCount: followersCount ?? this.followersCount,
+    followingCount: followingCount,
+    pinsCount: pinsCount,
+    isFollowing: isFollowing ?? this.isFollowing,
+    isMe: isMe,
+    createdAt: createdAt,
+    hasStory: hasStory,
+    storySeen: storySeen ?? this.storySeen,
+    business: business,
+    isBlocked: isBlocked ?? this.isBlocked,
+  );
 }
 
 class Me extends Profile {

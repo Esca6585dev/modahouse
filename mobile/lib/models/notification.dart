@@ -58,18 +58,34 @@ class NotificationOrder {
   const NotificationOrder({
     required this.id,
     required this.status,
+    this.currentStatus,
     this.total = 0,
+    this.role = '',
   });
 
   factory NotificationOrder.fromJson(Json j) => NotificationOrder(
     id: asInt(j['id']),
     status: OrderStatus.parse(asString(j['status'])),
+    currentStatus: j['currentStatus'] == null
+        ? null
+        : OrderStatus.parse(asString(j['currentStatus'])),
     total: asInt(j['total']),
+    role: asString(j['role']),
   );
 
   final int id;
+
+  /// The step this notification is about.
   final OrderStatus status;
+
+  /// The order's status now (null on older servers).
+  final OrderStatus? currentStatus;
   final int total;
+
+  /// `buyer` or `seller`: who received the notification.
+  final String role;
+
+  bool get forSeller => role == 'seller';
 }
 
 /// Named after the API type. Flutter also has a `Notification` widget class,

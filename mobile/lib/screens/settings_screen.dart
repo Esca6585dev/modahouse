@@ -423,8 +423,90 @@ class _ShopLinksCard extends StatelessWidget {
         children: [
           link(Icons.receipt_long_outlined, S.myOrders, '/orders'),
           link(Icons.shopping_bag_outlined, S.cart, '/cart'),
+          link(Icons.block_rounded, S.blockedUsers, '/settings/blocked'),
         ],
       ),
+    );
+  }
+}
+
+/// `/settings/blocked`: users I blocked, with "Petigi aýyr".
+class BlockedUsersScreen extends ConsumerStatefulWidget {
+  const BlockedUsersScreen({super.key});
+
+  @override
+  ConsumerState<BlockedUsersScreen> createState() => _BlockedUsersScreenState();
+}
+
+class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
+  List<UserBrief>? _users;
+  Object? _error;
+  final Set<String> _busy = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final u = await ref.read(usersRepositoryProvider).blocks();
+      if (mounted) setState(() => _users = u);
+    } catch (e) {
+      if (mounted) setState(() => _error = e);
+    }
+  }
+
+  Future<void> _unblock(UserBrief u) async {
+    setState(() => _busy.add(u.username));
+    try {
+      await ref.read(usersRepositoryProvider).unblock(u.username);
+      showSnack(S.unblocked);
+      if (mounted) {
+        setState(() => _users = [..._users!]..removeWhere((x) => x.id == u.id));
+      }
+    } catch (e) {
+      showError(e);
+    } finally {
+      if (mounted) setState(() => _busy.remove(u.username));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final users = _users;
+    return Scaffold(
+      appBar: AppBar(title: const Text(S.blockedUsers)),
+      body: users == null
+          ? (_error == null
+                ? const LoadingView()
+                : ErrorView(error: _error!, onRetry: _load))
+          : users.isEmpty
+          ? const EmptyView(icon: Icons.block_rounded, title: S.noBlockedUsers)
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: users.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 2),
+              itemBuilder: (context, i) {
+                final u = users[i];
+                return ListTile(
+                  leading: UserAvatar(user: u, size: 44),
+                  title: Text(
+                    u.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text('@${u.username}'),
+                  trailing: ElevatedButton(
+                    onPressed: _busy.contains(u.username)
+                        ? null
+                        : () => _unblock(u),
+                    child: const Text(S.unblock),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

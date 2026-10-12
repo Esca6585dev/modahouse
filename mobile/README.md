@@ -1,8 +1,25 @@
 # ModaHouse: Android programmasy (Flutter)
 
-ModaHouse-yň Pinterest görnüşli mobil programmasy. Ol web müşderi (`frontend/`) bilen
-şol bir mümkinçilikleri berýär we `backend/` REST API-si bilen işleýär
-(`docs/API.md` serediň). Programmanyň ähli ýazgylary türkmençe.
+ModaHouse-yň (Modalar öýi) Pinterest bilen Instagram-yň garyndysy bolan mobil programmasy.
+Ol web müşderi (`frontend/`) bilen şol bir mümkinçilikleri berýär we `backend/` REST API-si
+bilen işleýär (`docs/API.md` serediň). Programmanyň ähli ýazgylary türkmençe.
+
+## Mümkinçilikler
+
+- **Iki görnüş:** baş sahypada Pinterest (masonry) we Instagram (bir sütünli postlar,
+  karusel, iki gezek basyp halamak, soňky teswirler) görnüşleri. Saýlanan görnüş ýatda saklanýar.
+- **Reels:** doly ekranly wertikal wideo lentasy, sesi açmak/ýapmak, halamak, teswir,
+  paýlaşmak we saklamak.
+- **"⋯" menýusy:** Sakla, Paýlaş, Ýükle, Baglanyşygy göçür, Meňzeşini tap,
+  Gyzyklanmaýaryn, Şikaýat et.
+- **Post görnüşleri:** Diňe paýlaşmak, Satlyk, Kärende we Sargyt bilen tikmek. Kärende we
+  sargyt üçin "Habarlaş" paneli: jaň, WhatsApp, Telegram, IMO, Instagram.
+- **✨ AI bilen ýaz:** post görnüşine laýyk at, düşündiriş, heşteg we baha setirini hödürleýär.
+- **Surat bilen gözleg:** surat çek ýa-da galereýadan saýla, çarçuwany süýşür we
+  bazadan meňzeş postlary/harytlary tap ("Diňe harytlar" saýlawy bilen).
+- **Biznes hasaby:** dükan, atelýe, gelin salony, kärende salony, şaý-sep we gözellik salony;
+  sosial ulgamlar, telefon, iş wagty, harytlar, sebet, sargytlar we statistika.
+- Wideo we surat story-ler, heşteg sahypalary, halanlarym, gizlenen postlar we bloklamak.
 
 ## Talaplar
 
@@ -28,8 +45,10 @@ flutter run --dart-define=API_URL=http://10.0.2.2:8080
 
 `API_URL` berilmese hem şu salgy ulanylýar.
 
-Synag hasaby: **aylar.studio / modahouse123** (beýleki synag ulanyjylary:
-`ic.bezeg`, `tagam.tm`, `gezelenc`, `renk.lab`, `yasyl.burc`, paroly şol bir).
+Synag hasaby: **aylar.studio / modahouse123**. Beýleki synag hasaplary hem şol parol bilen
+açylýar, meselem dükanlar `gyzyl.guyze`, `ak.gelin`, `altyn.gelin` (kärende),
+`kesde.atelye` (sargyt bilen tikmek) we döredijiler `aysoltan.style`, `selbi.saclar`,
+`nurana.nails`.
 
 ## Hakyky telefonda işletmek
 
@@ -71,7 +90,7 @@ flutter build appbundle --release --dart-define=API_URL=https://api.example.com
 
 ```bash
 flutter analyze   # ýalňyşlyk we duýduryş bolmaly däl
-flutter test      # JSON modelleri (v1 we v2), API ýalňyşlyklary, haryt we Top 10 kartoçkalary, giriş formasy
+flutter test      # JSON modelleri (v1, v2, v3), API ýalňyşlyklary, kartoçkalar, post, ⋯ menýu, çarçuwa, giriş formasy
 ```
 
 Web görnüşinde barlamak hem mümkin (meselem, brauzer bilen awtomatik synag üçin):
@@ -107,18 +126,23 @@ mobile/
 │   ├── l10n/
 │   │   ├── strings.dart       # ähli türkmençe ýazgylar şu ýerde
 │   │   └── material_tk.dart   # Flutter-iň öz düwmeleri üçin türkmençe ýazgylar
-│   ├── core/                  # Dio müşderisi, ApiException, tema, format, SnackBar
+│   ├── core/                  # Dio müşderisi, ApiException, tema, format, SnackBar,
+│   │                          # ýükläp almak we wideo maglumatlary (platforma boýunça)
 │   ├── models/                # UserBrief, Profile, Me, Pin, Board, Comment,
 │   │                          # Notification, Category, Page<T>, Business,
-│   │                          # Product, Cart, Order, Review, Story, TopEntry
+│   │                          # Product, Cart, Order, Review, Story, TopEntry,
+│   │                          # surat bilen gözlegiň netijeleri
 │   ├── data/                  # repozitoriýalar: auth, users, pins, boards,
 │   │                          # comments, notifications, business, cart,
-│   │                          # orders, reviews, stories
+│   │                          # orders, reviews, stories, ai
 │   ├── state/                 # Riverpod: giriş ýagdaýy, bildiriş sanawy,
-│   │                          # sahypalaýyn ýükleýji, pin üýtgeşmeleri
-│   ├── widgets/               # pin kartoçkasy, masonry tor, sakla paneli,
-│   │                          # awatar, tagta kartoçkasy, ýagdaý görnüşleri
-│   └── screens/               # baş sahypa (story), gözleg, pin/haryt, döret,
+│   │                          # sahypalaýyn ýükleýji, pin üýtgeşmeleri,
+│   │                          # ýatda saklanýan sazlamalar (lenta görnüşi)
+│   ├── widgets/               # pin kartoçkasy, Instagram posty, masonry tor,
+│   │                          # ⋯ menýu, wideo, çarçuwa, AI paneli, habarlaşmak
+│   │                          # paneli, sakla paneli, awatar, ýagdaý görnüşleri
+│   └── screens/               # baş sahypa (story), gözleg, reels, surat bilen
+│                              # gözleg, heşteg, pin/haryt, döret,
 │                              # Top 10, dükanlar, profil, sebet, sargyt,
 │                              # sargytlarym, biznes paneli, bildirişler,
 │                              # giriş/hasaba alyş, sazlamalar
@@ -135,4 +159,7 @@ mobile/
 `flutter_secure_storage` (JWT saklamak), `cached_network_image` we `flutter_svg`
 (suratlar; synag suratlary SVG), `flutter_staggered_grid_view` (masonry tor),
 `image_picker` (galereýa we kamera), `share_plus` (paýlaşmak), `url_launcher`
-(pin baglanyşyklary), `timeago` (türkmençe wagt: "3 minut öň", "dün").
+(baglanyşyklar, jaň we habarlaşmak), `timeago` (türkmençe wagt: "3 minut öň", "dün"),
+`video_player` (reels we wideo postlar), `shared_preferences` (lenta görnüşini ýatda saklamak).
+
+Üns beriň: synag reels-leri WebM formatynda. Android-de işleýär, iOS üçin MP4 gerek bolar.

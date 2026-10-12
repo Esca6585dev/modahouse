@@ -18,6 +18,16 @@ class AppConfig {
   /// Base URL of the REST API.
   static String get apiBase => '$apiUrl/api';
 
+  /// Public web address used in shared / copied links
+  /// (`--dart-define=WEB_URL=https://modahouse.tm`).
+  static const String webUrl = String.fromEnvironment(
+    'WEB_URL',
+    defaultValue: 'https://modahouse.tm',
+  );
+
+  /// Link to a post on the web.
+  static String pinLink(int id) => '$webUrl/pin/$id';
+
   /// Default page size for paginated lists.
   static const int pageSize = 24;
 }

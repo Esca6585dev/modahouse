@@ -3,36 +3,38 @@ import 'package:flutter/material.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 
-String businessCategoryLabel(BusinessCategory? c) {
-  switch (c) {
-    case BusinessCategory.dress:
-      return S.catDress;
-    case BusinessCategory.tailor:
-      return S.catTailor;
-    case BusinessCategory.boutique:
-      return S.catBoutique;
-    case BusinessCategory.designer:
-      return S.catDesigner;
-    case BusinessCategory.accessories:
-      return S.catAccessories;
-    case null:
-      return '';
+/// Turkmen name of a business category slug.
+String businessCategoryLabel(String? slug, [List<Category>? categories]) {
+  if (slug == null || slug.isEmpty) return '';
+  for (final c in categories ?? const <Category>[]) {
+    if (c.slug == slug) return c.name;
   }
+  return businessCategoryNames[slug] ?? slug;
 }
 
-IconData businessCategoryIcon(BusinessCategory? c) {
-  switch (c) {
-    case BusinessCategory.dress:
+IconData businessCategoryIcon(String? slug) {
+  switch (slug) {
+    case 'dress':
       return Icons.checkroom_rounded;
-    case BusinessCategory.tailor:
+    case 'tailor':
       return Icons.content_cut_rounded;
-    case BusinessCategory.boutique:
+    case 'atelier':
+      return Icons.design_services_outlined;
+    case 'bridal':
+      return Icons.favorite_border_rounded;
+    case 'rental':
+      return Icons.event_available_rounded;
+    case 'boutique':
       return Icons.storefront_rounded;
-    case BusinessCategory.designer:
-      return Icons.design_services_rounded;
-    case BusinessCategory.accessories:
+    case 'designer':
+      return Icons.brush_outlined;
+    case 'jewelry':
       return Icons.diamond_outlined;
-    case null:
+    case 'beauty':
+      return Icons.face_retouching_natural_outlined;
+    case 'accessories':
+      return Icons.shopping_bag_outlined;
+    default:
       return Icons.store_mall_directory_outlined;
   }
 }

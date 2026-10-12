@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 import '../data/pins_repository.dart';
@@ -9,6 +10,7 @@ import '../state/auth.dart';
 import '../state/paged_controller.dart';
 import '../state/pin_updates.dart';
 import '../state/providers.dart';
+import '../state/prefs.dart';
 import '../state/shop_state.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/pin_grid.dart';
@@ -36,11 +38,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final repo = ref.read(pinsRepositoryProvider);
     final category = _category;
     final mode = _mode;
+    final posts = ref.read(feedViewProvider) == FeedView.instagram;
     return PagedController(
       (page) => repo.list(
         category: category,
         following: mode == FeedMode.following,
         type: mode == FeedMode.products ? PinType.products : PinType.any,
+        withComments: posts,
         page: page,
       ),
     );
@@ -78,8 +82,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       pinUpdatesProvider.select((u) => u.created),
       (_, _) => _feed.refresh(),
     );
+    ref.listen(feedViewProvider, (prev, next) {
+      if (prev != next) _reset();
+    });
     final loggedIn = ref.watch(authProvider.select((s) => s.isLoggedIn));
+    final view = ref.watch(feedViewProvider);
     final p = AppPalette.of(context);
+    final empty = switch (_mode) {
+      FeedMode.following => EmptyView(
+        icon: Icons.people_outline_rounded,
+        title: S.emptyFollowingTitle,
+        text: S.emptyFollowingText,
+        action: FilledButton(
+          onPressed: () => _setMode(FeedMode.forYou),
+          child: const Text(S.browseIdeas),
+        ),
+      ),
+      FeedMode.products => const EmptyView(
+        icon: Icons.shopping_bag_outlined,
+        title: S.emptyProductsTitle,
+        text: S.emptyProductsText,
+      ),
+      FeedMode.forYou => const EmptyView(
+        icon: Icons.image_outlined,
+        title: S.emptyFeedTitle,
+        text: S.emptyFeedText,
+      ),
+    };
 
     return Scaffold(
       body: RefreshIndicator(
@@ -102,7 +131,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               toolbarHeight: 60,
               titleSpacing: AppPalette.gutter,
               title: const LogoWordmark(height: 42),
-              actions: topActions(),
+              actions: [
+                IconButton(
+                  key: const Key('feed-view-toggle'),
+                  tooltip: view == FeedView.pinterest
+                      ? S.viewInstagram
+                      : S.viewPinterest,
+                  onPressed: () => ref
+                      .read(feedViewProvider.notifier)
+                      .set(
+                        view == FeedView.pinterest
+                            ? FeedView.instagram
+                            : FeedView.pinterest,
+                      ),
+                  icon: Icon(
+                    view == FeedView.pinterest
+                        ? Icons.view_agenda_outlined
+                        : Icons.dashboard_outlined,
+                  ),
+                ),
+                IconButton(
+                  tooltip: S.top10Title,
+                  onPressed: () => context.push('/top'),
+                  icon: const Icon(Icons.emoji_events_outlined),
+                ),
+                ...topActions(),
+              ],
             ),
             const SliverToBoxAdapter(child: StoriesRow()),
             SliverToBoxAdapter(child: Divider(color: p.border, height: 1)),
@@ -124,30 +178,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             const SliverToBoxAdapter(child: SizedBox(height: 14)),
-            PinGridSliver(
-              controller: _feed,
-              empty: switch (_mode) {
-                FeedMode.following => EmptyView(
-                  icon: Icons.people_outline_rounded,
-                  title: S.emptyFollowingTitle,
-                  text: S.emptyFollowingText,
-                  action: FilledButton(
-                    onPressed: () => _setMode(FeedMode.forYou),
-                    child: const Text(S.browseIdeas),
-                  ),
-                ),
-                FeedMode.products => const EmptyView(
-                  icon: Icons.shopping_bag_outlined,
-                  title: S.emptyProductsTitle,
-                  text: S.emptyProductsText,
-                ),
-                FeedMode.forYou => const EmptyView(
-                  icon: Icons.image_outlined,
-                  title: S.emptyFeedTitle,
-                  text: S.emptyFeedText,
-                ),
-              },
-            ),
+            if (view == FeedView.instagram)
+              PostListSliver(controller: _feed, empty: empty)
+            else
+              PinGridSliver(controller: _feed, empty: empty),
           ],
         ),
       ),

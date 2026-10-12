@@ -24,7 +24,11 @@ class StoriesRepository {
     void Function(int sent, int total)? onProgress,
   }) async {
     final form = FormData.fromMap({
-      'image': image.toMultipart(),
+      if (image.isVideo) ...{
+        'video': image.toMultipart(),
+        if (image.poster != null) 'poster': image.poster!.toMultipart(),
+      } else
+        'image': image.toMultipart(),
       'caption': caption,
       if (pinId != null) 'pinId': '$pinId',
     });

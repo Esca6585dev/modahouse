@@ -93,7 +93,7 @@ void main() {
       expect(p.hasStory, isTrue);
       expect(p.storySeen, isFalse);
       final b = p.business!;
-      expect(b.category, BusinessCategory.dress);
+      expect(b.category, 'dress');
       expect(b.phone, '+993 61 234567');
       expect(b.city, 'Aşgabat');
       expect(b.workingHours, '09:00 - 19:00');
@@ -118,12 +118,10 @@ void main() {
       expect(me.email, 'a@b.tm');
     });
 
-    test('unknown business category is null', () {
-      expect(BusinessCategory.tryParse('x'), isNull);
-      expect(
-        BusinessCategory.tryParse('accessories'),
-        BusinessCategory.accessories,
-      );
+    test('business category labels', () {
+      expect(businessCategoryLabel('rental'), 'Kärende salony');
+      expect(businessCategoryLabel('x'), 'x');
+      expect(businessCategoryLabel(''), '');
     });
   });
 
@@ -233,7 +231,7 @@ void main() {
       expect(e.score, 96);
       expect(e.views, 12450);
       expect(e.moreCount, 5);
-      expect(e.business.category, BusinessCategory.tailor);
+      expect(e.business.category, 'tailor');
       expect(e.business.covers, hasLength(4));
       expect(e.business.hasStory, isTrue);
       expect(e.business.verified, isTrue);
@@ -259,7 +257,7 @@ void main() {
 
     test('BusinessInput only sends given fields', () {
       const input = BusinessInput(
-        category: BusinessCategory.boutique,
+        category: 'boutique',
         phone: '+993 65 000000',
       );
       expect(input.toJson(), {

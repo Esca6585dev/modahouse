@@ -1,3 +1,4 @@
+import 'comment.dart';
 import 'json.dart';
 import 'product.dart';
 import 'user.dart';
@@ -26,6 +27,8 @@ class Pin {
     this.ordersCount = 0,
     this.rating = 0,
     this.reviewsCount = 0,
+    this.mediaType = 'image',
+    this.latestComments = const [],
   });
 
   factory Pin.fromJson(Json j) => Pin(
@@ -53,6 +56,13 @@ class Pin {
     ordersCount: asInt(j['ordersCount']),
     rating: asDouble(j['rating']),
     reviewsCount: asInt(j['reviewsCount']),
+    mediaType: asString(j['mediaType']).isEmpty
+        ? 'image'
+        : asString(j['mediaType']),
+    latestComments: asList(
+      j['latestComments'],
+      (e) => Comment.fromJson(asJson(e)),
+    ),
   );
 
   final int id;
@@ -92,7 +102,15 @@ class Pin {
   final double rating;
   final int reviewsCount;
 
+  /// `image` or `video` (type of the first media item).
+  final String mediaType;
+
+  /// The two latest comments (only with `?withComments=1`).
+  final List<Comment> latestComments;
+
   bool get isSaved => savedBoardIds.isNotEmpty;
+
+  bool get isVideo => mediaType == 'video';
 
   bool get isProduct => product != null;
 
@@ -144,6 +162,8 @@ class Pin {
     ordersCount: ordersCount,
     rating: rating ?? this.rating,
     reviewsCount: reviewsCount ?? this.reviewsCount,
+    mediaType: mediaType,
+    latestComments: latestComments,
   );
 }
 

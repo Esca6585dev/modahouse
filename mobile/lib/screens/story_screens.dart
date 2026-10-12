@@ -21,7 +21,8 @@ import '../widgets/avatar.dart';
 import '../widgets/board_form.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
-import 'create_screen.dart' show pickImage;
+import '../widgets/video_view.dart';
+import 'create_screen.dart' show pickImage, pickVideo;
 
 /// Passed as `extra` when opening `/stories/:username` from the stories row,
 /// so the viewer can swipe on to the next users.
@@ -236,7 +237,14 @@ class _GroupPlayerState extends ConsumerState<_GroupPlayer>
   }
 
   void _start() {
-    _progress.forward(from: 0);
+    if (story.isVideo) {
+      // Video stories advance when the video ends (progress follows it).
+      _progress
+        ..stop()
+        ..value = 0;
+    } else {
+      _progress.forward(from: 0);
+    }
     _markViewed();
   }
 
@@ -280,7 +288,7 @@ class _GroupPlayerState extends ConsumerState<_GroupPlayer>
   void _resume() {
     if (!_paused) return;
     _paused = false;
-    if (widget.active) _progress.forward();
+    if (widget.active && !story.isVideo) _progress.forward();
     setState(() {});
   }
 
@@ -347,15 +355,30 @@ class _GroupPlayerState extends ConsumerState<_GroupPlayer>
               borderRadius: BorderRadius.circular(14),
               child: ColoredBox(
                 color: bg,
-                child: AppImage(
-                  s.imageUrl,
-                  key: ValueKey('story-${s.id}'),
-                  placeholder: bg,
-                  fit: landscape ? BoxFit.contain : BoxFit.cover,
-                  semanticLabel: s.caption.isEmpty
-                      ? user.displayName
-                      : s.caption,
-                ),
+                child: s.isVideo
+                    ? IgnorePointer(
+                        child: AutoVideo(
+                          key: ValueKey('story-video-${s.id}'),
+                          url: s.videoUrl,
+                          posterUrl: s.imageUrl,
+                          color: s.color,
+                          loop: false,
+                          active: widget.active && !_paused,
+                          showMuteButton: false,
+                          fit: landscape ? BoxFit.contain : BoxFit.cover,
+                          onProgress: (v) => _progress.value = v,
+                          onEnded: _next,
+                        ),
+                      )
+                    : AppImage(
+                        s.imageUrl,
+                        key: ValueKey('story-${s.id}'),
+                        placeholder: bg,
+                        fit: landscape ? BoxFit.contain : BoxFit.cover,
+                        semanticLabel: s.caption.isEmpty
+                            ? user.displayName
+                            : s.caption,
+                      ),
               ),
             ),
           ),
@@ -429,6 +452,24 @@ class _GroupPlayerState extends ConsumerState<_GroupPlayer>
                       ),
                     ),
                     const Spacer(),
+                    if (s.isVideo)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final muted = ref.watch(videoMutedProvider);
+                          return IconButton(
+                            tooltip: muted ? S.unmute : S.mute,
+                            onPressed: () => ref
+                                .read(videoMutedProvider.notifier)
+                                .set(!muted),
+                            icon: Icon(
+                              muted
+                                  ? Icons.volume_off_rounded
+                                  : Icons.volume_up_rounded,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
+                      ),
                     if (_isOwner)
                       IconButton(
                         tooltip: S.deleteStory,
@@ -613,6 +654,11 @@ class _AddStoryScreenState extends ConsumerState<AddStoryScreen> {
     if (img != null && mounted) setState(() => _image = img);
   }
 
+  Future<void> _pickVideo() async {
+    final v = await pickVideo();
+    if (v != null && mounted) setState(() => _image = v);
+  }
+
   Future<void> _publish() async {
     final img = _image;
     if (img == null || _busy) return;
@@ -702,7 +748,8 @@ class _AddStoryScreenState extends ConsumerState<AddStoryScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                S.storyHint,
+                                '${S.storyHint} ${S.storyVideoHint}',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(color: p.muted, fontSize: 13),
                               ),
                               const SizedBox(height: 18),
@@ -727,13 +774,32 @@ class _AddStoryScreenState extends ConsumerState<AddStoryScreen> {
                                 ),
                                 label: const Text(S.camera),
                               ),
+                              const SizedBox(height: 8),
+                              ElevatedButton.icon(
+                                key: const Key('story-video'),
+                                onPressed: _busy ? null : _pickVideo,
+                                icon: const Icon(
+                                  Icons.videocam_outlined,
+                                  size: 20,
+                                ),
+                                label: const Text(S.addVideo),
+                              ),
                             ],
                           ),
                         )
                       : Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.memory(img.bytes, fit: BoxFit.cover),
+                            if (!img.isVideo)
+                              Image.memory(img.bytes, fit: BoxFit.cover)
+                            else if (img.poster != null)
+                              Image.memory(img.poster!.bytes, fit: BoxFit.cover)
+                            else
+                              const ColoredBox(color: Color(0xFF222222)),
+                            if (img.isVideo)
+                              Center(
+                                child: VideoBadge(duration: img.duration ?? 0),
+                              ),
                             if (_caption.text.trim().isNotEmpty)
                               Positioned(
                                 left: 16,

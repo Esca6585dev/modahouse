@@ -17,6 +17,7 @@ import 'app_image.dart';
 import 'avatar.dart';
 import 'shop_ui.dart';
 import 'states.dart';
+import 'video_view.dart';
 
 /// Swipeable image carousel with a "1/5" counter and a thumbnails strip.
 class ProductGallery extends StatefulWidget {
@@ -71,11 +72,19 @@ class _ProductGalleryState extends State<ProductGallery> {
                 controller: _pages,
                 itemCount: images.length,
                 onPageChanged: (i) => setState(() => _index = i),
-                itemBuilder: (context, i) => AppImage(
-                  images[i].url,
-                  placeholder: parseHexColor(images[i].color, p.surface),
-                  semanticLabel: i == 0 ? widget.pin.title : null,
-                ),
+                itemBuilder: (context, i) => images[i].isVideo
+                    ? AutoVideo(
+                        url: images[i].url,
+                        posterUrl: images[i].posterUrl,
+                        color: images[i].color,
+                        active: i == _index,
+                        semanticLabel: widget.pin.title,
+                      )
+                    : AppImage(
+                        images[i].url,
+                        placeholder: parseHexColor(images[i].color, p.surface),
+                        semanticLabel: i == 0 ? widget.pin.title : null,
+                      ),
               ),
               if (images.length > 1)
                 Positioned(
@@ -165,7 +174,7 @@ class _ProductGalleryState extends State<ProductGallery> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(9),
                       child: AppImage(
-                        images[i].url,
+                        images[i].stillUrl,
                         cacheWidth: 56,
                         placeholder: parseHexColor(images[i].color, p.surface),
                       ),
@@ -227,37 +236,66 @@ class ProductInfoGrid extends StatelessWidget {
         ],
       ),
     );
-    final cells = [
-      cell(
-        Icons.layers_outlined,
-        S.material,
-        product.material.isEmpty ? S.notSpecified : product.material,
-      ),
-      cell(
-        Icons.inventory_2_outlined,
-        S.stock,
-        stock == null
-            ? S.available
-            : stock > 0
-            ? S.inStock(stock)
-            : S.outOfStock,
-        color: product.inStock ? p.success : AppPalette.danger,
-      ),
-      cell(
-        Icons.local_shipping_outlined,
-        S.deliveryTime,
-        product.deliveryDays > 0
-            ? S.days(product.deliveryDays)
-            : S.notSpecified,
-      ),
-      cell(
-        Icons.autorenew_rounded,
-        S.returnTitle,
-        product.returnDays > 0
-            ? S.returnWithin(product.returnDays)
-            : S.noReturn,
-      ),
-    ];
+    final material = cell(
+      Icons.layers_outlined,
+      S.material,
+      product.material.isEmpty ? S.notSpecified : product.material,
+    );
+    final returns = cell(
+      Icons.autorenew_rounded,
+      S.returnTitle,
+      product.returnDays > 0 ? S.returnWithin(product.returnDays) : S.noReturn,
+    );
+    final delivery = cell(
+      Icons.local_shipping_outlined,
+      S.deliveryTime,
+      product.deliveryDays > 0 ? S.days(product.deliveryDays) : S.notSpecified,
+    );
+    final cells = switch (product.type) {
+      ListingType.rent => [
+        material,
+        cell(
+          Icons.account_balance_wallet_outlined,
+          S.depositLabel.replaceAll(' (TMT)', ''),
+          product.deposit > 0 ? formatPrice(product.deposit) : S.noDeposit,
+        ),
+        cell(
+          Icons.event_available_outlined,
+          S.minDaysLabel,
+          product.minDays > 0 ? S.days(product.minDays) : S.notSpecified,
+        ),
+        returns,
+      ],
+      ListingType.custom => [
+        material,
+        cell(
+          Icons.content_cut_rounded,
+          S.readyDaysLabel.replaceAll(' (gün)', ''),
+          product.readyDays > 0 ? S.days(product.readyDays) : S.notSpecified,
+        ),
+        delivery,
+        cell(
+          Icons.straighten_rounded,
+          S.size,
+          product.sizes.isEmpty ? S.notSpecified : product.sizes.join(', '),
+        ),
+      ],
+      _ => [
+        material,
+        cell(
+          Icons.inventory_2_outlined,
+          S.stock,
+          stock == null
+              ? S.available
+              : stock > 0
+              ? S.inStock(stock)
+              : S.outOfStock,
+          color: product.inStock ? p.success : AppPalette.danger,
+        ),
+        delivery,
+        returns,
+      ],
+    };
     return SectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       child: Column(
@@ -469,7 +507,7 @@ class _ReviewsSectionState extends ConsumerState<ReviewsSection> {
       _rating = 0;
       _writing = false;
       await _load(1);
-      if (_first != null) _publishSummary(_first!);
+      if (mounted && _first != null) _publishSummary(_first!);
     } catch (e) {
       if (mounted) setState(() => _formError = errorMessage(e));
     } finally {
@@ -487,7 +525,7 @@ class _ReviewsSectionState extends ConsumerState<ReviewsSection> {
     try {
       await ref.read(reviewsRepositoryProvider).delete(r.id);
       await _load(1);
-      if (_first != null) _publishSummary(_first!);
+      if (mounted && _first != null) _publishSummary(_first!);
     } catch (e) {
       showError(e);
     }

@@ -9,7 +9,9 @@ import '../state/pin_updates.dart';
 import 'app_image.dart';
 import 'avatar.dart';
 import 'cart_flow.dart';
+import 'pin_menu.dart';
 import 'shop_ui.dart';
+import 'video_view.dart';
 
 /// Masonry tile: image (with the pin color as placeholder and the real aspect
 /// ratio), title and author. Products also show the badge, the price (with the
@@ -68,6 +70,14 @@ class PinCard extends ConsumerWidget {
                   fit: StackFit.expand,
                   children: [
                     AppImage(current.imageUrl, placeholder: placeholder),
+                    if (current.isVideo)
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: VideoBadge(
+                          duration: current.gallery.first.duration,
+                        ),
+                      ),
                     if (action != null)
                       Positioned(top: 8, right: 8, child: action!),
                   ],
@@ -76,25 +86,35 @@ class PinCard extends ConsumerWidget {
             ),
           ),
         ),
-        if (current.title.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-            child: ExcludeSemantics(
-              child: Text(
-                current.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: p.text,
-                  height: 1.3,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 6, 0, 0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: ExcludeSemantics(
+                    child: Text(
+                      current.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: p.text,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              _MoreButton(pin: current),
+            ],
           ),
+        ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+          padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
           child: InkWell(
             onTap: onAuthorTap,
             borderRadius: BorderRadius.circular(12),
@@ -167,6 +187,12 @@ class _ProductTile extends ConsumerWidget {
                           badge: product.badge,
                           small: true,
                         ),
+                      ),
+                    if (pin.isVideo)
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: VideoBadge(duration: pin.gallery.first.duration),
                       ),
                     if (pin.images.length > 1)
                       Positioned(
@@ -274,27 +300,53 @@ class _ProductTile extends ConsumerWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
-          child: InkWell(
-            onTap: onAuthorTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                UserAvatar(user: pin.author, size: 20),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: UserName(
-                    user: pin.author,
-                    iconSize: 13,
-                    style: TextStyle(fontSize: 12.5, color: p.muted),
+          padding: const EdgeInsets.fromLTRB(4, 2, 0, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: onAuthorTap,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    children: [
+                      UserAvatar(user: pin.author, size: 20),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: UserName(
+                          user: pin.author,
+                          iconSize: 13,
+                          style: TextStyle(fontSize: 12.5, color: p.muted),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+              _MoreButton(pin: pin),
+            ],
           ),
         ),
       ],
     );
   }
+}
+
+/// Pinterest-style "⋯" under a card.
+class _MoreButton extends ConsumerWidget {
+  const _MoreButton({required this.pin});
+
+  final Pin pin;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => SizedBox(
+    width: 30,
+    height: 26,
+    child: IconButton(
+      padding: EdgeInsets.zero,
+      iconSize: 20,
+      tooltip: S.postOptions,
+      onPressed: () => showPinMenu(context, ref, pin),
+      icon: Icon(Icons.more_horiz_rounded, color: AppPalette.of(context).text),
+    ),
+  );
 }

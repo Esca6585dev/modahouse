@@ -59,4 +59,19 @@ class UsersRepository {
   Future<Profile> unfollow(String username) async => Profile.fromJson(
     parseJson(await _api.delete('/users/${encodeSegment(username)}/follow')),
   );
+
+  Future<bool> block(String username) async => asBool(
+    parseJson(
+      await _api.post('/users/${encodeSegment(username)}/block'),
+    )['blocked'],
+  );
+
+  Future<bool> unblock(String username) async => asBool(
+    parseJson(
+      await _api.delete('/users/${encodeSegment(username)}/block'),
+    )['blocked'],
+  );
+
+  Future<List<UserBrief>> blocks() async =>
+      parseList(await _api.get('/me/blocks'), UserBrief.fromJson);
 }

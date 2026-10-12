@@ -15,14 +15,18 @@ import 'screens/notifications_screen.dart';
 import 'screens/orders_screens.dart';
 import 'screens/pin_detail_screen.dart';
 import 'screens/pin_edit_screen.dart';
+import 'data/common.dart';
 import 'screens/profile_screen.dart';
+import 'screens/reels_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shell.dart';
 import 'screens/shops_screen.dart';
 import 'screens/story_screens.dart';
+import 'screens/tag_screen.dart';
 import 'screens/top_screen.dart';
 import 'screens/user_list_screen.dart';
+import 'screens/visual_search_screen.dart';
 import 'state/auth.dart';
 import 'widgets/cart_flow.dart';
 
@@ -65,7 +69,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/top', builder: (_, _) => const TopScreen()),
+              GoRoute(path: '/reels', builder: (_, _) => const ReelsScreen()),
             ],
           ),
           StatefulShellBranch(
@@ -77,6 +81,32 @@ final routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(path: '/top', builder: (_, _) => const TopScreen()),
+      GoRoute(
+        path: '/tag/:tag',
+        builder: (_, s) => TagScreen(
+          key: ValueKey('tag-${s.pathParameters['tag']}'),
+          tag: s.pathParameters['tag'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/visual',
+        builder: (_, s) => PhotoSearchScreen(
+          image: s.extra is PickedImage ? s.extra! as PickedImage : null,
+        ),
+      ),
+      GoRoute(
+        path: '/visual/pin/:id',
+        builder: (_, s) => SimilarByPhotoScreen(
+          key: ValueKey('visual-${s.pathParameters['id']}'),
+          pinId: _intParam(s, 'id') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/settings/blocked',
+        redirect: requireLogin,
+        builder: (_, _) => const BlockedUsersScreen(),
       ),
       GoRoute(
         path: '/notifications',
@@ -148,16 +178,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/pin/:id',
-        builder: (_, s) => PinDetailScreen(id: _intParam(s, 'id') ?? 0),
+        // Keyed by id: going from one pin to another must load the new one.
+        builder: (_, s) => PinDetailScreen(
+          key: ValueKey('pin-${s.pathParameters['id']}'),
+          id: _intParam(s, 'id') ?? 0,
+        ),
       ),
       GoRoute(
         path: '/pin/:id/edit',
         redirect: requireLogin,
-        builder: (_, s) => PinEditScreen(id: _intParam(s, 'id') ?? 0),
+        builder: (_, s) => PinEditScreen(
+          key: ValueKey('pin-edit-${s.pathParameters['id']}'),
+          id: _intParam(s, 'id') ?? 0,
+        ),
       ),
       GoRoute(
         path: '/user/:username',
         builder: (_, s) => UserProfileScreen(
+          key: ValueKey('user-${s.pathParameters['username']}'),
           username: s.pathParameters['username'] ?? '',
           initialTab: s.uri.queryParameters['tab'],
         ),

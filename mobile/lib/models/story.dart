@@ -14,6 +14,8 @@ class Story {
     this.viewsCount = 0,
     this.createdAt,
     this.expiresAt,
+    this.mediaType = 'image',
+    this.videoUrl = '',
   });
 
   factory Story.fromJson(Json j) => Story(
@@ -28,6 +30,10 @@ class Story {
     viewsCount: asInt(j['viewsCount']),
     createdAt: asDate(j['createdAt']),
     expiresAt: asDate(j['expiresAt']),
+    mediaType: asString(j['mediaType']).isEmpty
+        ? 'image'
+        : asString(j['mediaType']),
+    videoUrl: asString(j['videoUrl']),
   );
 
   final int id;
@@ -46,6 +52,12 @@ class Story {
   final DateTime? createdAt;
   final DateTime? expiresAt;
 
+  /// `image` or `video`; for videos [imageUrl] is the poster.
+  final String mediaType;
+  final String videoUrl;
+
+  bool get isVideo => mediaType == 'video' && videoUrl.isNotEmpty;
+
   Story copyWith({bool? seen}) => Story(
     id: id,
     imageUrl: imageUrl,
@@ -58,6 +70,8 @@ class Story {
     viewsCount: viewsCount,
     createdAt: createdAt,
     expiresAt: expiresAt,
+    mediaType: mediaType,
+    videoUrl: videoUrl,
   );
 }
 

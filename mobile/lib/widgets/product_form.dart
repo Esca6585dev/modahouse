@@ -52,6 +52,15 @@ class ProductFormControllers {
         text: '${initial?.returnDays ?? returnDays ?? ''}',
       ),
       material = TextEditingController(text: initial?.material ?? ''),
+      deposit = TextEditingController(
+        text: (initial?.deposit ?? 0) == 0 ? '' : '${initial!.deposit}',
+      ),
+      minDays = TextEditingController(
+        text: (initial?.minDays ?? 0) == 0 ? '' : '${initial!.minDays}',
+      ),
+      readyDays = TextEditingController(
+        text: (initial?.readyDays ?? 0) == 0 ? '' : '${initial!.readyDays}',
+      ),
       colors = [...?initial?.colors],
       sizes = [...?initial?.sizes];
 
@@ -61,13 +70,28 @@ class ProductFormControllers {
   final TextEditingController delivery;
   final TextEditingController returns;
   final TextEditingController material;
+  final TextEditingController deposit;
+  final TextEditingController minDays;
+  final TextEditingController readyDays;
   final List<ColorOption> colors;
   final List<String> sizes;
 
-  ProductInput toInput() => ProductInput(
+  ProductInput toInput([ListingType type = ListingType.sale]) => ProductInput(
+    listingType: type,
+    deposit: type == ListingType.rent
+        ? int.tryParse(deposit.text.trim()) ?? 0
+        : 0,
+    minDays: type == ListingType.rent
+        ? int.tryParse(minDays.text.trim()) ?? 0
+        : 0,
+    readyDays: type == ListingType.custom
+        ? int.tryParse(readyDays.text.trim()) ?? 0
+        : 0,
     price: int.tryParse(price.text.trim()) ?? 0,
-    oldPrice: int.tryParse(oldPrice.text.trim()) ?? 0,
-    stock: int.tryParse(stock.text.trim()),
+    oldPrice: type == ListingType.sale
+        ? int.tryParse(oldPrice.text.trim()) ?? 0
+        : 0,
+    stock: type == ListingType.sale ? int.tryParse(stock.text.trim()) : null,
     deliveryDays: int.tryParse(delivery.text.trim()),
     returnDays: int.tryParse(returns.text.trim()),
     material: material.text.trim(),
@@ -76,15 +100,26 @@ class ProductFormControllers {
   );
 
   void clear() {
-    for (final c in [price, oldPrice, stock, material]) {
+    for (final c in [price, oldPrice, stock, material, deposit, minDays]) {
       c.clear();
     }
+    readyDays.clear();
     colors.clear();
     sizes.clear();
   }
 
   void dispose() {
-    for (final c in [price, oldPrice, stock, delivery, returns, material]) {
+    for (final c in [
+      price,
+      oldPrice,
+      stock,
+      delivery,
+      returns,
+      material,
+      deposit,
+      minDays,
+      readyDays,
+    ]) {
       c.dispose();
     }
   }
@@ -96,10 +131,15 @@ class ProductFields extends StatefulWidget {
     super.key,
     required this.controllers,
     required this.enabled,
+    this.type = ListingType.sale,
   });
 
   final ProductFormControllers controllers;
   final bool enabled;
+
+  /// sale: price, old price, stock, delivery/return days…; rent: price per
+  /// day, deposit, min days; custom: "from" price and ready days.
+  final ListingType type;
 
   @override
   State<ProductFields> createState() => _ProductFieldsState();
@@ -145,93 +185,128 @@ class _ProductFieldsState extends State<ProductFields> {
         style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
       ),
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: TextFormField(
-                key: const Key('product-price'),
-                controller: c.price,
-                enabled: widget.enabled,
-                keyboardType: TextInputType.number,
-                inputFormatters: digits,
-                decoration: const InputDecoration(
-                  labelText: '${S.priceLabel} *',
-                  suffixText: S.currency,
-                ),
-                validator: (v) => (int.tryParse((v ?? '').trim()) ?? 0) <= 0
-                    ? S.priceRequired
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: c.oldPrice,
-                enabled: widget.enabled,
-                keyboardType: TextInputType.number,
-                inputFormatters: digits,
-                decoration: const InputDecoration(
-                  labelText: S.oldPriceLabel,
-                  suffixText: S.currency,
-                ),
-                validator: (v) {
-                  final old = int.tryParse((v ?? '').trim()) ?? 0;
-                  final price = int.tryParse(c.price.text.trim()) ?? 0;
-                  return old != 0 && old <= price ? S.oldPriceInvalid : null;
-                },
-              ),
-            ),
-          ],
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 4, left: 4),
-          child: Text(
-            S.oldPriceHelp,
-            style: TextStyle(color: p.muted, fontSize: 12),
-          ),
-        ),
-        gap,
+    Widget number(TextEditingController ctrl, String label, {Key? key}) =>
         TextFormField(
-          controller: c.stock,
+          key: key,
+          controller: ctrl,
           enabled: widget.enabled,
           keyboardType: TextInputType.number,
           inputFormatters: digits,
-          decoration: const InputDecoration(
-            labelText: S.stockLabel,
-            helperText: S.stockHelp,
-            prefixIcon: Icon(Icons.inventory_2_outlined),
-          ),
-        ),
-        gap,
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: c.delivery,
-                enabled: widget.enabled,
-                keyboardType: TextInputType.number,
-                inputFormatters: digits,
-                decoration: const InputDecoration(
-                  labelText: S.deliveryDaysLabel,
+          decoration: InputDecoration(labelText: label),
+        );
+    final priceField = TextFormField(
+      key: const Key('product-price'),
+      controller: c.price,
+      enabled: widget.enabled,
+      keyboardType: TextInputType.number,
+      inputFormatters: digits,
+      decoration: InputDecoration(
+        labelText: switch (widget.type) {
+          ListingType.rent => '${S.pricePerDayLabel} *',
+          ListingType.custom => '${S.fromPriceLabel} *',
+          _ => '${S.priceLabel} *',
+        },
+        suffixText: S.currency,
+      ),
+      validator: (v) =>
+          (int.tryParse((v ?? '').trim()) ?? 0) <= 0 ? S.priceRequired : null,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (widget.type == ListingType.sale) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: priceField),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: c.oldPrice,
+                  enabled: widget.enabled,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: digits,
+                  decoration: const InputDecoration(
+                    labelText: S.oldPriceLabel,
+                    suffixText: S.currency,
+                  ),
+                  validator: (v) {
+                    final old = int.tryParse((v ?? '').trim()) ?? 0;
+                    final price = int.tryParse(c.price.text.trim()) ?? 0;
+                    return old != 0 && old <= price ? S.oldPriceInvalid : null;
+                  },
                 ),
               ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4, left: 4),
+            child: Text(
+              S.oldPriceHelp,
+              style: TextStyle(color: p.muted, fontSize: 12),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: c.returns,
-                enabled: widget.enabled,
-                keyboardType: TextInputType.number,
-                inputFormatters: digits,
-                decoration: const InputDecoration(labelText: S.returnDaysLabel),
+          ),
+          gap,
+          TextFormField(
+            controller: c.stock,
+            enabled: widget.enabled,
+            keyboardType: TextInputType.number,
+            inputFormatters: digits,
+            decoration: const InputDecoration(
+              labelText: S.stockLabel,
+              helperText: S.stockHelp,
+              prefixIcon: Icon(Icons.inventory_2_outlined),
+            ),
+          ),
+          gap,
+          Row(
+            children: [
+              Expanded(child: number(c.delivery, S.deliveryDaysLabel)),
+              const SizedBox(width: 12),
+              Expanded(child: number(c.returns, S.returnDaysLabel)),
+            ],
+          ),
+        ] else if (widget.type == ListingType.rent) ...[
+          priceField,
+          gap,
+          Row(
+            children: [
+              Expanded(
+                child: number(
+                  c.deposit,
+                  S.depositLabel,
+                  key: const Key('rent-deposit'),
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: number(
+                  c.minDays,
+                  S.minDaysLabel,
+                  key: const Key('rent-min-days'),
+                ),
+              ),
+            ],
+          ),
+          gap,
+          number(c.returns, S.returnDaysLabel),
+        ] else ...[
+          priceField,
+          gap,
+          Row(
+            children: [
+              Expanded(
+                child: number(
+                  c.readyDays,
+                  S.readyDaysLabel,
+                  key: const Key('custom-ready-days'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: number(c.delivery, S.deliveryDaysLabel)),
+            ],
+          ),
+        ],
         gap,
         TextFormField(
           controller: c.material,
@@ -244,7 +319,9 @@ class _ProductFieldsState extends State<ProductFields> {
           ),
         ),
         const SizedBox(height: 8),
-        label(S.colorsLabel),
+        label(
+          widget.type == ListingType.custom ? S.fabricLabel : S.colorsLabel,
+        ),
         Wrap(
           spacing: 8,
           runSpacing: 8,

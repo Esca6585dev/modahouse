@@ -39,7 +39,7 @@ class PriceText extends StatelessWidget {
         Text(
           switch (listingType) {
             'rent' => '${formatPrice(price)} ${S.perDay}',
-            'custom' => '${formatPrice(price)} ${S.priceFrom}',
+            'custom' => S.priceFromLine(formatPrice(price)),
             _ => formatPrice(price),
           },
           style: TextStyle(

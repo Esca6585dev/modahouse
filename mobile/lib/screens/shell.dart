@@ -8,7 +8,8 @@ import '../state/auth.dart';
 import '../widgets/avatar.dart';
 import '../widgets/states.dart';
 
-/// Bottom navigation: Baş sahypa, Gözleg, Döret (+), Top 10, Profil.
+/// Bottom navigation: Baş sahypa, Gözleg, Döret (+), Reels, Profil.
+/// Top 10 opens from the home app bar and the search screen.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
@@ -69,9 +70,9 @@ class AppShell extends ConsumerWidget {
               label: S.tabCreate,
             ),
             const NavigationDestination(
-              icon: Icon(Icons.emoji_events_outlined),
-              selectedIcon: Icon(Icons.emoji_events_rounded),
-              label: S.tabTop,
+              icon: Icon(Icons.movie_outlined),
+              selectedIcon: Icon(Icons.movie_rounded),
+              label: S.tabReels,
             ),
             NavigationDestination(
               icon: profileIcon(false),

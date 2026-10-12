@@ -38,6 +38,24 @@ enum ProductBadge {
   }
 }
 
+/// What a post is for (v3). `post` = just sharing (no price).
+enum ListingType {
+  post('post'),
+  sale('sale'),
+  rent('rent'),
+  custom('custom');
+
+  const ListingType(this.value);
+  final String value;
+
+  static ListingType parse(String? v, {ListingType fallback = sale}) {
+    for (final t in values) {
+      if (t.value == v) return t;
+    }
+    return fallback;
+  }
+}
+
 /// Shop fields of a pin (set when the author is a business and price > 0).
 class Product {
   const Product({
@@ -51,6 +69,9 @@ class Product {
     this.material = '',
     this.badge = ProductBadge.none,
     this.listingType = 'sale',
+    this.deposit = 0,
+    this.minDays = 0,
+    this.readyDays = 0,
   });
 
   factory Product.fromJson(Json j) => Product(
@@ -66,6 +87,9 @@ class Product {
     listingType: asString(j['listingType']).isEmpty
         ? 'sale'
         : asString(j['listingType']),
+    deposit: asInt(j['deposit']),
+    minDays: asInt(j['minDays']),
+    readyDays: asInt(j['readyDays']),
   );
 
   /// TMT (whole manats).
@@ -88,7 +112,18 @@ class Product {
   /// seller".
   final String listingType;
 
+  /// Rent: deposit in TMT (0 = none).
+  final int deposit;
+
+  /// Rent: minimum rental days (0 = none).
+  final int minDays;
+
+  /// Custom: days to make (0 = unknown).
+  final int readyDays;
+
   bool get isSale => listingType == 'sale';
+
+  ListingType get type => ListingType.parse(listingType);
 
   bool get hasDiscount => oldPrice > price && price > 0;
 
@@ -108,6 +143,9 @@ class PinImage {
     this.width = 0,
     this.height = 0,
     this.color = '',
+    this.type = 'image',
+    this.posterUrl = '',
+    this.duration = 0,
   });
 
   factory PinImage.fromJson(Json j) => PinImage(
@@ -115,9 +153,28 @@ class PinImage {
     width: asInt(j['width']),
     height: asInt(j['height']),
     color: asString(j['color']),
+    type: asString(j['type']).isEmpty ? 'image' : asString(j['type']),
+    posterUrl: asString(j['posterUrl']),
+    duration: asDouble(j['duration']),
   );
 
+  /// The image, or the video file (MP4 / WebM).
   final String url;
+
+  /// `image` or `video`.
+  final String type;
+
+  /// Video: poster image ("" for images).
+  final String posterUrl;
+
+  /// Video: seconds (0 = unknown).
+  final double duration;
+
+  bool get isVideo => type == 'video';
+
+  /// What to show as a still: the poster for videos.
+  String get stillUrl => isVideo && posterUrl.isNotEmpty ? posterUrl : url;
+
   final int width;
   final int height;
   final String color;

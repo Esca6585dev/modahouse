@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_client.dart';
 import '../core/token_storage.dart';
+import '../data/ai_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/boards_repository.dart';
 import '../data/business_repository.dart';
@@ -59,6 +60,9 @@ final cartRepositoryProvider = Provider(
 final ordersRepositoryProvider = Provider(
   (ref) => OrdersRepository(ref.watch(apiClientProvider)),
 );
+final aiRepositoryProvider = Provider(
+  (ref) => AiRepository(ref.watch(apiClientProvider)),
+);
 final storiesRepositoryProvider = Provider(
   (ref) => StoriesRepository(ref.watch(apiClientProvider)),
 );
@@ -66,6 +70,19 @@ final storiesRepositoryProvider = Provider(
 /// Categories rarely change: load once and keep.
 final categoriesProvider = FutureProvider<List<Category>>((ref) {
   return ref.watch(pinsRepositoryProvider).categories();
+});
+
+/// Business categories (`GET /business-categories`), with the built-in
+/// list as a fallback while loading or offline.
+final businessCategoriesProvider = FutureProvider<List<Category>>((ref) async {
+  try {
+    final list = await ref.watch(businessRepositoryProvider).categories();
+    if (list.isNotEmpty) return list;
+  } catch (_) {}
+  return [
+    for (final e in businessCategoryNames.entries)
+      Category(slug: e.key, name: e.value),
+  ];
 });
 
 /// Set to false in widget tests so no network images are requested.

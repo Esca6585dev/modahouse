@@ -10,11 +10,18 @@ class PinUpdates {
     this.updated = const {},
     this.deleted = const {},
     this.created = 0,
+    this.hidden = const {},
   });
 
   final Map<int, Pin> updated;
   final Set<int> deleted;
   final int created;
+
+  /// "Gyzyklanmaýaryn": hidden by the viewer (can be undone).
+  final Set<int> hidden;
+
+  /// Deleted or hidden: not shown in lists.
+  bool isGone(int id) => deleted.contains(id) || hidden.contains(id);
 
   Pin resolve(Pin pin) => updated[pin.id] ?? pin;
 }
@@ -27,12 +34,28 @@ class PinUpdatesNotifier extends Notifier<PinUpdates> {
     updated: {...state.updated, pin.id: pin},
     deleted: state.deleted,
     created: state.created,
+    hidden: state.hidden,
   );
 
   void deleted(int id) => state = PinUpdates(
     updated: state.updated,
     deleted: {...state.deleted, id},
     created: state.created,
+    hidden: state.hidden,
+  );
+
+  void hidden(int id) => state = PinUpdates(
+    updated: state.updated,
+    deleted: state.deleted,
+    created: state.created,
+    hidden: {...state.hidden, id},
+  );
+
+  void unhidden(int id) => state = PinUpdates(
+    updated: state.updated,
+    deleted: state.deleted,
+    created: state.created,
+    hidden: {...state.hidden}..remove(id),
   );
 
   /// Asks every feed to reload (e.g. the account switched to personal and
@@ -41,12 +64,14 @@ class PinUpdatesNotifier extends Notifier<PinUpdates> {
     updated: const {},
     deleted: state.deleted,
     created: state.created + 1,
+    hidden: state.hidden,
   );
 
   void created(Pin pin) => state = PinUpdates(
     updated: {...state.updated, pin.id: pin},
     deleted: state.deleted,
     created: state.created + 1,
+    hidden: state.hidden,
   );
 }
 

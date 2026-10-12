@@ -22,13 +22,16 @@ import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/avatar.dart';
 import '../widgets/cart_flow.dart';
+import '../widgets/contact_sheet.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
+import '../widgets/pin_menu.dart';
 import '../widgets/product_sections.dart';
 import '../widgets/save_sheet.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 import '../widgets/top_actions.dart';
+import '../widgets/video_view.dart';
 
 class PinDetailScreen extends ConsumerStatefulWidget {
   const PinDetailScreen({super.key, required this.id});
@@ -110,8 +113,9 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     _viewCounted = true;
     try {
       final n = await ref.read(pinsRepositoryProvider).view(id);
+      if (!mounted) return;
       final current = ref.read(pinUpdatesProvider).updated[id];
-      if (current != null && mounted) {
+      if (current != null) {
         _publish(current.copyWith(viewsCount: n));
       }
     } catch (_) {
@@ -332,11 +336,19 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                AppImage(
-                  pin.imageUrl,
-                  placeholder: parseHexColor(pin.color, p.surface),
-                  semanticLabel: pin.title,
-                ),
+                if (pin.isVideo)
+                  AutoVideo(
+                    url: pin.gallery.first.url,
+                    posterUrl: pin.gallery.first.posterUrl,
+                    color: pin.color,
+                    semanticLabel: pin.title,
+                  )
+                else
+                  AppImage(
+                    pin.imageUrl,
+                    placeholder: parseHexColor(pin.color, p.surface),
+                    semanticLabel: pin.title,
+                  ),
                 Positioned(
                   left: 12,
                   top: 12,
@@ -347,53 +359,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                         context.canPop() ? context.pop() : context.go('/'),
                   ),
                 ),
-                if (isOwner)
-                  Positioned(
-                    right: 12,
-                    top: 12,
-                    child: _deleting
-                        ? const RoundIconButton(
-                            icon: Icons.hourglass_top_rounded,
-                            tooltip: S.deleting,
-                            onPressed: null,
-                          )
-                        : PopupMenuButton<String>(
-                            tooltip: S.pinOptions,
-                            onSelected: (v) =>
-                                v == 'edit' ? _edit() : _delete(),
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: ListTile(
-                                  leading: Icon(Icons.edit_outlined),
-                                  title: Text(S.edit),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'delete',
-                                child: ListTile(
-                                  leading: Icon(
-                                    Icons.delete_outline_rounded,
-                                    color: AppPalette.danger,
-                                  ),
-                                  title: Text(
-                                    S.delete,
-                                    style: TextStyle(color: AppPalette.danger),
-                                  ),
-                                  contentPadding: EdgeInsets.zero,
-                                ),
-                              ),
-                            ],
-                            child: const IgnorePointer(
-                              child: RoundIconButton(
-                                icon: Icons.more_horiz_rounded,
-                                tooltip: S.pinOptions,
-                                onPressed: null,
-                              ),
-                            ),
-                          ),
-                  ),
+                Positioned(right: 12, top: 12, child: _moreButton(pin)),
               ],
             ),
           ),
@@ -558,46 +524,17 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     );
   }
 
-  Widget _ownerMenu() => _deleting
+  Widget _moreButton(Pin pin) => _deleting
       ? const RoundIconButton(
           icon: Icons.hourglass_top_rounded,
           tooltip: S.deleting,
           onPressed: null,
         )
-      : PopupMenuButton<String>(
-          tooltip: S.pinOptions,
-          onSelected: (v) => v == 'edit' ? _edit() : _delete(),
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: ListTile(
-                leading: Icon(Icons.edit_outlined),
-                title: Text(S.edit),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: ListTile(
-                leading: Icon(
-                  Icons.delete_outline_rounded,
-                  color: AppPalette.danger,
-                ),
-                title: Text(
-                  S.delete,
-                  style: TextStyle(color: AppPalette.danger),
-                ),
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ],
-          child: const IgnorePointer(
-            child: RoundIconButton(
-              icon: Icons.more_horiz_rounded,
-              tooltip: S.pinOptions,
-              onPressed: null,
-            ),
-          ),
+      : RoundIconButton(
+          icon: Icons.more_horiz_rounded,
+          tooltip: S.postOptions,
+          onPressed: () =>
+              showPinMenu(context, ref, pin, onEdit: _edit, onDelete: _delete),
         );
 
   Widget _productScaffold(Pin pin, Me? me, bool isOwner) {
@@ -650,10 +587,8 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                               tooltip: S.share,
                               onPressed: () => _share(pin),
                             ),
-                            if (isOwner) ...[
-                              const SizedBox(width: 8),
-                              _ownerMenu(),
-                            ],
+                            const SizedBox(width: 8),
+                            _moreButton(pin),
                           ],
                         ),
                       ),
@@ -814,12 +749,32 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  if (product.deliveryDays > 0)
+                  if (product.type == ListingType.rent) ...[
+                    infoChip(
+                      Icons.account_balance_wallet_outlined,
+                      product.deposit > 0
+                          ? S.depositValue(formatPrice(product.deposit))
+                          : S.noDeposit,
+                    ),
+                    if (product.minDays > 0)
+                      infoChip(
+                        Icons.event_available_outlined,
+                        S.minDaysValue(product.minDays),
+                      ),
+                  ],
+                  if (product.type == ListingType.custom &&
+                      product.readyDays > 0)
+                    infoChip(
+                      Icons.content_cut_rounded,
+                      S.readyIn(product.readyDays),
+                    ),
+                  if (product.isSale && product.deliveryDays > 0)
                     infoChip(
                       Icons.local_shipping_outlined,
                       S.deliveryIn(product.deliveryDays),
                     ),
-                  if (product.returnDays > 0)
+                  if (product.type != ListingType.custom &&
+                      product.returnDays > 0)
                     infoChip(
                       Icons.verified_user_outlined,
                       S.returnShort(product.returnDays),
@@ -853,6 +808,12 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   Text(
                     '${pin.commentsCount}',
                     style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  IconButton(
+                    key: const Key('find-similar'),
+                    tooltip: S.menuSimilar,
+                    onPressed: () => context.push('/visual/pin/${pin.id}'),
+                    icon: const Icon(Icons.image_search_rounded),
                   ),
                   const Spacer(),
                   FilledButton(
@@ -901,8 +862,10 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               ],
               gap,
               ProductInfoGrid(product: product),
-              const SizedBox(height: 14),
-              const HowToOrderCard(),
+              if (product.isSale) ...[
+                const SizedBox(height: 14),
+                const HowToOrderCard(),
+              ],
               if (pin.description.isNotEmpty) ...[
                 gap,
                 Text(
@@ -1019,10 +982,18 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     );
   }
 
-  /// Rent / custom listings: no cart, call or message the shop instead.
+  /// Rent / custom listings: no cart; "Kärendä al" / "Sargyt et" open the
+  /// contact sheet (phone, WhatsApp, Telegram, IMO, socials).
   Widget _contactBar(Pin pin) {
     final p = AppPalette.of(context);
-    final phone = _author?.business?.phone ?? '';
+    final product = pin.product!;
+    final rent = product.type == ListingType.rent;
+    void contact() => showContactSheet(
+      context,
+      shop: pin.author,
+      business: _author?.business,
+      title: pin.title,
+    );
     return Container(
       decoration: BoxDecoration(
         color: p.bg,
@@ -1036,26 +1007,34 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: phone.isEmpty
-                      ? null
-                      : () => launchUrl(
-                          Uri(
-                            scheme: 'tel',
-                            path: phone.replaceAll(RegExp(r'[^0-9+]'), ''),
-                          ),
-                        ),
-                  icon: const Icon(Icons.call_outlined, size: 20),
-                  label: const Text(S.call),
+                  key: const Key('contact-primary'),
+                  onPressed: contact,
+                  icon: Icon(
+                    rent
+                        ? Icons.event_available_rounded
+                        : Icons.content_cut_rounded,
+                    size: 20,
+                  ),
+                  label: Text(rent ? S.rentNow : S.orderCustom),
                 ),
               ),
               const SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => context.push(
-                    '/user/${Uri.encodeComponent(pin.author.username)}',
+              Semantics(
+                button: true,
+                label: S.contact,
+                excludeSemantics: true,
+                onTap: contact,
+                child: Material(
+                  color: p.surface,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: contact,
+                    child: const SizedBox.square(
+                      dimension: 46,
+                      child: Icon(Icons.chat_bubble_outline_rounded),
+                    ),
                   ),
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 20),
-                  label: const Text(S.contact),
                 ),
               ),
             ],

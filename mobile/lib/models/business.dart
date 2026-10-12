@@ -1,35 +1,35 @@
 import 'json.dart';
 import 'user.dart';
 
-/// `BusinessCategory` in the API.
-enum BusinessCategory {
-  dress('dress'),
-  tailor('tailor'),
-  boutique('boutique'),
-  designer('designer'),
-  accessories('accessories');
-
-  const BusinessCategory(this.value);
-
-  /// API value, e.g. `dress`.
-  final String value;
-
-  static BusinessCategory? tryParse(String? v) {
-    for (final c in values) {
-      if (c.value == v) return c;
-    }
-    return null;
-  }
-}
+/// Business category slugs (`GET /business-categories`) with their Turkmen
+/// names, used until the server list is loaded.
+const businessCategoryNames = <String, String>{
+  'dress': 'Köýnek dükany',
+  'tailor': 'Tikinçi',
+  'atelier': 'Atelýe',
+  'bridal': 'Gelin salony',
+  'rental': 'Kärende salony',
+  'boutique': 'Butik',
+  'designer': 'Dizaýner',
+  'jewelry': 'Şaý-sep ussasy',
+  'beauty': 'Gözellik salony',
+  'accessories': 'Aksessuarlar',
+};
 
 /// Shop details of a business profile.
 class Business {
   const Business({
-    this.category,
+    this.category = '',
     this.phone = '',
     this.address = '',
     this.city = '',
     this.instagram = '',
+    this.tiktok = '',
+    this.telegram = '',
+    this.whatsapp = '',
+    this.imo = '',
+    this.youtube = '',
+    this.website = '',
     this.workingHours = '',
     this.deliveryDays = 0,
     this.returnDays = 0,
@@ -40,11 +40,17 @@ class Business {
   });
 
   factory Business.fromJson(Json j) => Business(
-    category: BusinessCategory.tryParse(asString(j['category'])),
+    category: asString(j['category']),
     phone: asString(j['phone']),
     address: asString(j['address']),
     city: asString(j['city']),
     instagram: asString(j['instagram']),
+    tiktok: asString(j['tiktok']),
+    telegram: asString(j['telegram']),
+    whatsapp: asString(j['whatsapp']),
+    imo: asString(j['imo']),
+    youtube: asString(j['youtube']),
+    website: asString(j['website']),
     workingHours: asString(j['workingHours']),
     deliveryDays: asInt(j['deliveryDays']),
     returnDays: asInt(j['returnDays']),
@@ -54,11 +60,18 @@ class Business {
     productsCount: asInt(j['productsCount']),
   );
 
-  final BusinessCategory? category;
+  /// Category slug, e.g. `rental` (see [businessCategoryNames]).
+  final String category;
   final String phone;
   final String address;
   final String city;
   final String instagram;
+  final String tiktok;
+  final String telegram;
+  final String whatsapp;
+  final String imo;
+  final String youtube;
+  final String website;
   final String workingHours;
 
   /// Defaults for new products.
@@ -81,7 +94,7 @@ class BusinessCard extends UserBrief {
     super.avatarUrl,
     super.isBusiness = true,
     super.verified,
-    this.category,
+    this.category = '',
     this.city = '',
     this.rating = 0,
     this.reviewsCount = 0,
@@ -89,6 +102,7 @@ class BusinessCard extends UserBrief {
     this.productsCount = 0,
     this.hasStory = false,
     this.covers = const [],
+    this.isFollowing = false,
   });
 
   factory BusinessCard.fromJson(Json j) => BusinessCard(
@@ -98,7 +112,7 @@ class BusinessCard extends UserBrief {
     avatarUrl: asString(j['avatarUrl']),
     isBusiness: j['isBusiness'] == null ? true : asBool(j['isBusiness']),
     verified: asBool(j['verified']),
-    category: BusinessCategory.tryParse(asString(j['category'])),
+    category: asString(j['category']),
     city: asString(j['city']),
     rating: asDouble(j['rating']),
     reviewsCount: asInt(j['reviewsCount']),
@@ -106,9 +120,10 @@ class BusinessCard extends UserBrief {
     productsCount: asInt(j['productsCount']),
     hasStory: asBool(j['hasStory']),
     covers: asList(j['covers'], asString),
+    isFollowing: asBool(j['isFollowing']),
   );
 
-  final BusinessCategory? category;
+  final String category;
   final String city;
   final double rating;
   final int reviewsCount;
@@ -118,6 +133,9 @@ class BusinessCard extends UserBrief {
 
   /// Up to 4 product image URLs.
   final List<String> covers;
+
+  /// The viewer follows this shop.
+  final bool isFollowing;
 }
 
 /// Stats period for the Top 10 and the business dashboard.

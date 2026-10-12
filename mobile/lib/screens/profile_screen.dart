@@ -18,10 +18,12 @@ import '../models/models.dart';
 import '../state/auth.dart';
 import '../state/paged_controller.dart';
 import '../state/pin_updates.dart';
+import '../state/prefs.dart';
 import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/board_card.dart';
 import '../widgets/board_form.dart';
+import '../widgets/contact_sheet.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
 import '../widgets/shop_ui.dart';
@@ -67,7 +69,7 @@ class UserProfileScreen extends StatelessWidget {
   );
 }
 
-enum ProfileTab { products, pins, boards }
+enum ProfileTab { products, pins, boards, likes }
 
 /// Opens a phone/SMS/web link; shows a message when nothing can handle it.
 Future<void> launchExternal(Uri uri, {String error = S.cannotOpenLink}) async {
@@ -113,6 +115,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
   ProfileTab? _tab;
   PagedController<Pin>? _products;
   PagedController<Pin>? _pins;
+  PagedController<Pin>? _likes;
   List<Board>? _boards;
   Object? _boardsError;
 
@@ -129,13 +132,19 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
   void dispose() {
     _products?.dispose();
     _pins?.dispose();
+    _likes?.dispose();
     super.dispose();
   }
 
   void _setupFeeds(Profile p) {
-    if (_pins != null) return;
     final pins = ref.read(pinsRepositoryProvider);
     final users = ref.read(usersRepositoryProvider);
+    // The first load can happen before the session is attached (isMe false),
+    // so "Halanlarym" is created whenever it becomes needed.
+    if (p.isMe && _likes == null) {
+      _likes = PagedController((page) => pins.likes(page), autoload: false);
+    }
+    if (_pins != null) return;
     if (p.isBusiness) {
       _products = PagedController(
         (page) =>
@@ -207,70 +216,49 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     }
   }
 
-  void _contact(Profile profile) {
-    final b = profile.business;
-    if (b == null) return;
-    showModalBottomSheet<void>(
-      context: context,
-      useSafeArea: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (b.phone.isNotEmpty) ...[
-              ListTile(
-                leading: const Icon(Icons.call_outlined),
-                title: const Text(S.call),
-                subtitle: Text(b.phone),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  launchExternal(telUri(b.phone), error: S.cannotCall);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.sms_outlined),
-                title: const Text(S.sendSms),
-                subtitle: Text(b.phone),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  launchExternal(
-                    Uri(
-                      scheme: 'sms',
-                      path: b.phone.replaceAll(RegExp(r'[^0-9+]'), ''),
-                    ),
-                  );
-                },
-              ),
-            ],
-            if (b.instagram.isNotEmpty)
-              ListTile(
-                leading: const Icon(Icons.camera_alt_outlined),
-                title: const Text(S.openInstagram),
-                subtitle: Text('@${b.instagram.replaceFirst('@', '')}'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  launchExternal(
-                    Uri.https(
-                      'instagram.com',
-                      '/${b.instagram.replaceFirst('@', '')}',
-                    ),
-                  );
-                },
-              ),
-            if (b.address.isNotEmpty || b.city.isNotEmpty)
-              ListTile(
-                leading: const Icon(Icons.location_on_outlined),
-                title: const Text(S.copyAddress),
-                subtitle: Text(shopLocation(b)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  Clipboard.setData(ClipboardData(text: shopLocation(b)));
-                  showSnack(S.addressCopied);
-                },
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
+  Future<void> _toggleBlock(Profile profile) async {
+    if (!ref.read(authProvider).isLoggedIn) {
+      await context.push('/login?from=/user/${profile.username}');
+      return;
+    }
+    final repo = ref.read(usersRepositoryProvider);
+    if (!profile.isBlocked) {
+      final ok = await confirmDialog(
+        context,
+        title: S.blockConfirm(profile.displayName),
+        text: S.blockText,
+        confirm: S.block,
+      );
+      if (!ok) return;
+    }
+    try {
+      final blocked = profile.isBlocked
+          ? await repo.unblock(profile.username)
+          : await repo.block(profile.username);
+      showSnack(blocked ? S.blocked : S.unblocked);
+      ref.read(pinUpdatesProvider.notifier).reloadFeeds();
+      await _loadProfile();
+    } catch (e) {
+      showError(e);
+    }
+  }
+
+  Widget _viewToggle(FeedView view) {
+    final p = AppPalette.of(context);
+    Widget btn(FeedView v, IconData icon, String tip) => IconButton(
+      tooltip: tip,
+      isSelected: view == v,
+      onPressed: () => ref.read(feedViewProvider.notifier).set(v),
+      icon: Icon(icon, color: view == v ? p.text : p.muted, size: 22),
+    );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          btn(FeedView.instagram, Icons.grid_on_rounded, S.viewGrid),
+          btn(FeedView.pinterest, Icons.dashboard_outlined, S.viewMasonry),
+        ],
       ),
     );
   }
@@ -312,8 +300,14 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
       if (profile.isBusiness) ProfileTab.products,
       ProfileTab.pins,
       ProfileTab.boards,
+      if (profile.isMe) ProfileTab.likes,
     ];
     final tab = tabs.contains(_tab) ? _tab! : tabs.first;
+    if (tab == ProfileTab.likes && _likes != null && !_likes!.loaded) {
+      final likes = _likes!;
+      WidgetsBinding.instance.addPostFrameCallback((_) => likes.loadMore());
+    }
+    final view = ref.watch(feedViewProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -351,10 +345,36 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
               icon: const Icon(Icons.menu_rounded),
             ),
           ] else
-            IconButton(
-              tooltip: S.shareProfile,
-              onPressed: () => _share(profile),
-              icon: const Icon(Icons.ios_share_rounded),
+            PopupMenuButton<String>(
+              key: const Key('profile-menu'),
+              tooltip: S.more,
+              icon: const Icon(Icons.more_horiz_rounded),
+              onSelected: (v) =>
+                  v == 'share' ? _share(profile) : _toggleBlock(profile),
+              itemBuilder: (_) => [
+                const PopupMenuItem(
+                  value: 'share',
+                  child: ListTile(
+                    leading: Icon(Icons.ios_share_rounded),
+                    title: Text(S.shareProfile),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'block',
+                  child: ListTile(
+                    leading: const Icon(
+                      Icons.block_rounded,
+                      color: AppPalette.danger,
+                    ),
+                    title: Text(
+                      profile.isBlocked ? S.unblock : S.block,
+                      style: const TextStyle(color: AppPalette.danger),
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
             ),
         ],
       ),
@@ -365,9 +385,26 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _header(profile)),
-            SliverToBoxAdapter(child: _tabBar(tabs, tab)),
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            ..._tabSlivers(profile, tab),
+            if (profile.isBlocked)
+              SliverToBoxAdapter(
+                child: EmptyView(
+                  icon: Icons.block_rounded,
+                  title: S.blockedProfile,
+                  compact: true,
+                  action: ElevatedButton(
+                    onPressed: () => _toggleBlock(profile),
+                    child: const Text(S.unblock),
+                  ),
+                ),
+              )
+            else ...[
+              SliverToBoxAdapter(child: _tabBar(tabs, tab)),
+              if (tab == ProfileTab.pins || tab == ProfileTab.likes)
+                SliverToBoxAdapter(child: _viewToggle(view))
+              else
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              ..._tabSlivers(profile, tab, view),
+            ],
             SliverToBoxAdapter(
               child: SizedBox(
                 height: 24 + MediaQuery.paddingOf(context).bottom,
@@ -493,7 +530,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             user: profile,
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
-          if (b != null && b.category != null)
+          if (b != null && b.category.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 1),
               child: Text(
@@ -523,6 +560,10 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                 ].join(' · '),
                 color: AppPalette.gold,
               ),
+            if (contactLinks(b).any((l) => l.kind != 'phone')) ...[
+              const SizedBox(height: 10),
+              SocialButtons(business: b),
+            ],
           ],
           const SizedBox(height: 14),
           if (profile.isMe)
@@ -595,7 +636,11 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   Expanded(
                     child: ElevatedButton(
                       style: buttonStyle,
-                      onPressed: () => _contact(profile),
+                      onPressed: () => showContactSheet(
+                        context,
+                        shop: profile,
+                        business: profile.business,
+                      ),
                       child: const Text(S.contact),
                     ),
                   ),
@@ -613,6 +658,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
       ProfileTab.products => (Icons.grid_view_rounded, S.tabProducts),
       ProfileTab.pins => (Icons.dashboard_outlined, S.tabPins),
       ProfileTab.boards => (Icons.bookmarks_outlined, S.tabBoards),
+      ProfileTab.likes => (Icons.favorite_border_rounded, S.tabLikes),
     };
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -632,6 +678,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                   onTap: () => setState(() => _tab = t),
                   child: Container(
                     height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(
                       border: Border(
                         bottom: BorderSide(
@@ -640,24 +687,28 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                         ),
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          meta(t).$1,
-                          size: 20,
-                          color: t == active ? p.text : p.muted,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          meta(t).$2,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13.5,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            meta(t).$1,
+                            size: 20,
                             color: t == active ? p.text : p.muted,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            meta(t).$2,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: t == active ? p.text : p.muted,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -668,7 +719,7 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
     );
   }
 
-  List<Widget> _tabSlivers(Profile profile, ProfileTab tab) {
+  List<Widget> _tabSlivers(Profile profile, ProfileTab tab, FeedView view) {
     switch (tab) {
       case ProfileTab.products:
         return [
@@ -688,7 +739,35 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             ),
           ),
         ];
+      case ProfileTab.likes:
+        const likesEmpty = EmptyView(
+          icon: Icons.favorite_border_rounded,
+          title: S.noLikesTitle,
+          text: S.noLikesText,
+          compact: true,
+        );
+        return [
+          if (view == FeedView.instagram)
+            SquareGridSliver(controller: _likes!, empty: likesEmpty)
+          else
+            PinGridSliver(controller: _likes!, empty: likesEmpty),
+        ];
       case ProfileTab.pins:
+        final pinsEmpty = EmptyView(
+          icon: Icons.image_outlined,
+          title: S.noPinsTitle,
+          text: profile.isMe ? S.noOwnPinsText : S.noUserPinsText,
+          compact: true,
+          action: profile.isMe
+              ? FilledButton(
+                  onPressed: () => context.go('/create'),
+                  child: const Text(S.createPin),
+                )
+              : null,
+        );
+        if (view == FeedView.instagram) {
+          return [SquareGridSliver(controller: _pins!, empty: pinsEmpty)];
+        }
         return [
           PinGridSliver(
             controller: _pins!,
@@ -789,7 +868,7 @@ class ProductGridSliver extends ConsumerWidget {
       listenable: controller,
       builder: (context, _) {
         final items = controller.items
-            .where((p) => !updates.deleted.contains(p.id))
+            .where((p) => !updates.isGone(p.id))
             .map(updates.resolve)
             .where((p) => p.product != null)
             .toList();

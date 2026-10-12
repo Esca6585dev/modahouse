@@ -10,5 +10,6 @@ export 'page.dart';
 export 'pin.dart';
 export 'product.dart';
 export 'review.dart';
+export 'search.dart';
 export 'story.dart';
 export 'user.dart';
