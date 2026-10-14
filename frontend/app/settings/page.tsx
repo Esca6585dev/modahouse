@@ -246,7 +246,10 @@ export default function SettingsPage() {
     <div className="page narrow-sm">
       <div className="settings-head">
         <h1 className="page-title">Sazlamalar</h1>
-        <Link href={`/u/${user.username}`} className="btn btn-secondary btn-sm">Profile git</Link>
+        <div className="head-actions">
+          {user.isAdmin && <Link href="/admin" className="btn btn-secondary btn-sm">Admin paneli</Link>}
+          <Link href={`/u/${user.username}`} className="btn btn-secondary btn-sm">Profile git</Link>
+        </div>
       </div>
 
       <section className="card">

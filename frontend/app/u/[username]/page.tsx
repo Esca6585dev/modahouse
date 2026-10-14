@@ -9,7 +9,7 @@ import BoardFormModal from "@/components/BoardFormModal";
 import FollowButton from "@/components/FollowButton";
 import {
   BagIcon, BanIcon, BoardsIcon, CommentIcon, HeartIcon, CameraIcon, ChartIcon, ChatIcon, ClockIcon, GridIcon, MasonryIcon, PhoneIcon, PinMapIcon, PlusIcon,
-  SettingsIcon, ShareIcon, StoreIcon, TruckIcon, VerifiedIcon,
+  SettingsIcon, ShareIcon, ShieldIcon, StoreIcon, TruckIcon, VerifiedIcon,
 } from "@/components/Icons";
 import { PinFeed } from "@/components/Masonry";
 import ProductGrid from "@/components/ProductGrid";
@@ -325,6 +325,9 @@ function ProfileView() {
                 <Link href="/business" className="btn btn-secondary"><ChartIcon size={18} /> Biznes paneli</Link>
               ) : (
                 <Link href="/orders" className="btn btn-secondary"><BagIcon size={18} /> Sargytlarym</Link>
+              )}
+              {user?.isAdmin && (
+                <Link href="/admin" className="btn btn-secondary icon-only-sm" aria-label="Admin paneli"><ShieldIcon size={18} /> <span className="hide-sm">Admin</span></Link>
               )}
               <button className="btn btn-secondary icon-only-sm" onClick={() => setAddingStory(true)} aria-label="Story goş"><CameraIcon size={18} /> <span className="hide-sm">Story</span></button>
               <button className="btn btn-secondary icon-only" onClick={share} aria-label="Paýlaş"><ShareIcon size={18} /></button>

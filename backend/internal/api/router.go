@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -30,28 +29,14 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	for i, c := range Categories {
 		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
 	}
-	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats), visual: newVisualIndex(db, store)}
+	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats), visual: newVisualIndex(db, store),
+		proxies: newProxyTrust(cfg.TrustedProxies)}
 	if !opts.Quiet {
 		logVisualStart(h.visual) // background indexing; tests index on demand
 	}
 
-	trust := fiber.TrustProxyConfig{}
-	for _, p := range cfg.TrustedProxies {
-		switch p = strings.TrimSpace(p); p {
-		case "":
-		case "private":
-			trust.Loopback, trust.Private = true, true
-		default:
-			trust.Proxies = append(trust.Proxies, p)
-		}
-	}
-
 	app := fiber.New(fiber.Config{
 		AppName: "ModaHouse API",
-		// c.IP() returns the real client IP only when the request comes from a trusted proxy.
-		TrustProxy:       true,
-		TrustProxyConfig: trust,
-		ProxyHeader:      fiber.HeaderXForwardedFor,
 		// One request may carry a video plus several images.
 		BodyLimit: (max(cfg.MaxVideoMB, 1) + 4*max(cfg.MaxUploadMB, 1)) * 1024 * 1024,
 		ErrorHandler: func(c fiber.Ctx, err error) error {
@@ -90,7 +75,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	// Only credential endpoints are rate limited, per client IP.
 	credLimit := func(c fiber.Ctx) error { return c.Next() }
 	if !opts.Quiet {
-		credLimit = limiter.New(limiter.Config{Max: 20, Expiration: time.Minute})
+		credLimit = limiter.New(limiter.Config{Max: 20, Expiration: time.Minute, KeyGenerator: h.proxies.clientIP})
 	}
 	auth := api.Group("/auth")
 	auth.Post("/register", credLimit, h.register)

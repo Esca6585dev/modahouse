@@ -18,6 +18,8 @@ type Handler struct {
 	cfg    config.Config
 	ai     *ai.Service
 	visual *visualIndex
+	// proxies resolves the real client IP behind our own reverse proxies.
+	proxies *proxyTrust
 }
 
 type Page[T any] struct {

@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useLoginHref } from "@/lib/hooks";
+import { REPORT_REASONS } from "@/lib/format";
 import { shareUrl } from "@/lib/share";
 import type { Pin, ReportReason } from "@/lib/types";
 import {
@@ -14,14 +15,6 @@ import {
 import Popover from "./Popover";
 import { BoardPickerBody } from "./SavePicker";
 import { useToast } from "./Toast";
-
-const REASONS: { value: ReportReason; label: string; hint: string }[] = [
-  { value: "spam", label: "Spam", hint: "Mahabat, gaýtalanýan ýa-da aldaw" },
-  { value: "inappropriate", label: "Ýerliksiz mazmun", hint: "Kemsidiji, zorlukly ýa-da açyk" },
-  { value: "copyright", label: "Awtorlyk hukugy", hint: "Meniň suratym rugsatsyz ulanylýar" },
-  { value: "fake", label: "Ýalan haryt", hint: "Galp ýa-da aldawly bildiriş" },
-  { value: "other", label: "Başga sebäp", hint: "Gysgaça ýazyň" },
-];
 
 function extOf(url: string, type: string): string {
   const m = /\.([a-z0-9]{2,5})(?:\?|$)/i.exec(url);
@@ -235,7 +228,7 @@ export default function PinMenu({
             <button type="button" className="pm-back" onClick={() => setView("menu")}><BackIcon size={16} /> Yza</button>
             <strong>Näme üçin şikaýat edýärsiňiz?</strong>
             <div className="pm-reasons" role="radiogroup">
-              {REASONS.map((r) => (
+              {REPORT_REASONS.map((r) => (
                 <label key={r.value} className={`pm-reason ${reason === r.value ? "on" : ""}`}>
                   <input type="radio" name="reason" value={r.value} checked={reason === r.value} onChange={() => setReason(r.value)} />
                   <span><b>{r.label}</b><small>{r.hint}</small></span>

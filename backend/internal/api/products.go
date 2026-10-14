@@ -318,7 +318,7 @@ func (h *Handler) viewPin(c fiber.Ctx) error {
 		}
 		viewer = "u:" + strconv.FormatUint(uint64(me), 10)
 	} else {
-		sum := sha256.Sum256([]byte(c.IP() + "|" + h.cfg.JWTSecret))
+		sum := sha256.Sum256([]byte(h.proxies.clientIP(c) + "|" + h.cfg.JWTSecret))
 		viewer = "ip:" + hex.EncodeToString(sum[:12])
 	}
 	now := time.Now().UTC()

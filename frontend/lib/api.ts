@@ -1,10 +1,10 @@
-// Tiny typed client for the ModaHouse REST API. All calls go to the same origin
-// (/api/...), which next.config.ts rewrites to the Go backend.
+// Tiny typed client for the ModaHouse REST API. All calls go to the same origin (/api/...);
+// the route handler in app/api/[...path] proxies them to the Go backend at BACKEND_URL (read at runtime).
 
 import type {
-  AuthResponse, Board, BusinessCard, BusinessInput, BusinessStats, Cart, Category, ColorOption, Comment, LikeState, Me,
+  AdminReport, AdminStats, AdminUser, AdminUserFilter, AppConfig, AuthResponse, Board, BusinessCard, BusinessInput, BusinessStats, Cart, Category, ColorOption, Comment, LikeState, Me,
   ListingType, Notification, Order, OrderInput, OrderStatus, Page, Pin, PinImage, Profile, ReportReason, Review, ReviewsPage,
-  SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UserBrief, VisualResult,
+  SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UrlCheck, UserBrief, VisualResult,
 } from "./types";
 
 const TOKEN_KEY = "mh_token";
@@ -167,8 +167,23 @@ export function normProfile<T extends Profile>(p: T): T {
 
 const pinPage = (pg: Page<Pin>): Page<Pin> => ({ ...pg, items: (pg.items ?? []).map(normPin) });
 const userPage = (pg: Page<UserBrief>): Page<UserBrief> => ({ ...pg, items: (pg.items ?? []).map(normUser) });
-const meRes = (m: Me) => normProfile(m);
-const authRes = (r: AuthResponse): AuthResponse => ({ ...r, user: normProfile(r.user) });
+const meRes = (m: Me): Me => ({ ...normProfile(m), isAdmin: !!m.isAdmin });
+const authRes = (r: AuthResponse): AuthResponse => ({ ...r, user: meRes(r.user) });
+
+function normConfig(c: Partial<AppConfig>): AppConfig {
+  return { apiUrl: c.apiUrl ?? "", webUrl: c.webUrl ?? "", registrationOpen: c.registrationOpen ?? true, updatedAt: c.updatedAt ?? "" };
+}
+
+function normAdminUser(u: AdminUser): AdminUser {
+  return {
+    ...u, email: u.email ?? "", avatarUrl: u.avatarUrl ?? "", pinsCount: u.pinsCount ?? 0,
+    isAdmin: !!u.isAdmin, isBusiness: !!u.isBusiness, verified: !!u.verified, suspended: !!u.suspended,
+  };
+}
+
+function normReport(r: AdminReport): AdminReport {
+  return { ...r, pin: { ...r.pin, author: normUser(r.pin.author) }, reasons: r.reasons ?? [], lastNote: r.lastNote ?? "", count: r.count ?? 0 };
+}
 
 export type PinsQuery = {
   q?: string;
@@ -326,6 +341,28 @@ export const api = {
   // v3: AI writing assistant
   aiStatus: () => request<{ enabled: boolean }>("/ai/status"),
   aiSuggest: (form: FormData) => request<Suggestion>("/ai/suggest", { method: "POST", form }),
+
+  // v4: public app config
+  config: () => request<AppConfig>("/config").then(normConfig),
+
+  // v4: admin panel (admins only, otherwise 403)
+  admin: {
+    stats: () => request<AdminStats>("/admin/stats"),
+    settings: () => request<AppConfig>("/admin/settings").then(normConfig),
+    updateSettings: (b: Partial<Pick<AppConfig, "apiUrl" | "webUrl" | "registrationOpen">>) =>
+      request<AppConfig>("/admin/settings", { method: "PUT", body: b }).then(normConfig),
+    checkUrl: (url: string) => request<UrlCheck>("/admin/check-url", { method: "POST", body: { url } }),
+    users: (p: { q?: string; filter?: AdminUserFilter; page: number; limit?: number }) =>
+      request<Page<AdminUser>>(`/admin/users${qs({ ...p, limit: p.limit ?? 30 })}`)
+        .then((pg) => ({ ...pg, items: (pg.items ?? []).map(normAdminUser) })),
+    updateUser: (id: number, b: Partial<Pick<AdminUser, "isAdmin" | "verified" | "suspended">>) =>
+      request<AdminUser>(`/admin/users/${id}`, { method: "PUT", body: b }).then(normAdminUser),
+    reports: (page: number, limit = 20) =>
+      request<Page<AdminReport>>(`/admin/reports${qs({ page, limit })}`)
+        .then((pg) => ({ ...pg, items: (pg.items ?? []).map(normReport) })),
+    dismissReports: (pinId: number) => request<void>(`/admin/reports/${pinId}`, { method: "DELETE" }),
+    deletePin: (id: number) => request<void>(`/admin/pins/${id}`, { method: "DELETE" }),
+  },
 };
 
 function visualRes(r: VisualResult): VisualResult {

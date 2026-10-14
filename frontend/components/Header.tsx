@@ -8,7 +8,7 @@ import { useCart } from "@/lib/cart";
 import Avatar from "./Avatar";
 import {
   BagIcon, BellIcon, CartIcon, ChartIcon, ChevronDownIcon, HeartIcon, HomeIcon, LogoutIcon, PlusIcon, ReelsIcon, SearchIcon,
-  SettingsIcon, StoreIcon, TrophyIcon, UserIcon,
+  SettingsIcon, ShieldIcon, StoreIcon, TrophyIcon, UserIcon,
 } from "./Icons";
 import { LogoWordmark } from "./Logo";
 import SearchBar from "./SearchBar";
@@ -65,6 +65,9 @@ function UserMenu() {
             <Link role="menuitem" href="/settings#business" className="menu-item"><StoreIcon size={18} /> Biznes hasabyny aç</Link>
           )}
           <Link role="menuitem" href="/settings" className="menu-item"><SettingsIcon size={18} /> Sazlamalar</Link>
+          {user.isAdmin && (
+            <Link role="menuitem" href="/admin" className="menu-item"><ShieldIcon size={18} /> Admin paneli</Link>
+          )}
           <div className="menu-sep" />
           <button
             role="menuitem"
@@ -167,7 +170,7 @@ export function BottomNav() {
       href: profileHref,
       label: "Profil",
       icon: user ? <Avatar user={user} size={26} /> : <UserIcon size={24} />,
-      active: !!user && (path === `/u/${user.username}` || path === "/settings" || path.startsWith("/orders") || path === "/business"),
+      active: !!user && (path === `/u/${user.username}` || path === "/settings" || path.startsWith("/orders") || path === "/business" || path.startsWith("/admin")),
     },
   ];
   return (

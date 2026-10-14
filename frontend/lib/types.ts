@@ -48,7 +48,11 @@ export type Profile = UserBrief & {
   business: Business | null;
 };
 
-export type Me = Profile & { email: string };
+export type Me = Profile & {
+  email: string;
+  /** v4: may open the admin panel (/admin). */
+  isAdmin: boolean;
+};
 
 export type ColorOption = { name: string; hex: string };
 
@@ -305,3 +309,40 @@ export type Suggestion = {
 export type SearchResult = { users: UserBrief[]; tags: { tag: string; count: number }[] };
 
 export type VisualResult = { items: Pin[]; scores: number[]; category: string; source: "local" | "ai+local" };
+
+// ---------- v4: app config and admin panel ----------
+
+export type AppConfig = {
+  /** Public server origin for the apps, e.g. "https://api.modahouse.tm"; "" = keep the current one. */
+  apiUrl: string;
+  /** Public web address used in shared links; "" = client default. */
+  webUrl: string;
+  registrationOpen: boolean;
+  /** ISO time of the last settings change ("" if never changed). */
+  updatedAt: string;
+};
+
+export type AdminStats = {
+  users: number; businesses: number; admins: number; suspended: number;
+  pins: number; products: number; videos: number;
+  comments: number; orders: number; openReports: number;
+  newUsers7d: number; newPins7d: number;
+};
+
+export type AdminUser = {
+  id: number; username: string; name: string; email: string; avatarUrl: string;
+  isAdmin: boolean; isBusiness: boolean; verified: boolean; suspended: boolean;
+  pinsCount: number; createdAt: string;
+};
+
+export type AdminUserFilter = "" | "admin" | "business" | "suspended";
+
+export type AdminReport = {
+  pin: { id: number; title: string; imageUrl: string; author: UserBrief };
+  count: number;
+  reasons: string[];
+  lastNote: string;
+  lastReportedAt: string;
+};
+
+export type UrlCheck = { ok: boolean; status: number; error: string };

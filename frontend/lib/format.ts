@@ -1,4 +1,4 @@
-import type { Category } from "./types";
+import type { Category, ReportReason } from "./types";
 
 /** Relative time in Turkmen, e.g. "5 minut öň". */
 export function timeAgo(iso: string, now = Date.now()): string {
@@ -147,4 +147,17 @@ export function duration(sec: number): string {
 /** Digits (and a leading +) of a phone number for tel:/wa.me links. */
 export function phoneDigits(phone: string): string {
   return phone.replace(/[^\d+]/g, "");
+}
+
+/** Report reasons (POST /pins/:id/report), shared by the post menu and the admin panel. */
+export const REPORT_REASONS: { value: ReportReason; label: string; hint: string }[] = [
+  { value: "spam", label: "Spam", hint: "Mahabat, gaýtalanýan ýa-da aldaw" },
+  { value: "inappropriate", label: "Ýerliksiz mazmun", hint: "Kemsidiji, zorlukly ýa-da açyk" },
+  { value: "copyright", label: "Awtorlyk hukugy", hint: "Meniň suratym rugsatsyz ulanylýar" },
+  { value: "fake", label: "Ýalan haryt", hint: "Galp ýa-da aldawly bildiriş" },
+  { value: "other", label: "Başga sebäp", hint: "Gysgaça ýazyň" },
+];
+
+export function reportReasonLabel(r: string): string {
+  return REPORT_REASONS.find((x) => x.value === r)?.label ?? r;
 }
