@@ -19,6 +19,7 @@ import 'data/common.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reels_screen.dart';
 import 'screens/search_screen.dart';
+import 'screens/server_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/shell.dart';
 import 'screens/shops_screen.dart';
@@ -223,6 +224,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         redirect: requireLogin,
         builder: (_, _) => const SettingsScreen(),
       ),
+      GoRoute(path: '/server', builder: (_, _) => const ServerScreen()),
       GoRoute(
         path: '/login',
         builder: (_, s) => LoginScreen(from: s.uri.queryParameters['from']),

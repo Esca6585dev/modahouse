@@ -11,6 +11,7 @@ import '../state/paged_controller.dart';
 import '../state/pin_updates.dart';
 import '../state/providers.dart';
 import '../state/prefs.dart';
+import '../state/server.dart';
 import '../state/shop_state.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/pin_grid.dart';
@@ -83,6 +84,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       (_, _) => _feed.refresh(),
     );
     ref.listen(feedViewProvider, (prev, next) {
+      if (prev != next) _reset();
+    });
+    // Moved to another server (admin panel or Sazlamalar → Serwer).
+    ref.listen(serverProvider.select((s) => s.apiUrl), (prev, next) {
       if (prev != next) _reset();
     });
     final loggedIn = ref.watch(authProvider.select((s) => s.isLoggedIn));

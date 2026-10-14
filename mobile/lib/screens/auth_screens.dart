@@ -297,9 +297,27 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) => _AuthScaffold(
     title: S.welcome,
     subtitle: S.loginSubtitle,
-    child: LoginForm(
-      onSuccess: () => _finish(context, from),
-      onRegister: () => context.pushReplacement('/register${_query(from)}'),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        LoginForm(
+          onSuccess: () => _finish(context, from),
+          onRegister: () => context.pushReplacement('/register${_query(from)}'),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: TextButton.icon(
+            key: const Key('login-server'),
+            style: TextButton.styleFrom(
+              foregroundColor: AppPalette.of(context).muted,
+              textStyle: const TextStyle(fontSize: 13),
+            ),
+            onPressed: () => context.push('/server'),
+            icon: const Icon(Icons.dns_outlined, size: 16),
+            label: const Text(S.serverSettings),
+          ),
+        ),
+      ],
     ),
   );
 }

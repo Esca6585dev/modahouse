@@ -12,6 +12,7 @@ class CartCountNotifier extends Notifier<int> {
   @override
   int build() {
     final loggedIn = ref.watch(authProvider.select((s) => s.isLoggedIn));
+    ref.watch(apiClientProvider); // Reload after a server switch.
     if (!loggedIn) return 0;
     unawaited(Future.microtask(refresh));
     return 0;
@@ -51,7 +52,8 @@ class StoriesNotifier extends AsyncNotifier<List<StoryGroup>> {
   @override
   Future<List<StoryGroup>> build() {
     ref.watch(currentUserIdProvider);
-    return ref.read(storiesRepositoryProvider).feed();
+    // Watching the repository also reloads the row after a server switch.
+    return ref.watch(storiesRepositoryProvider).feed();
   }
 
   Future<void> reload() async {

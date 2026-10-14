@@ -149,6 +149,7 @@ class Me extends Profile {
     super.storySeen,
     super.business,
     this.email = '',
+    this.isAdmin = false,
   });
 
   factory Me.fromJson(Json j) {
@@ -171,10 +172,14 @@ class Me extends Profile {
       storySeen: p.storySeen,
       business: p.business,
       email: asString(j['email']),
+      isAdmin: asBool(j['isAdmin']),
     );
   }
 
   final String email;
+
+  /// Can open the web admin panel.
+  final bool isAdmin;
 }
 
 class AuthResponse {

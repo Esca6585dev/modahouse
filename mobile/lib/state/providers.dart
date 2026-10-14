@@ -16,6 +16,7 @@ import '../data/stories_repository.dart';
 import '../data/users_repository.dart';
 import '../models/models.dart';
 import 'auth.dart';
+import 'server.dart';
 
 final tokenStorageProvider = Provider<TokenStorage>(
   (ref) => SecureTokenStorage(),
@@ -23,7 +24,12 @@ final tokenStorageProvider = Provider<TokenStorage>(
 
 /// Shared HTTP client. The token and the 401 handler are read lazily, so the
 /// client never has to be rebuilt when the user logs in or out.
+///
+/// It is rebuilt when the server address changes, which rebuilds every
+/// repository and reloads the providers that watch them. (Requests always go
+/// to the current `AppConfig.apiUrl` anyway, even through an old instance.)
 final apiClientProvider = Provider<ApiClient>((ref) {
+  ref.watch(serverProvider.select((s) => s.apiUrl));
   return ApiClient(
     token: () => ref.read(authProvider).token,
     onUnauthorized: () => ref.read(authProvider.notifier).handleUnauthorized(),

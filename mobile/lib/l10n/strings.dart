@@ -688,6 +688,49 @@ class S {
   // ---------- v3: stories ----------
   static const storyVideoHint = 'Surat ýa-da 60 sekunda çenli wideo.';
 
+  // ---------- v4: server address and admin ----------
+  static const server = 'Serwer';
+  static const serverSettings = 'Serwer sazlamalary';
+  static const serverIntro =
+      'Programma serweriň salgysyny admin panelinden özi alýar. '
+      'Baglanyşyk bolmasa, salgyny şu ýerde el bilen girizip bilersiňiz.';
+  static const serverCurrent = 'Häzirki salgy';
+  static const serverSource = 'Çeşmesi';
+  static const serverSourceManual = 'Ýatda saklanan (siz girizdiňiz)';
+  static const serverSourceRemote = 'Serwerden alnan (admin paneli)';
+  static const serverSourceBuild = 'Başlangyç salgy';
+  static const serverWebAddress = 'Web salgysy';
+  static const serverDefault = 'Başlangyç salgy';
+  static const serverStatus = 'Ýagdaýy';
+  static const serverStatusOk = 'Serwer jogap berýär';
+  static const serverStatusDown = 'Serwer jogap bermeýär';
+  static const serverStatusUnknown = 'Entek barlanmady';
+  static const serverNewAddress = 'Täze salgy';
+  static const serverAddressHint = 'https://api.modahouse.tm';
+  static const serverAddressHelp = 'http:// ýa-da https:// bilen başlaň';
+  static const serverCheckSave = 'Barla we sakla';
+  static const serverChecking = 'Barlanýar…';
+  static const serverResetDefault = 'Başlangyç salgy';
+  static const serverRecheck = 'Täzeden barla';
+  static const serverUrlRequired = 'Serweriň salgysyny giriziň';
+  static const serverUrlInvalid =
+      'Salgy nädogry. Meselem: https://api.modahouse.tm ýa-da '
+      'http://192.168.1.10:8080';
+  static const serverUnreachable =
+      'Bu salgy boýunça ModaHouse serweri jogap bermedi. '
+      'Salgyny we internedi barlaň';
+  static const serverSaved = 'Serwer barlandy we ýatda saklandy';
+  static const serverResetDone = 'Başlangyç salgy dikeldildi';
+  static const serverUpToDate = 'Serwer jogap berýär, salgy üýtgemedi';
+  static const serverSwitchedTo = 'Täze serwere geçildi';
+  static const serverOffline =
+      'Hiç bir serwer jogap bermedi. Salgyny el bilen girizip görüň';
+  static const adminPanel = 'Admin paneli';
+  static const adminPanelText =
+      'Ulanyjylary, şikaýatlary we serweriň salgysyny brauzerde dolandyryň.';
+  static const adminPanelOpen = 'Admin panelini aç';
+  static const adminPanelFailed = 'Admin panelini açyp bolmady';
+
   // ---------- Relative time ----------
   static const justNow = 'şu wagt';
   static const yesterday = 'dün';

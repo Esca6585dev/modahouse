@@ -14,6 +14,7 @@ class UnreadCountNotifier extends Notifier<int> {
   @override
   int build() {
     final loggedIn = ref.watch(authProvider.select((s) => s.isLoggedIn));
+    ref.watch(apiClientProvider); // Reload after a server switch.
     _timer?.cancel();
     _timer = null;
     ref.onDispose(() => _timer?.cancel());

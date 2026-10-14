@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config.dart';
 import '../core/api_exception.dart';
 import '../models/models.dart';
 import 'providers.dart';
@@ -30,22 +31,54 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState();
   }
 
-  Future<void> _restore() async {
+  /// Checks the stored token with `/auth/me`. With [initial] false (after a
+  /// server switch) the app stays usable while the check runs.
+  Future<void> _restore({bool initial = true}) async {
     final storage = ref.read(tokenStorageProvider);
     final token = await storage.read();
+    if (!ref.mounted) return;
     if (token == null || token.isEmpty) {
       state = const AuthState(ready: true);
       return;
     }
     // Make the token available to the interceptor before calling /auth/me.
-    state = AuthState(token: token);
+    state = AuthState(token: token, ready: !initial);
+    for (var attempt = 0; ; attempt++) {
+      final server = AppConfig.apiUrl;
+      try {
+        final me = await ref.read(authRepositoryProvider).me();
+        if (ref.mounted) state = AuthState(user: me, token: token, ready: true);
+        return;
+      } on ApiException catch (e) {
+        if (!ref.mounted) return;
+        // The server address changed while we were waiting: try the new one.
+        if (e.statusCode == 0 && AppConfig.apiUrl != server && attempt == 0) {
+          continue;
+        }
+        if (e.isUnauthorized) await storage.clear();
+        // On network errors keep the token for the next launch.
+        state = const AuthState(ready: true);
+        return;
+      }
+    }
+  }
+
+  /// After a server switch: re-check the session on the new server (a 401
+  /// there ends it), or retry a stored token that could not be checked.
+  Future<void> revalidate() async {
+    if (!state.ready) return; // The startup check is still running.
+    final token = state.token;
+    if (state.user == null || token == null) {
+      await _restore(initial: false);
+      return;
+    }
     try {
       final me = await ref.read(authRepositoryProvider).me();
-      state = AuthState(user: me, token: token, ready: true);
-    } on ApiException catch (e) {
-      if (e.isUnauthorized) await storage.clear();
-      // On network errors keep the token for the next launch.
-      state = const AuthState(ready: true);
+      if (ref.mounted && state.token == token) {
+        state = AuthState(user: me, token: token, ready: true);
+      }
+    } catch (_) {
+      // 401 is handled by the interceptor; keep the session on network errors.
     }
   }
 

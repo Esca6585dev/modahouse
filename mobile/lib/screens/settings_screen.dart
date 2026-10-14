@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../core/api_exception.dart';
 import '../core/snack.dart';
 import '../core/theme.dart';
@@ -10,11 +12,13 @@ import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/auth.dart';
 import '../state/providers.dart';
+import '../state/server.dart';
 import '../widgets/avatar.dart';
 import '../widgets/board_form.dart';
 import '../widgets/states.dart';
 import 'business_screens.dart';
 import 'create_screen.dart' show pickImage;
+import 'server_screen.dart' show serverSourceLabel;
 
 final _usernameRe = RegExp(r'^[a-z0-9._]{3,30}$');
 
@@ -40,6 +44,8 @@ class SettingsScreen extends ConsumerWidget {
                 _ProfileCard(me: me),
                 BusinessSettingsCard(me: me),
                 const _ShopLinksCard(),
+                if (me.isAdmin) const _AdminCard(),
+                const _ServerCard(),
                 const _PasswordCard(),
                 const _LogoutCard(),
               ],
@@ -428,6 +434,63 @@ class _ShopLinksCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Sazlamalar → Serwer: the current API address, opens `/server`.
+class _ServerCard extends ConsumerWidget {
+  const _ServerCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
+    final s = ref.watch(serverProvider);
+    return _Card(
+      title: S.server,
+      child: ListTile(
+        key: const Key('settings-server'),
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(Icons.dns_outlined, color: p.text),
+        title: Text(
+          s.apiUrl,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(serverSourceLabel(s.source)),
+        trailing: Icon(Icons.chevron_right_rounded, color: p.muted),
+        onTap: () => context.push('/server'),
+      ),
+    );
+  }
+}
+
+/// Shown to admins: opens `{webUrl}/admin` in the browser.
+class _AdminCard extends StatelessWidget {
+  const _AdminCard();
+
+  Future<void> _open() async {
+    var ok = false;
+    try {
+      ok = await launchUrl(
+        Uri.parse(AppConfig.adminLink),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {}
+    if (!ok) showSnack(S.adminPanelFailed, error: true);
+  }
+
+  @override
+  Widget build(BuildContext context) => _Card(
+    title: S.adminPanel,
+    subtitle: S.adminPanelText,
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: FilledButton.icon(
+        key: const Key('settings-admin'),
+        onPressed: _open,
+        icon: const Icon(Icons.admin_panel_settings_outlined),
+        label: const Text(S.adminPanelOpen),
+      ),
+    ),
+  );
 }
 
 /// `/settings/blocked`: users I blocked, with "Petigi aýyr".

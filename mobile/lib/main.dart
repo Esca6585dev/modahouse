@@ -4,19 +4,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'core/format.dart';
+import 'core/server_config.dart';
+import 'state/server.dart';
 
 /// `--dart-define=SEMANTICS=true` forces the accessibility tree on (used by
 /// browser-driven end-to-end tests of the web build).
 const _forceSemantics = bool.fromEnvironment('SEMANTICS');
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   registerTimeagoLocale();
   if (_forceSemantics) SemanticsBinding.instance.ensureSemantics();
+  // The saved server address must be in place before the first request.
+  final store = PrefsServerStore();
+  final source = await loadSavedServer(store);
   runApp(
     ProviderScope(
       // Screens show their own retry buttons; don't retry failed providers silently.
       retry: (_, _) => null,
+      overrides: [
+        serverStoreProvider.overrideWithValue(store),
+        initialServerSourceProvider.overrideWithValue(source),
+      ],
       child: const ModaHouseApp(),
     ),
   );
