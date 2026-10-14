@@ -22,6 +22,12 @@ type Config struct {
 	// TrustedProxies lists proxy IPs/CIDRs whose X-Forwarded-For is trusted
 	// (e.g. the Next.js server). "private" trusts loopback and private networks.
 	TrustedProxies []string
+	// First admin, ensured on startup (created when missing and a password is given).
+	AdminUsername string
+	AdminPassword string
+	// Defaults for GET /api/config until the admin sets them in the panel.
+	PublicAPIURL string
+	PublicWebURL string
 }
 
 func Load() Config {
@@ -38,6 +44,10 @@ func Load() Config {
 		AIModel:        env("AI_MODEL", "claude-opus-5-5"),
 		TokenTTLDays:   envInt("TOKEN_TTL_DAYS", 30),
 		TrustedProxies: strings.Split(env("TRUSTED_PROXIES", "127.0.0.1,::1"), ","),
+		AdminUsername:  strings.ToLower(env("ADMIN_USERNAME", "")),
+		AdminPassword:  os.Getenv("ADMIN_PASSWORD"),
+		PublicAPIURL:   env("PUBLIC_API_URL", ""),
+		PublicWebURL:   env("PUBLIC_WEB_URL", ""),
 	}
 }
 

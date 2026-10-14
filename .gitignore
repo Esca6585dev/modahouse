@@ -19,3 +19,7 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .env*.local
+
+# Server secrets
+deploy/.env
+.env

@@ -1,0 +1,15 @@
+# DOMAIN=modahouse.tm  → Caddy özi Let's Encrypt HTTPS şahadatnamasyny alýar we täzeleýär.
+# DOMAIN=:80           → domen ýok bolsa, serweriň IP salgysy bilen HTTP arkaly işleýär.
+{$DOMAIN} {
+	encode zstd gzip
+
+	# The API and uploaded media go straight to the Go server (large video uploads skip Node).
+	@backend path /api/* /uploads/*
+	handle @backend {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

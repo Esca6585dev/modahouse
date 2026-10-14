@@ -1,0 +1,75 @@
+# ModaHouse önümçilik (production) ýygnamasy: PostgreSQL + Go API + Next.js web + Caddy (HTTPS).
+# Ulanmak: cp .env.example .env  →  .env faýlyny dolduryň  →  docker compose up -d --build
+# Giňişleýin: docs/DEPLOY.md
+name: modahouse
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: moda
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD .env faýlynda bolmaly}
+      POSTGRES_DB: modahouse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moda -d modahouse"]
+      interval: 5s
+      retries: 20
+
+  backend:
+    build: ../backend
+    restart: unless-stopped
+    environment:
+      DB_DRIVER: postgres
+      DATABASE_URL: postgres://moda:${POSTGRES_PASSWORD}@db:5432/modahouse?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET .env faýlynda bolmaly}
+      CORS_ORIGINS: "*"
+      SEED: ${SEED:-true}
+      # Caddy and the web server reach the API over the Docker network.
+      TRUSTED_PROXIES: private
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      MAX_VIDEO_MB: ${MAX_VIDEO_MB:-60}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ../frontend
+    restart: unless-stopped
+    environment:
+      # Read at runtime: change it and restart the container, no rebuild needed.
+      BACKEND_URL: http://backend:8080
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+
+volumes:
+  pgdata:
+  uploads:
+  caddy_data:
+  caddy_config:

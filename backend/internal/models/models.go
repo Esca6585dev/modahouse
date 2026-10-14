@@ -13,6 +13,8 @@ type User struct {
 	AvatarURL    string `gorm:"size:255"`
 	IsBusiness   bool   `gorm:"index"`
 	Verified     bool
+	IsAdmin      bool `gorm:"index"`
+	Suspended    bool `gorm:"index"` // cannot log in; tokens are rejected
 	// Tokens issued before this moment are rejected (set on password change).
 	TokensValidAfter time.Time
 	CreatedAt        time.Time
@@ -289,5 +291,12 @@ type PinFeature struct {
 func All() []any {
 	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{},
 		&Business{}, &PinImage{}, &PinView{}, &CartItem{}, &Order{}, &OrderItem{}, &Review{}, &Story{}, &StoryView{},
-		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}}
+		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}}
+}
+
+// Setting is an admin-editable key/value pair (see api.AppConfig).
+type Setting struct {
+	Key       string `gorm:"primaryKey;size:50"`
+	Value     string `gorm:"type:text"`
+	UpdatedAt time.Time
 }

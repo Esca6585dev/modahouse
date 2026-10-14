@@ -71,3 +71,9 @@ TEST_POSTGRES_URL="postgres://moda:moda@localhost:5432/modahouse_test?sslmode=di
 | `MAX_UPLOAD_MB` | Surat ölçeginiň çägi |
 | `TOKEN_TTL_DAYS` | JWT möhleti |
 | `TRUSTED_PROXIES` | `X-Forwarded-For` sözbaşysyna ynanylýan proksiler (adaty: `127.0.0.1,::1`). `private` ähli içki torlara ynanýar |
+| `MAX_VIDEO_MB` | Wideo ölçeginiň çägi (adaty: 60) |
+| `ANTHROPIC_API_KEY`, `AI_MODEL` | AI kömekçisi (Claude). Açar ýok bolsa taýýar nusgalar ulanylýar |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Serwer açylanda bu ulanyjy admin bolýar; ýok bolsa we parol (≥ 8 simwol) berlen bolsa döredilýär. Bar bolan paroly üýtgetmeýär |
+| `PUBLIC_API_URL`, `PUBLIC_WEB_URL` | `GET /api/config` üçin başlangyç salgylar; admin panelinden berlen bahalar bulardan öňde durýar |
+
+Ýerli synag üçin demo ulanyjyny admin etmek: `ADMIN_USERNAME=aylar.studio go run ./cmd/server`, soňra `http://localhost:3000/admin`.

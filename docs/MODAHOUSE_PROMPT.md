@@ -133,7 +133,21 @@ The search bar and the create flow have a camera button.
 
 The server implements `POST /api/search/image` and `GET /api/pins/:id/visual`. It uses its own visual descriptors (colour, shape, pattern), and Claude-detected categories boost the ranking when an API key is set.
 
-### 11. Platforms and quality bar
+### 11. Admin panel and server address
+
+- **Admin panel:** `/admin` on the web, for admins only. It has four sections:
+  - **Umumy:** statistics;
+  - **Sazlamalar:** the public API address for apps, the web address for shared links, and whether registration is open;
+  - **Ulanyjylar:** search, appoint admins, verify and suspend users;
+  - **Şikaýatlar:** reported posts, which can be deleted or dismissed.
+  The first admin comes from `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
+- **No hard-coded server address:**
+  - The web server reads `BACKEND_URL` when it starts.
+  - Android apps read `GET /api/config` and switch to a new `apiUrl` only after its `/api/health` answers. If the server is unreachable, they fall back to the build default and the optional `CONFIG_URL`.
+  - Users can also set the address by hand (Sazlamalar → Serwer).
+- **Production:** `deploy/` (Docker Compose, PostgreSQL, Caddy with automatic HTTPS, one domain for web and API). The guide is `docs/DEPLOY.md`.
+
+### 12. Platforms and quality bar
 
 - Web (Next.js), Android (Flutter, release APK built in CI) and the shared Go API.
 - Pixel-level polish at 390 px phone width and on desktop.

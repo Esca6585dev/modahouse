@@ -107,7 +107,8 @@ type PinImageDTO struct {
 
 type Me struct {
 	Profile
-	Email string `json:"email"`
+	Email   string `json:"email"`
+	IsAdmin bool   `json:"isAdmin"`
 }
 
 type PinDTO struct {

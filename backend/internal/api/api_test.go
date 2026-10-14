@@ -34,6 +34,12 @@ type env struct {
 
 func newEnv(t *testing.T, withSeed bool) *env {
 	t.Helper()
+	return newEnvWith(t, withSeed, nil)
+}
+
+// newEnvWith lets a test adjust the config; the admin from the config is ensured like on startup.
+func newEnvWith(t *testing.T, withSeed bool, mod func(*config.Config)) *env {
+	t.Helper()
 	// Tests use a fresh SQLite file by default. Set TEST_POSTGRES_URL to run them
 	// against PostgreSQL instead (the public schema is wiped before each test).
 	driver, dsn := "sqlite", filepath.Join(t.TempDir(), "test.db")
@@ -66,6 +72,12 @@ func newEnv(t *testing.T, withSeed bool) *env {
 		}
 	}
 	cfg := config.Config{JWTSecret: "test", UploadDir: store.Dir, CORSOrigins: []string{"*"}, MaxUploadMB: 5, MaxVideoMB: 10, TokenTTLDays: 1}
+	if mod != nil {
+		mod(&cfg)
+	}
+	if err := api.EnsureAdmin(db, cfg); err != nil {
+		t.Fatal(err)
+	}
 	return &env{t: t, app: api.New(db, store, cfg, api.Options{Quiet: true}), dir: store.Dir}
 }
 

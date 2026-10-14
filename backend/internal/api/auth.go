@@ -42,6 +42,9 @@ func validPassword(p string) string {
 }
 
 func (h *Handler) register(c fiber.Ctx) error {
+	if !h.appConfig().RegistrationOpen {
+		return fail(c, fiber.StatusForbidden, "Täze hasap açmak wagtlaýyn ýapyk")
+	}
 	var req registerReq
 	if err := c.Bind().Body(&req); err != nil {
 		return badRequest(c, "Nädogry maglumat")
@@ -96,6 +99,9 @@ func (h *Handler) login(c fiber.Ctx) error {
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)) != nil {
 		return fail(c, fiber.StatusUnauthorized, "Login ýa-da parol nädogry")
 	}
+	if user.Suspended {
+		return fail(c, fiber.StatusForbidden, "Hasabyňyz petiklendi")
+	}
 	return h.respondAuth(c, fiber.StatusOK, user)
 }
 
@@ -116,5 +122,5 @@ func (h *Handler) getMe(c fiber.Ctx) error {
 }
 
 func (h *Handler) me(u models.User) Me {
-	return Me{Profile: h.profile(u, u.ID), Email: u.Email}
+	return Me{Profile: h.profile(u, u.ID), Email: u.Email, IsAdmin: u.IsAdmin}
 }

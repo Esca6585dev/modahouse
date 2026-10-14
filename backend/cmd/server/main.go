@@ -33,6 +33,10 @@ func main() {
 		}
 	}
 
+	if err := api.EnsureAdmin(db, cfg); err != nil {
+		log.Fatalf("admin: %v", err)
+	}
+
 	app := api.New(db, store, cfg, api.Options{})
 
 	go func() {

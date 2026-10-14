@@ -427,9 +427,17 @@ func (h *Handler) deletePin(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	if err := h.removePin(p); err != nil {
+		return err
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// removePin deletes a pin with everything attached to it and its media files.
+func (h *Handler) removePin(p models.Pin) error {
 	var imgs []models.PinImage
 	h.db.Where("pin_id = ?", p.ID).Find(&imgs)
-	err = h.db.Transaction(func(tx *gorm.DB) error {
+	err := h.db.Transaction(func(tx *gorm.DB) error {
 		// Explicit cleanup keeps SQLite and Postgres consistent even without FK cascades.
 		for _, m := range []any{&models.BoardPin{}, &models.Like{}, &models.Comment{}, &models.Notification{},
 			&models.PinImage{}, &models.PinView{}, &models.CartItem{}, &models.Review{},
@@ -465,7 +473,7 @@ func (h *Handler) deletePin(c fiber.Ctx) error {
 		h.store.Remove(p.ImageURL)
 	}
 	h.visual.remove(p.ID)
-	return c.SendStatus(fiber.StatusNoContent)
+	return nil
 }
 
 func (h *Handler) likeState(c fiber.Ctx, pinID uint) error {

@@ -462,3 +462,84 @@ type VisualResult = {
 - Descriptors are built in the background, and also on demand before a search, so new posts are searchable within seconds.
 - Results are ranked by similarity and respect the viewer's hidden posts and blocks.
 - When the server has Claude credentials, Claude also names the category of the photo, and posts of that category are boosted.
+
+# v4: Admin panel and dynamic server address
+
+The apps no longer depend on a server address fixed at build time. The admin sets the public API
+address in the admin panel; Android apps read it from `GET /config` and move to the new server on
+their own. The web app reads `BACKEND_URL` when the server starts, so it needs no rebuild either.
+
+## App config (public)
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/config` | `AppConfig` |
+
+```ts
+type AppConfig = {
+  apiUrl: string;            // public server origin for apps, e.g. "https://api.modahouse.tm" (no /api, no trailing slash); "" = keep the current one
+  webUrl: string;            // public web address used in shared links, e.g. "https://modahouse.tm"; "" = client default
+  registrationOpen: boolean; // false: POST /auth/register answers 403
+  updatedAt: string;         // ISO time of the last settings change ("" if never changed)
+};
+```
+
+Values set in the admin panel win; otherwise the server falls back to the `PUBLIC_API_URL` and
+`PUBLIC_WEB_URL` environment variables, then to `""`.
+
+**How the Android app uses it:**
+1. Start with the saved address, or the build-time `API_URL` on first launch.
+2. In the background, call `GET {current}/api/config`.
+3. If `apiUrl` is set and differs, check `GET {apiUrl}/api/health`. Only if it answers `{"status":"ok"}`, save the new address and switch to it. A typo in the admin panel can never strand the apps.
+4. If the current address is unreachable, fall back to the build-time `API_URL` (and the optional `CONFIG_URL` JSON file with the same `AppConfig` shape) and repeat step 3.
+5. The user can also enter a server address by hand under Sazlamalar → Serwer.
+
+## Me
+
+`Me` gains `isAdmin: boolean`.
+
+Suspended users cannot log in (`403 "Hasabyňyz petiklendi"`) and their tokens stop working.
+
+## Admin 🔒 (admins only, otherwise 403)
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/admin/stats` | | `AdminStats` |
+| GET | `/admin/settings` | | `AppConfig` |
+| PUT | `/admin/settings` | any of `{apiUrl, webUrl, registrationOpen}` | `AppConfig` |
+| POST | `/admin/check-url` | `{url}` | `{ok: boolean, status: number, error: string}`: the server calls `{url}/api/health` (5 s timeout) |
+| GET | `/admin/users` | `?q=&filter=admin\|business\|suspended&page=&limit=` | `Page<AdminUser>` (newest first) |
+| PUT | `/admin/users/:id` | any of `{isAdmin, verified, suspended}` | `AdminUser` |
+| GET | `/admin/reports` | `?page=&limit=` | `Page<AdminReport>` (most recent report first) |
+| DELETE | `/admin/reports/:pinId` | | 204: dismiss all reports of the post |
+| DELETE | `/admin/pins/:id` | | 204: delete the post, its files and its reports |
+
+```ts
+type AdminStats = {
+  users: number; businesses: number; admins: number; suspended: number;
+  pins: number; products: number; videos: number;
+  comments: number; orders: number; openReports: number; // posts with at least one report
+  newUsers7d: number; newPins7d: number;
+};
+
+type AdminUser = {
+  id: number; username: string; name: string; email: string; avatarUrl: string;
+  isAdmin: boolean; isBusiness: boolean; verified: boolean; suspended: boolean;
+  pinsCount: number; createdAt: string;
+};
+
+type AdminReport = {
+  pin: { id: number; title: string; imageUrl: string; author: UserBrief };
+  count: number;            // number of reports
+  reasons: string[];        // distinct reasons
+  lastNote: string;         // latest non-empty note
+  lastReportedAt: string;
+};
+```
+
+**Rules:**
+- `apiUrl` and `webUrl` must be absolute `http(s)://` URLs, or `""` to clear. The server trims a trailing slash and a trailing `/api`.
+- An admin cannot remove their own admin role or suspend themselves.
+- Suspending a user ends all of their sessions.
+
+**The first admin** comes from the environment: with `ADMIN_USERNAME` (and `ADMIN_PASSWORD`, at least 8 characters), the server makes that user an admin on startup. It creates the user if missing, but never changes an existing password. Further admins can be appointed in the panel.

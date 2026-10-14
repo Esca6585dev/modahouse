@@ -79,12 +79,13 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
 		return c.Next()
-	}, static.New(store.Dir, static.Config{MaxAge: 86400}))
+	}, static.New(store.Dir, static.Config{MaxAge: 86400, ByteRange: true}))
 
 	api := app.Group("/api", h.optionalAuth)
 	api.Get("/health", func(c fiber.Ctx) error { return c.JSON(fiber.Map{"status": "ok"}) })
 	api.Get("/categories", listCategories)
 	api.Get("/business-categories", listBusinessCategories)
+	api.Get("/config", h.getConfig)
 
 	// Only credential endpoints are rate limited, per client IP.
 	credLimit := func(c fiber.Ctx) error { return c.Next() }
@@ -192,6 +193,17 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	notes.Get("/", h.listNotifications)
 	notes.Get("/unread-count", h.unreadCount)
 	notes.Post("/read-all", h.readAll)
+
+	admin := api.Group("/admin", h.requireAdmin)
+	admin.Get("/stats", h.adminStats)
+	admin.Get("/settings", h.adminGetSettings)
+	admin.Put("/settings", h.adminUpdateSettings)
+	admin.Post("/check-url", h.adminCheckURL)
+	admin.Get("/users", h.adminListUsers)
+	admin.Put("/users/:id", h.adminUpdateUser)
+	admin.Get("/reports", h.adminReports)
+	admin.Delete("/reports/:pinId", h.adminDismissReports)
+	admin.Delete("/pins/:id", h.adminDeletePin)
 
 	api.Use(func(c fiber.Ctx) error { return notFound(c) })
 	return app
