@@ -46,7 +46,7 @@ func (h *Handler) optionalAuth(c fiber.Ctx) error {
 		if id, issued, ok := h.parseToken(strings.TrimSpace(raw)); ok {
 			var u models.User
 			// JWT iat has second precision, so compare at that precision.
-			if h.db.Select("id", "tokens_valid_after").First(&u, id).Error == nil &&
+			if h.db.Select("id", "tokens_valid_after", "suspended").First(&u, id).Error == nil && !u.Suspended &&
 				!issued.Before(u.TokensValidAfter.Truncate(time.Second)) {
 				c.Locals(localUserID, id)
 			}

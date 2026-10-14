@@ -7,14 +7,19 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 
+	"github.com/esca6585dev/modahouse/backend/internal/ai"
 	"github.com/esca6585dev/modahouse/backend/internal/config"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
 type Handler struct {
-	db    *gorm.DB
-	store *storage.Storage
-	cfg   config.Config
+	db     *gorm.DB
+	store  *storage.Storage
+	cfg    config.Config
+	ai     *ai.Service
+	visual *visualIndex
+	// proxies resolves the real client IP behind our own reverse proxies.
+	proxies *proxyTrust
 }
 
 type Page[T any] struct {

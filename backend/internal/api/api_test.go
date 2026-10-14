@@ -34,6 +34,12 @@ type env struct {
 
 func newEnv(t *testing.T, withSeed bool) *env {
 	t.Helper()
+	return newEnvWith(t, withSeed, nil)
+}
+
+// newEnvWith lets a test adjust the config; the admin from the config is ensured like on startup.
+func newEnvWith(t *testing.T, withSeed bool, mod func(*config.Config)) *env {
+	t.Helper()
 	// Tests use a fresh SQLite file by default. Set TEST_POSTGRES_URL to run them
 	// against PostgreSQL instead (the public schema is wiped before each test).
 	driver, dsn := "sqlite", filepath.Join(t.TempDir(), "test.db")
@@ -65,7 +71,13 @@ func newEnv(t *testing.T, withSeed bool) *env {
 			t.Fatal(err)
 		}
 	}
-	cfg := config.Config{JWTSecret: "test", UploadDir: store.Dir, CORSOrigins: []string{"*"}, MaxUploadMB: 5, TokenTTLDays: 1}
+	cfg := config.Config{JWTSecret: "test", UploadDir: store.Dir, CORSOrigins: []string{"*"}, MaxUploadMB: 5, MaxVideoMB: 10, TokenTTLDays: 1}
+	if mod != nil {
+		mod(&cfg)
+	}
+	if err := api.EnsureAdmin(db, cfg); err != nil {
+		t.Fatal(err)
+	}
 	return &env{t: t, app: api.New(db, store, cfg, api.Options{Quiet: true}), dir: store.Dir}
 }
 
@@ -411,7 +423,7 @@ func TestFollowAndFeed(t *testing.T) {
 	}
 	e.expect(400, "POST", "/api/users/newbie/follow", me.Token, nil, nil)
 	e.expect(404, "POST", "/api/users/nobody/follow", me.Token, nil, nil)
-	e.expect(200, "POST", "/api/users/gezelenc/follow", me.Token, nil, &prof)
+	e.expect(200, "POST", "/api/users/selbi.saclar/follow", me.Token, nil, &prof)
 	if !prof.IsFollowing {
 		t.Fatal("follow failed")
 	}
@@ -423,13 +435,13 @@ func TestFollowAndFeed(t *testing.T) {
 		t.Fatal("following feed empty")
 	}
 	for _, p := range feed.Items {
-		if p.Category != "syyahat" {
+		if p.Category != "sac" {
 			t.Fatalf("unexpected pin in following feed: %+v", p)
 		}
 	}
 
 	var followers page[struct{ Username string }]
-	e.expect(200, "GET", "/api/users/gezelenc/followers", "", nil, &followers)
+	e.expect(200, "GET", "/api/users/selbi.saclar/followers", "", nil, &followers)
 	found := false
 	for _, u := range followers.Items {
 		found = found || u.Username == "newbie"
@@ -438,7 +450,7 @@ func TestFollowAndFeed(t *testing.T) {
 		t.Fatal("follower list missing newbie")
 	}
 
-	e.expect(200, "DELETE", "/api/users/gezelenc/follow", me.Token, nil, &prof)
+	e.expect(200, "DELETE", "/api/users/selbi.saclar/follow", me.Token, nil, &prof)
 	if prof.IsFollowing {
 		t.Fatal("unfollow failed")
 	}
@@ -447,9 +459,9 @@ func TestFollowAndFeed(t *testing.T) {
 func TestSeedAndPaging(t *testing.T) {
 	e := newEnv(t, true)
 	var p1, p2 page[pinResp]
-	e.expect(200, "GET", "/api/pins?limit=20", "", nil, &p1)
-	e.expect(200, "GET", "/api/pins?limit=20&page=2", "", nil, &p2)
-	if len(p1.Items) != 20 || !p1.HasMore || len(p2.Items) != 10 || p2.HasMore {
+	e.expect(200, "GET", "/api/pins?type=ideas&limit=20", "", nil, &p1)
+	e.expect(200, "GET", "/api/pins?type=ideas&limit=20&page=2", "", nil, &p2)
+	if len(p1.Items) != 20 || !p1.HasMore || len(p2.Items) != 20 {
 		t.Fatalf("paging wrong: %d/%v %d/%v", len(p1.Items), p1.HasMore, len(p2.Items), p2.HasMore)
 	}
 	seen := map[uint]bool{}

@@ -29,6 +29,20 @@ class AuthInterceptor extends Interceptor {
   }
 }
 
+/// Points every request at the current server ([AppConfig.apiBase] changes
+/// at runtime when the admin moves the API to a new address).
+class CurrentServerInterceptor extends Interceptor {
+  CurrentServerInterceptor(this.baseUrl);
+
+  final String Function() baseUrl;
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    options.baseUrl = baseUrl();
+    handler.next(options);
+  }
+}
+
 /// Thin wrapper around Dio. Every method returns the decoded JSON body and
 /// throws [ApiException] on failure.
 class ApiClient {
@@ -47,6 +61,11 @@ class ApiClient {
                headers: {'Accept': 'application/json'},
              ),
            ) {
+    if (baseUrl == null && dio == null) {
+      this.dio.interceptors.add(
+        CurrentServerInterceptor(() => AppConfig.apiBase),
+      );
+    }
     this.dio.interceptors.add(
       AuthInterceptor(
         token: token ?? () => null,

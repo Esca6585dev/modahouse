@@ -1,5 +1,5 @@
 name: modahouse
-description: "ModaHouse: moda, içki bezeg, tagamlar we syýahat üçin ideýalar (Android programmasy)."
+description: "ModaHouse: moda ideýalary, köýnek dükanlary we Top 10 köýnekçi (Android programmasy)."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -23,6 +23,9 @@ dependencies:
   share_plus: ^13.3.1
   url_launcher: ^6.3.3
   timeago: ^3.7.1
+  video_player: ^2.14.1
+  shared_preferences: ^2.5.6
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:
@@ -32,6 +35,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/brand/
 
 # Launcher icon: `dart run flutter_launcher_icons`
 # (the PNG files are generated locally, see tool/make_icon.py).
@@ -40,5 +45,5 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/icon/icon.png"
   min_sdk_android: 24
-  adaptive_icon_background: "#d6336c"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"

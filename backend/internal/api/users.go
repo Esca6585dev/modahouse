@@ -19,7 +19,12 @@ func (h *Handler) profile(u models.User, viewer uint) Profile {
 		var n int64
 		h.db.Model(&models.Follow{}).Where("follower_id = ? AND following_id = ?", viewer, u.ID).Count(&n)
 		p.IsFollowing = n > 0
+		var b int64
+		h.db.Model(&models.Block{}).Where("blocker_id = ? AND blocked_id = ?", viewer, u.ID).Count(&b)
+		p.IsBlocked = b > 0
 	}
+	p.HasStory, p.StorySeen = h.storyState(u.ID, viewer)
+	p.Business = h.businessDTO(u)
 	return p
 }
 

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../core/api_exception.dart';
 import '../core/snack.dart';
 import '../core/theme.dart';
@@ -10,10 +12,13 @@ import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/auth.dart';
 import '../state/providers.dart';
+import '../state/server.dart';
 import '../widgets/avatar.dart';
 import '../widgets/board_form.dart';
 import '../widgets/states.dart';
+import 'business_screens.dart';
 import 'create_screen.dart' show pickImage;
+import 'server_screen.dart' show serverSourceLabel;
 
 final _usernameRe = RegExp(r'^[a-z0-9._]{3,30}$');
 
@@ -37,6 +42,10 @@ class SettingsScreen extends ConsumerWidget {
               children: [
                 _AvatarCard(me: me),
                 _ProfileCard(me: me),
+                BusinessSettingsCard(me: me),
+                const _ShopLinksCard(),
+                if (me.isAdmin) const _AdminCard(),
+                const _ServerCard(),
                 const _PasswordCard(),
                 const _LogoutCard(),
               ],
@@ -398,4 +407,169 @@ class _LogoutCard extends ConsumerWidget {
       ),
     ),
   );
+}
+
+/// Quick links: my orders, cart.
+class _ShopLinksCard extends StatelessWidget {
+  const _ShopLinksCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    Widget link(IconData icon, String label, String path) => ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: p.text),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      trailing: Icon(Icons.chevron_right_rounded, color: p.muted),
+      onTap: () => context.push(path),
+    );
+    return _Card(
+      title: S.myOrders,
+      child: Column(
+        children: [
+          link(Icons.receipt_long_outlined, S.myOrders, '/orders'),
+          link(Icons.shopping_bag_outlined, S.cart, '/cart'),
+          link(Icons.block_rounded, S.blockedUsers, '/settings/blocked'),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sazlamalar → Serwer: the current API address, opens `/server`.
+class _ServerCard extends ConsumerWidget {
+  const _ServerCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
+    final s = ref.watch(serverProvider);
+    return _Card(
+      title: S.server,
+      child: ListTile(
+        key: const Key('settings-server'),
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(Icons.dns_outlined, color: p.text),
+        title: Text(
+          s.apiUrl,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(serverSourceLabel(s.source)),
+        trailing: Icon(Icons.chevron_right_rounded, color: p.muted),
+        onTap: () => context.push('/server'),
+      ),
+    );
+  }
+}
+
+/// Shown to admins: opens `{webUrl}/admin` in the browser.
+class _AdminCard extends StatelessWidget {
+  const _AdminCard();
+
+  Future<void> _open() async {
+    var ok = false;
+    try {
+      ok = await launchUrl(
+        Uri.parse(AppConfig.adminLink),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (_) {}
+    if (!ok) showSnack(S.adminPanelFailed, error: true);
+  }
+
+  @override
+  Widget build(BuildContext context) => _Card(
+    title: S.adminPanel,
+    subtitle: S.adminPanelText,
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: FilledButton.icon(
+        key: const Key('settings-admin'),
+        onPressed: _open,
+        icon: const Icon(Icons.admin_panel_settings_outlined),
+        label: const Text(S.adminPanelOpen),
+      ),
+    ),
+  );
+}
+
+/// `/settings/blocked`: users I blocked, with "Petigi aýyr".
+class BlockedUsersScreen extends ConsumerStatefulWidget {
+  const BlockedUsersScreen({super.key});
+
+  @override
+  ConsumerState<BlockedUsersScreen> createState() => _BlockedUsersScreenState();
+}
+
+class _BlockedUsersScreenState extends ConsumerState<BlockedUsersScreen> {
+  List<UserBrief>? _users;
+  Object? _error;
+  final Set<String> _busy = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _error = null);
+    try {
+      final u = await ref.read(usersRepositoryProvider).blocks();
+      if (mounted) setState(() => _users = u);
+    } catch (e) {
+      if (mounted) setState(() => _error = e);
+    }
+  }
+
+  Future<void> _unblock(UserBrief u) async {
+    setState(() => _busy.add(u.username));
+    try {
+      await ref.read(usersRepositoryProvider).unblock(u.username);
+      showSnack(S.unblocked);
+      if (mounted) {
+        setState(() => _users = [..._users!]..removeWhere((x) => x.id == u.id));
+      }
+    } catch (e) {
+      showError(e);
+    } finally {
+      if (mounted) setState(() => _busy.remove(u.username));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final users = _users;
+    return Scaffold(
+      appBar: AppBar(title: const Text(S.blockedUsers)),
+      body: users == null
+          ? (_error == null
+                ? const LoadingView()
+                : ErrorView(error: _error!, onRetry: _load))
+          : users.isEmpty
+          ? const EmptyView(icon: Icons.block_rounded, title: S.noBlockedUsers)
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: users.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 2),
+              itemBuilder: (context, i) {
+                final u = users[i];
+                return ListTile(
+                  leading: UserAvatar(user: u, size: 44),
+                  title: Text(
+                    u.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text('@${u.username}'),
+                  trailing: ElevatedButton(
+                    onPressed: _busy.contains(u.username)
+                        ? null
+                        : () => _unblock(u),
+                    child: const Text(S.unblock),
+                  ),
+                );
+              },
+            ),
+    );
+  }
 }

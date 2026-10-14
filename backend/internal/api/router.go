@@ -4,7 +4,7 @@ package api
 import (
 	"errors"
 	"log"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"gorm.io/gorm"
 
+	"github.com/esca6585dev/modahouse/backend/internal/ai"
 	"github.com/esca6585dev/modahouse/backend/internal/config"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
@@ -24,26 +25,20 @@ type Options struct {
 }
 
 func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *fiber.App {
-	h := &Handler{db: db, store: store, cfg: cfg}
-
-	trust := fiber.TrustProxyConfig{}
-	for _, p := range cfg.TrustedProxies {
-		switch p = strings.TrimSpace(p); p {
-		case "":
-		case "private":
-			trust.Loopback, trust.Private = true, true
-		default:
-			trust.Proxies = append(trust.Proxies, p)
-		}
+	cats := make([]ai.Category, len(Categories))
+	for i, c := range Categories {
+		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
+	}
+	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats), visual: newVisualIndex(db, store),
+		proxies: newProxyTrust(cfg.TrustedProxies)}
+	if !opts.Quiet {
+		logVisualStart(h.visual) // background indexing; tests index on demand
 	}
 
 	app := fiber.New(fiber.Config{
 		AppName: "ModaHouse API",
-		// c.IP() returns the real client IP only when the request comes from a trusted proxy.
-		TrustProxy:       true,
-		TrustProxyConfig: trust,
-		ProxyHeader:      fiber.HeaderXForwardedFor,
-		BodyLimit:        cfg.MaxUploadMB * 1024 * 1024,
+		// One request may carry a video plus several images.
+		BodyLimit: (max(cfg.MaxVideoMB, 1) + 4*max(cfg.MaxUploadMB, 1)) * 1024 * 1024,
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			var fe *fiber.Error
 			if errors.As(err, &fe) {
@@ -69,16 +64,18 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
 		return c.Next()
-	}, static.New(store.Dir, static.Config{MaxAge: 86400}))
+	}, static.New(store.Dir, static.Config{MaxAge: 86400, ByteRange: true}))
 
 	api := app.Group("/api", h.optionalAuth)
 	api.Get("/health", func(c fiber.Ctx) error { return c.JSON(fiber.Map{"status": "ok"}) })
 	api.Get("/categories", listCategories)
+	api.Get("/business-categories", listBusinessCategories)
+	api.Get("/config", h.getConfig)
 
 	// Only credential endpoints are rate limited, per client IP.
 	credLimit := func(c fiber.Ctx) error { return c.Next() }
 	if !opts.Quiet {
-		credLimit = limiter.New(limiter.Config{Max: 20, Expiration: time.Minute})
+		credLimit = limiter.New(limiter.Config{Max: 20, Expiration: time.Minute, KeyGenerator: h.proxies.clientIP})
 	}
 	auth := api.Group("/auth")
 	auth.Post("/register", credLimit, h.register)
@@ -92,6 +89,11 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	me.Post("/avatar", h.uploadAvatar)
 	me.Delete("/avatar", h.deleteAvatar)
 	me.Get("/boards", h.myBoards)
+	me.Get("/likes", h.myLikes)
+	me.Get("/blocks", h.myBlocks)
+	me.Post("/business", h.openBusiness)
+	me.Put("/business", h.updateBusiness)
+	me.Delete("/business", h.closeBusiness)
 
 	users := api.Group("/users/:username")
 	users.Get("/", h.getUser)
@@ -99,6 +101,9 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	users.Get("/boards", h.userBoards)
 	users.Get("/followers", h.followList(true))
 	users.Get("/following", h.followList(false))
+	users.Get("/stories", h.userStories)
+	users.Post("/block", requireAuth, h.blockUser)
+	users.Delete("/block", requireAuth, h.unblockUser)
 	users.Post("/follow", requireAuth, h.follow)
 	users.Delete("/follow", requireAuth, h.unfollow)
 
@@ -109,6 +114,14 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	pins.Put("/:id", requireAuth, h.updatePin)
 	pins.Delete("/:id", requireAuth, h.deletePin)
 	pins.Get("/:id/similar", h.similarPins)
+	pins.Get("/:id/visual", h.visuallySimilar)
+	pins.Post("/:id/view", h.viewPin)
+	pins.Post("/:id/report", requireAuth, h.reportPin)
+	pins.Post("/:id/hide", requireAuth, h.hidePin)
+	pins.Delete("/:id/hide", requireAuth, h.unhidePin)
+	pins.Get("/:id/reviews", h.listReviews)
+	pins.Post("/:id/reviews", requireAuth, h.addReview)
+	api.Delete("/reviews/:id", requireAuth, h.deleteReview)
 	pins.Post("/:id/like", requireAuth, h.likePin)
 	pins.Delete("/:id/like", requireAuth, h.unlikePin)
 	pins.Get("/:id/comments", h.listComments)
@@ -124,10 +137,58 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	boards.Post("/:id/pins/:pinId", requireAuth, h.savePin)
 	boards.Delete("/:id/pins/:pinId", requireAuth, h.unsavePin)
 
+	api.Get("/businesses", h.listBusinesses)
+	api.Get("/search", h.search)
+	api.Post("/search/image", h.searchByImage)
+	aiLimit := func(c fiber.Ctx) error { return c.Next() }
+	if !opts.Quiet {
+		aiLimit = limiter.New(limiter.Config{Max: 10, Expiration: time.Minute, KeyGenerator: func(c fiber.Ctx) string {
+			return "ai:" + strconv.FormatUint(uint64(viewerID(c)), 10)
+		}})
+	}
+	api.Get("/ai/status", h.aiStatus)
+	api.Post("/ai/suggest", requireAuth, aiLimit, h.aiSuggest)
+	api.Get("/top", h.top)
+	biz := api.Group("/business", requireAuth)
+	biz.Get("/stats", h.businessStats)
+	biz.Get("/orders", h.businessOrders)
+	biz.Put("/orders/:id", h.updateOrderStatus)
+
+	cart := api.Group("/cart", requireAuth)
+	cart.Get("/", h.getCart)
+	cart.Get("/count", h.cartCount)
+	cart.Post("/", h.addToCart)
+	cart.Put("/:id", h.updateCartItem)
+	cart.Delete("/:id", h.deleteCartItem)
+	cart.Delete("/", h.clearCart)
+
+	orders := api.Group("/orders", requireAuth)
+	orders.Post("/", h.createOrders)
+	orders.Get("/", h.myOrders)
+	orders.Get("/:id", h.getOrder)
+	orders.Post("/:id/cancel", h.cancelOrder)
+
+	stories := api.Group("/stories")
+	stories.Get("/", h.listStories)
+	stories.Post("/", requireAuth, h.createStory)
+	stories.Post("/:id/view", requireAuth, h.viewStory)
+	stories.Delete("/:id", requireAuth, h.deleteStory)
+
 	notes := api.Group("/notifications", requireAuth)
 	notes.Get("/", h.listNotifications)
 	notes.Get("/unread-count", h.unreadCount)
 	notes.Post("/read-all", h.readAll)
+
+	admin := api.Group("/admin", h.requireAdmin)
+	admin.Get("/stats", h.adminStats)
+	admin.Get("/settings", h.adminGetSettings)
+	admin.Put("/settings", h.adminUpdateSettings)
+	admin.Post("/check-url", h.adminCheckURL)
+	admin.Get("/users", h.adminListUsers)
+	admin.Put("/users/:id", h.adminUpdateUser)
+	admin.Get("/reports", h.adminReports)
+	admin.Delete("/reports/:pinId", h.adminDismissReports)
+	admin.Delete("/pins/:id", h.adminDeletePin)
 
 	api.Use(func(c fiber.Ctx) error { return notFound(c) })
 	return app

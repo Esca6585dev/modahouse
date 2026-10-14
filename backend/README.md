@@ -15,6 +15,20 @@ internal/storage  suratlary diskde saklamak (JPG/PNG/GIF/WEBP)
 internal/seed     demo ulanyjylar, pinler we SVG suratlar
 ```
 
+## Mümkinçilikler
+
+- **Pinterest bölegi:** pinler, tagtalar, halamak, teswirler, yzarlamak, gözleg we bildirişler.
+- **Biznes hasaby:** Instagram-yň hünärmen hasaby ýaly. Kategoriýa, telefon, şäher, iş wagty we eltip bermek möhleti görkezilýär.
+- **Harytlar:** her harydyň 8-e çenli suraty, bahasy, köne bahasy, reňkleri, ölçegleri, galyndysy we materialy bolýar.
+- **Sebet we sargyt:** sargyt her dükan üçin aýratyn döredilýär. Galyndy sargyt wagtynda saklanýar we sargyt ýatyrylsa yzyna gaýtarylýar.
+- **Sargyt ýagdaýlary:** Täze → Tassyklandy → Ýolda → Gowşuryldy ýa-da Ýatyryldy.
+- **Synlar:** harydy alan müşderiler 1-5 ýyldyz bilen baha berip bilýär.
+- **Top 10 reýtingi:** görülme, halanma, sargyt we baha boýunça hasaplanýar. Ol hepde, aý we ähli wagt üçin bar.
+- **Story:** 24 sagatlyk, görlen ýa-da görülmedik ýagdaýy bilen.
+
+Demo dükanlar: `gyzyl.guyze`, `soygi.tikincilik`, `ak.gelin`, `merjen.tikincilik`, `mahri.stili`, `aylar.studio` we `yyldyz.butik`.
+Olaryň paroly `modahouse123`. Demo story-lar baza döredilenden 24 sagat soň gutarýar.
+
 ## Işletmek
 
 Iň ýönekeý ýol SQLite bilen, goşmaça hiç zat gurnamak gerek däl:
@@ -57,3 +71,9 @@ TEST_POSTGRES_URL="postgres://moda:moda@localhost:5432/modahouse_test?sslmode=di
 | `MAX_UPLOAD_MB` | Surat ölçeginiň çägi |
 | `TOKEN_TTL_DAYS` | JWT möhleti |
 | `TRUSTED_PROXIES` | `X-Forwarded-For` sözbaşysyna ynanylýan proksiler (adaty: `127.0.0.1,::1`). `private` ähli içki torlara ynanýar |
+| `MAX_VIDEO_MB` | Wideo ölçeginiň çägi (adaty: 60) |
+| `ANTHROPIC_API_KEY`, `AI_MODEL` | AI kömekçisi (Claude). Açar ýok bolsa taýýar nusgalar ulanylýar |
+| `ADMIN_USERNAME`, `ADMIN_PASSWORD` | Serwer açylanda bu ulanyjy admin bolýar; ýok bolsa we parol (≥ 8 simwol) berlen bolsa döredilýär. Bar bolan paroly üýtgetmeýär |
+| `PUBLIC_API_URL`, `PUBLIC_WEB_URL` | `GET /api/config` üçin başlangyç salgylar; admin panelinden berlen bahalar bulardan öňde durýar |
+
+Ýerli synag üçin demo ulanyjyny admin etmek: `ADMIN_USERNAME=aylar.studio go run ./cmd/server`, soňra `http://localhost:3000/admin`.

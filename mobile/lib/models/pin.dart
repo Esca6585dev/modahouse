@@ -1,4 +1,6 @@
+import 'comment.dart';
 import 'json.dart';
+import 'product.dart';
 import 'user.dart';
 
 class Pin {
@@ -19,6 +21,14 @@ class Pin {
     this.liked = false,
     this.savedBoardIds = const [],
     this.createdAt,
+    this.images = const [],
+    this.product,
+    this.viewsCount = 0,
+    this.ordersCount = 0,
+    this.rating = 0,
+    this.reviewsCount = 0,
+    this.mediaType = 'image',
+    this.latestComments = const [],
   });
 
   factory Pin.fromJson(Json j) => Pin(
@@ -38,6 +48,21 @@ class Pin {
     liked: asBool(j['liked']),
     savedBoardIds: asList(j['savedBoardIds'], asInt),
     createdAt: asDate(j['createdAt']),
+    images: asList(j['images'], (e) => PinImage.fromJson(asJson(e))),
+    product: j['product'] is Map
+        ? Product.fromJson(asJson(j['product']))
+        : null,
+    viewsCount: asInt(j['viewsCount']),
+    ordersCount: asInt(j['ordersCount']),
+    rating: asDouble(j['rating']),
+    reviewsCount: asInt(j['reviewsCount']),
+    mediaType: asString(j['mediaType']).isEmpty
+        ? 'image'
+        : asString(j['mediaType']),
+    latestComments: asList(
+      j['latestComments'],
+      (e) => Comment.fromJson(asJson(e)),
+    ),
   );
 
   final int id;
@@ -65,7 +90,34 @@ class Pin {
   final List<int> savedBoardIds;
   final DateTime? createdAt;
 
+  /// 1..8 images, the first one is the cover (= [imageUrl]).
+  final List<PinImage> images;
+
+  /// Shop fields; null for idea pins.
+  final Product? product;
+  final int viewsCount;
+  final int ordersCount;
+
+  /// 0..5 average review rating of this pin.
+  final double rating;
+  final int reviewsCount;
+
+  /// `image` or `video` (type of the first media item).
+  final String mediaType;
+
+  /// The two latest comments (only with `?withComments=1`).
+  final List<Comment> latestComments;
+
   bool get isSaved => savedBoardIds.isNotEmpty;
+
+  bool get isVideo => mediaType == 'video';
+
+  bool get isProduct => product != null;
+
+  /// Images for the carousel; falls back to the cover for older servers.
+  List<PinImage> get gallery => images.isNotEmpty
+      ? images
+      : [PinImage(url: imageUrl, width: width, height: height, color: color)];
 
   /// width / height, guarded against missing sizes and extreme shapes.
   double get aspectRatio {
@@ -83,6 +135,10 @@ class Pin {
     int? commentsCount,
     bool? liked,
     List<int>? savedBoardIds,
+    Product? product,
+    int? viewsCount,
+    double? rating,
+    int? reviewsCount,
   }) => Pin(
     id: id,
     title: title ?? this.title,
@@ -100,6 +156,14 @@ class Pin {
     liked: liked ?? this.liked,
     savedBoardIds: savedBoardIds ?? this.savedBoardIds,
     createdAt: createdAt,
+    images: images,
+    product: product ?? this.product,
+    viewsCount: viewsCount ?? this.viewsCount,
+    ordersCount: ordersCount,
+    rating: rating ?? this.rating,
+    reviewsCount: reviewsCount ?? this.reviewsCount,
+    mediaType: mediaType,
+    latestComments: latestComments,
   );
 }
 

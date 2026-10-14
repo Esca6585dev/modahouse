@@ -2,14 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_client.dart';
 import '../core/token_storage.dart';
+import '../data/ai_repository.dart';
 import '../data/auth_repository.dart';
 import '../data/boards_repository.dart';
+import '../data/business_repository.dart';
+import '../data/cart_repository.dart';
 import '../data/comments_repository.dart';
 import '../data/notifications_repository.dart';
+import '../data/orders_repository.dart';
 import '../data/pins_repository.dart';
+import '../data/reviews_repository.dart';
+import '../data/stories_repository.dart';
 import '../data/users_repository.dart';
 import '../models/models.dart';
 import 'auth.dart';
+import 'server.dart';
 
 final tokenStorageProvider = Provider<TokenStorage>(
   (ref) => SecureTokenStorage(),
@@ -17,7 +24,12 @@ final tokenStorageProvider = Provider<TokenStorage>(
 
 /// Shared HTTP client. The token and the 401 handler are read lazily, so the
 /// client never has to be rebuilt when the user logs in or out.
+///
+/// It is rebuilt when the server address changes, which rebuilds every
+/// repository and reloads the providers that watch them. (Requests always go
+/// to the current `AppConfig.apiUrl` anyway, even through an old instance.)
 final apiClientProvider = Provider<ApiClient>((ref) {
+  ref.watch(serverProvider.select((s) => s.apiUrl));
   return ApiClient(
     token: () => ref.read(authProvider).token,
     onUnauthorized: () => ref.read(authProvider.notifier).handleUnauthorized(),
@@ -42,10 +54,41 @@ final commentsRepositoryProvider = Provider(
 final notificationsRepositoryProvider = Provider(
   (ref) => NotificationsRepository(ref.watch(apiClientProvider)),
 );
+final businessRepositoryProvider = Provider(
+  (ref) => BusinessRepository(ref.watch(apiClientProvider)),
+);
+final reviewsRepositoryProvider = Provider(
+  (ref) => ReviewsRepository(ref.watch(apiClientProvider)),
+);
+final cartRepositoryProvider = Provider(
+  (ref) => CartRepository(ref.watch(apiClientProvider)),
+);
+final ordersRepositoryProvider = Provider(
+  (ref) => OrdersRepository(ref.watch(apiClientProvider)),
+);
+final aiRepositoryProvider = Provider(
+  (ref) => AiRepository(ref.watch(apiClientProvider)),
+);
+final storiesRepositoryProvider = Provider(
+  (ref) => StoriesRepository(ref.watch(apiClientProvider)),
+);
 
 /// Categories rarely change: load once and keep.
 final categoriesProvider = FutureProvider<List<Category>>((ref) {
   return ref.watch(pinsRepositoryProvider).categories();
+});
+
+/// Business categories (`GET /business-categories`), with the built-in
+/// list as a fallback while loading or offline.
+final businessCategoriesProvider = FutureProvider<List<Category>>((ref) async {
+  try {
+    final list = await ref.watch(businessRepositoryProvider).categories();
+    if (list.isNotEmpty) return list;
+  } catch (_) {}
+  return [
+    for (final e in businessCategoryNames.entries)
+      Category(slug: e.key, name: e.value),
+  ];
 });
 
 /// Set to false in widget tests so no network images are requested.

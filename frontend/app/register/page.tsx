@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { errorMessage, safeNext } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import AuthAside from "@/components/AuthAside";
+import { LogoWordmark } from "@/components/Logo";
 
 const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
 
@@ -52,7 +54,7 @@ function RegisterForm() {
 
   return (
     <div className="auth-card">
-      <span className="logo-mark big">M</span>
+      <LogoWordmark height={64} />
       <h1>Hasap dörediň</h1>
       <p className="muted">Ideýalaryňyzy saklaň we paýlaşyň</p>
       <form className="form" onSubmit={submit} noValidate>
@@ -85,7 +87,8 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="page auth-page">
+    <div className="auth-page">
+      <AuthAside />
       <Suspense fallback={<div className="auth-card" />}>
         <RegisterForm />
       </Suspense>

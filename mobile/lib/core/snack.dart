@@ -6,7 +6,12 @@ import 'theme.dart';
 /// Root messenger so SnackBars can be shown from anywhere (also after a pop).
 final rootMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void showSnack(String message, {bool error = false}) {
+void showSnack(
+  String message, {
+  bool error = false,
+  String? actionLabel,
+  VoidCallback? onAction,
+}) {
   final m = rootMessengerKey.currentState;
   if (m == null) return;
   m.hideCurrentSnackBar();
@@ -20,6 +25,13 @@ void showSnack(String message, {bool error = false}) {
       ),
       backgroundColor: error ? AppPalette.errorToast : null,
       duration: const Duration(milliseconds: 3500),
+      action: actionLabel == null || onAction == null
+          ? null
+          : SnackBarAction(
+              label: actionLabel,
+              textColor: const Color(0xFFFF5A70),
+              onPressed: onAction,
+            ),
     ),
   );
 }

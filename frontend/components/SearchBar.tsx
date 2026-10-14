@@ -3,29 +3,26 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CloseIcon, SearchIcon } from "./Icons";
+import PhotoSearchButton from "./PhotoSearchButton";
 
-export default function SearchBar() {
+/** Header search: text goes to /search?q= (posts, people, hashtags); the camera opens search by photo. */
+export default function SearchBar({ className = "", autoFocus }: { className?: string; autoFocus?: boolean }) {
   const router = useRouter();
   const path = usePathname();
   const params = useSearchParams();
-  const current = path === "/" ? params.get("q") ?? "" : "";
+  const current = path === "/search" || path === "/" ? params.get("q") ?? "" : "";
   const [value, setValue] = useState(current);
 
   // Keep the box in sync with the URL (back/forward, chip clicks).
   useEffect(() => setValue(current), [current]);
 
   const go = (q: string) => {
-    const next = new URLSearchParams();
-    const c = path === "/" ? params.get("c") : null;
-    if (q) next.set("q", q);
-    if (c) next.set("c", c);
-    const s = next.toString();
-    router.push(s ? `/?${s}` : "/");
+    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
   };
 
   return (
     <form
-      className="search"
+      className={`search ${className}`}
       role="search"
       onSubmit={(e) => {
         e.preventDefault();
@@ -37,15 +34,17 @@ export default function SearchBar() {
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="Gözle: moda, içki bezeg, tagamlar…"
+        placeholder="Gözle: köýnek, dükan, #hashtag…"
         aria-label="Gözleg"
         enterKeyHint="search"
+        autoFocus={autoFocus}
       />
       {value && (
         <button type="button" className="search-clear" aria-label="Arassala" onClick={() => { setValue(""); if (current) go(""); }}>
           <CloseIcon size={16} />
         </button>
       )}
+      <PhotoSearchButton />
     </form>
   );
 }

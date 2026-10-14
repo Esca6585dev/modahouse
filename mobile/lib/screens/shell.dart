@@ -4,21 +4,44 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 import '../l10n/strings.dart';
-import '../state/notifications_state.dart';
+import '../state/auth.dart';
+import '../widgets/avatar.dart';
 import '../widgets/states.dart';
 
-/// Bottom navigation with the five tabs.
+/// Bottom navigation: Baş sahypa, Gözleg, Döret (+), Reels, Profil.
+/// Top 10 opens from the home app bar and the search screen.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
-  static const notificationsIndex = 3;
+  static const homeIndex = 0;
+  static const createIndex = 2;
+  static const profileIndex = 4;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final unread = ref.watch(unreadCountProvider);
     final p = AppPalette.of(context);
+    final me = ref.watch(authProvider.select((s) => s.user));
+
+    Widget profileIcon(bool active) {
+      if (me == null) {
+        return Icon(
+          active ? Icons.person_rounded : Icons.person_outline_rounded,
+        );
+      }
+      return Container(
+        padding: const EdgeInsets.all(1.5),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: active ? AppPalette.accent : Colors.transparent,
+            width: 2,
+          ),
+        ),
+        child: UserAvatar(user: me, size: 24),
+      );
+    }
 
     return Scaffold(
       body: shell,
@@ -28,12 +51,8 @@ class AppShell extends ConsumerWidget {
         ),
         child: NavigationBar(
           selectedIndex: shell.currentIndex,
-          onDestinationSelected: (i) {
-            if (i == notificationsIndex) {
-              ref.read(notificationsVisitProvider.notifier).bump();
-            }
-            shell.goBranch(i, initialLocation: i == shell.currentIndex);
-          },
+          onDestinationSelected: (i) =>
+              shell.goBranch(i, initialLocation: i == shell.currentIndex),
           destinations: [
             const NavigationDestination(
               icon: Icon(Icons.home_outlined),
@@ -42,32 +61,22 @@ class AppShell extends ConsumerWidget {
             ),
             const NavigationDestination(
               icon: Icon(Icons.search_rounded),
-              selectedIcon: Icon(Icons.saved_search_rounded),
+              selectedIcon: Icon(Icons.manage_search_rounded),
               label: S.tabSearch,
             ),
-            NavigationDestination(
-              icon: _CreateIcon(active: false, color: p.text),
-              selectedIcon: _CreateIcon(active: true, color: p.text),
+            const NavigationDestination(
+              icon: _CreateIcon(active: false),
+              selectedIcon: _CreateIcon(active: true),
               label: S.tabCreate,
             ),
-            NavigationDestination(
-              icon: Badge(
-                isLabelVisible: unread > 0,
-                backgroundColor: AppPalette.accent,
-                label: Text(unread > 99 ? '99+' : '$unread'),
-                child: const Icon(Icons.notifications_none_rounded),
-              ),
-              selectedIcon: Badge(
-                isLabelVisible: unread > 0,
-                backgroundColor: AppPalette.accent,
-                label: Text(unread > 99 ? '99+' : '$unread'),
-                child: const Icon(Icons.notifications_rounded),
-              ),
-              label: S.tabNotifications,
-            ),
             const NavigationDestination(
-              icon: Icon(Icons.person_outline_rounded),
-              selectedIcon: Icon(Icons.person_rounded),
+              icon: Icon(Icons.movie_outlined),
+              selectedIcon: Icon(Icons.movie_rounded),
+              label: S.tabReels,
+            ),
+            NavigationDestination(
+              icon: profileIcon(false),
+              selectedIcon: profileIcon(true),
               label: S.tabProfile,
             ),
           ],
@@ -77,26 +86,29 @@ class AppShell extends ConsumerWidget {
   }
 }
 
-/// The "+" create button in the bottom bar.
+/// The red "+" create button in the bottom bar.
 class _CreateIcon extends StatelessWidget {
-  const _CreateIcon({required this.active, required this.color});
+  const _CreateIcon({required this.active});
 
   final bool active;
-  final Color color;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: 40,
-    height: 30,
+  Widget build(BuildContext context) => AnimatedContainer(
+    duration: const Duration(milliseconds: 150),
+    width: 44,
+    height: 32,
     decoration: BoxDecoration(
-      color: AppPalette.accent,
+      color: active ? AppPalette.accentHover : AppPalette.accent,
       borderRadius: BorderRadius.circular(12),
+      boxShadow: [
+        BoxShadow(
+          color: AppPalette.accent.withValues(alpha: 0.3),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ],
     ),
-    child: Icon(
-      active ? Icons.add_rounded : Icons.add_rounded,
-      color: Colors.white,
-      size: 24,
-    ),
+    child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
   );
 }
 

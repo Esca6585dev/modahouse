@@ -11,6 +11,10 @@ type User struct {
 	PasswordHash string `gorm:"not null"`
 	Bio          string `gorm:"size:300"`
 	AvatarURL    string `gorm:"size:255"`
+	IsBusiness   bool   `gorm:"index"`
+	Verified     bool
+	IsAdmin      bool `gorm:"index"`
+	Suspended    bool `gorm:"index"` // cannot log in; tokens are rejected
 	// Tokens issued before this moment are rejected (set on password change).
 	TokensValidAfter time.Time
 	CreatedAt        time.Time
@@ -28,10 +32,27 @@ type Pin struct {
 	ImageURL    string `gorm:"size:255;not null"`
 	Width       int
 	Height      int
-	Color       string    `gorm:"size:9"`
-	SearchText  string    `gorm:"type:text;index"` // lower-cased title+description+tags for portable search
-	CreatedAt   time.Time `gorm:"index"`
-	UpdatedAt   time.Time
+	Color       string `gorm:"size:9"`
+	SearchText  string `gorm:"type:text;index"` // lower-cased title+description+tags for portable search
+	// Product fields; a pin is a product when Price > 0 and its author is a business.
+	ListingType  string `gorm:"size:10;index"` // post, sale, rent, custom ("" = legacy: sale when priced)
+	Price        int    `gorm:"index"`
+	Deposit      int    // rent: deposit
+	MinDays      int    // rent: minimum days
+	ReadyDays    int    // custom: days to make
+	OldPrice     int
+	Colors       string `gorm:"type:text"` // JSON array of {name, hex}
+	Sizes        string `gorm:"size:300"`  // comma separated
+	Stock        *int   // nil = not tracked
+	DeliveryDays int
+	ReturnDays   int
+	Material     string `gorm:"size:100"`
+	ViewsCount   int
+	OrdersCount  int
+	HasVideo     bool       `gorm:"index"`
+	Images       []PinImage `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt    time.Time  `gorm:"index"`
+	UpdatedAt    time.Time
 }
 
 type Board struct {
@@ -79,26 +100,203 @@ type Follow struct {
 }
 
 const (
-	NotifyLike    = "like"
-	NotifyComment = "comment"
-	NotifyFollow  = "follow"
-	NotifySave    = "save"
+	NotifyOrder       = "order"
+	NotifyOrderStatus = "order_status"
+	NotifyReview      = "review"
+	NotifyLike        = "like"
+	NotifyComment     = "comment"
+	NotifyFollow      = "follow"
+	NotifySave        = "save"
 )
 
 type Notification struct {
+	ID          uint   `gorm:"primaryKey"`
+	UserID      uint   `gorm:"index;not null"` // recipient
+	ActorID     uint   `gorm:"not null"`
+	User        User   `gorm:"constraint:OnDelete:CASCADE"`
+	Actor       User   `gorm:"constraint:OnDelete:CASCADE"`
+	Type        string `gorm:"size:20;not null"`
+	PinID       *uint
+	Pin         *Pin   `gorm:"constraint:OnDelete:CASCADE"`
+	CommentID   *uint  `gorm:"index"`
+	OrderID     *uint  `gorm:"index"`
+	OrderStatus string `gorm:"size:20"` // order status at the time of the event
+	Read        bool   `gorm:"index"`
+	CreatedAt   time.Time
+}
+
+// Business holds the professional profile of a user with IsBusiness set.
+type Business struct {
+	UserID       uint   `gorm:"primaryKey"`
+	User         User   `gorm:"constraint:OnDelete:CASCADE"`
+	Category     string `gorm:"size:20;index"`
+	Phone        string `gorm:"size:20"`
+	Address      string `gorm:"size:200"`
+	City         string `gorm:"size:60"`
+	Instagram    string `gorm:"size:60"`
+	Tiktok       string `gorm:"size:60"`
+	Telegram     string `gorm:"size:60"`
+	Whatsapp     string `gorm:"size:20"`
+	Imo          string `gorm:"size:20"`
+	Youtube      string `gorm:"size:120"`
+	Website      string `gorm:"size:200"`
+	WorkingHours string `gorm:"size:60"`
+	DeliveryDays int
+	ReturnDays   int
+	CreatedAt    time.Time
+}
+
+type PinImage struct {
 	ID        uint   `gorm:"primaryKey"`
-	UserID    uint   `gorm:"index;not null"` // recipient
-	ActorID   uint   `gorm:"not null"`
+	PinID     uint   `gorm:"index;not null"`
+	Kind      string `gorm:"size:10"` // image (default) or video
+	PosterURL string `gorm:"size:255"`
+	Duration  float64
+	URL       string `gorm:"size:255;not null"`
+	Width     int
+	Height    int
+	Color     string `gorm:"size:9"`
+	Position  int
+}
+
+// PinView records one view per viewer (user id or hashed IP) per day.
+type PinView struct {
+	PinID  uint      `gorm:"primaryKey"`
+	Viewer string    `gorm:"primaryKey;size:64"`
+	Day    time.Time `gorm:"primaryKey;type:date"`
+	Pin    Pin       `gorm:"constraint:OnDelete:CASCADE"`
+}
+
+type CartItem struct {
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"index;not null"`
+	PinID     uint   `gorm:"index;not null"`
 	User      User   `gorm:"constraint:OnDelete:CASCADE"`
-	Actor     User   `gorm:"constraint:OnDelete:CASCADE"`
-	Type      string `gorm:"size:20;not null"`
-	PinID     *uint
-	Pin       *Pin  `gorm:"constraint:OnDelete:CASCADE"`
-	CommentID *uint `gorm:"index"`
-	Read      bool  `gorm:"index"`
+	Pin       Pin    `gorm:"constraint:OnDelete:CASCADE"`
+	Color     string `gorm:"size:40"`
+	Size      string `gorm:"size:20"`
+	Quantity  int
 	CreatedAt time.Time
 }
 
+const (
+	OrderNew       = "new"
+	OrderConfirmed = "confirmed"
+	OrderShipped   = "shipped"
+	OrderDelivered = "delivered"
+	OrderCancelled = "cancelled"
+)
+
+type Order struct {
+	ID         uint   `gorm:"primaryKey"`
+	BuyerID    uint   `gorm:"index;not null"`
+	BusinessID uint   `gorm:"index;not null"`
+	Buyer      User   `gorm:"constraint:OnDelete:CASCADE"`
+	Business   User   `gorm:"constraint:OnDelete:CASCADE"`
+	Status     string `gorm:"size:20;index"`
+	Total      int
+	FullName   string      `gorm:"size:80"`
+	Phone      string      `gorm:"size:20"`
+	Address    string      `gorm:"size:300"`
+	Note       string      `gorm:"size:500"`
+	Items      []OrderItem `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt  time.Time   `gorm:"index"`
+	UpdatedAt  time.Time
+}
+
+// OrderItem is a snapshot so orders survive product edits and deletion.
+type OrderItem struct {
+	ID       uint   `gorm:"primaryKey"`
+	OrderID  uint   `gorm:"index;not null"`
+	PinID    *uint  `gorm:"index"`
+	Title    string `gorm:"size:100"`
+	ImageURL string `gorm:"size:255"`
+	Price    int
+	Color    string `gorm:"size:40"`
+	Size     string `gorm:"size:20"`
+	Quantity int
+}
+
+type Review struct {
+	ID         uint   `gorm:"primaryKey"`
+	PinID      uint   `gorm:"uniqueIndex:idx_review_pin_user;not null"`
+	UserID     uint   `gorm:"uniqueIndex:idx_review_pin_user;not null"`
+	BusinessID uint   `gorm:"index;not null"`
+	Pin        Pin    `gorm:"constraint:OnDelete:CASCADE"`
+	User       User   `gorm:"constraint:OnDelete:CASCADE"`
+	Rating     int    `gorm:"not null"`
+	Text       string `gorm:"size:1000"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type Story struct {
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"index;not null"`
+	User      User   `gorm:"constraint:OnDelete:CASCADE"`
+	ImageURL  string `gorm:"size:255;not null"` // image, or poster for a video story
+	VideoURL  string `gorm:"size:255"`
+	Width     int
+	Height    int
+	Color     string `gorm:"size:9"`
+	Caption   string `gorm:"size:200"`
+	PinID     *uint
+	CreatedAt time.Time
+	ExpiresAt time.Time `gorm:"index"`
+}
+
+type StoryView struct {
+	StoryID   uint  `gorm:"primaryKey"`
+	UserID    uint  `gorm:"primaryKey"`
+	Story     Story `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time
+}
+
+type Report struct {
+	ID        uint   `gorm:"primaryKey"`
+	PinID     uint   `gorm:"index;not null"`
+	UserID    uint   `gorm:"index;not null"`
+	Pin       Pin    `gorm:"constraint:OnDelete:CASCADE"`
+	User      User   `gorm:"constraint:OnDelete:CASCADE"`
+	Reason    string `gorm:"size:20"`
+	Note      string `gorm:"size:300"`
+	CreatedAt time.Time
+}
+
+// HiddenPin: "not interested" — the pin no longer shows in the user's feeds.
+type HiddenPin struct {
+	UserID    uint `gorm:"primaryKey"`
+	PinID     uint `gorm:"primaryKey"`
+	User      User `gorm:"constraint:OnDelete:CASCADE"`
+	Pin       Pin  `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time
+}
+
+type Block struct {
+	BlockerID uint `gorm:"primaryKey"`
+	BlockedID uint `gorm:"primaryKey;index"`
+	Blocker   User `gorm:"constraint:OnDelete:CASCADE"`
+	Blocked   User `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time
+}
+
+// PinFeature stores the visual-search descriptor of a pin's cover image.
+type PinFeature struct {
+	PinID   uint `gorm:"primaryKey"`
+	Pin     Pin  `gorm:"constraint:OnDelete:CASCADE"`
+	Version int
+	Data    []byte
+}
+
 func All() []any {
-	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{}}
+	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{},
+		&Business{}, &PinImage{}, &PinView{}, &CartItem{}, &Order{}, &OrderItem{}, &Review{}, &Story{}, &StoryView{},
+		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}}
+}
+
+// Setting is an admin-editable key/value pair (see api.AppConfig).
+type Setting struct {
+	Key       string `gorm:"primaryKey;size:50"`
+	Value     string `gorm:"type:text"`
+	UpdatedAt time.Time
 }

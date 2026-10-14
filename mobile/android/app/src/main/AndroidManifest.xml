@@ -56,8 +56,9 @@
             android:value="2" />
     </application>
 
-    <!-- Package visibility (Android 11+): text processing, opening pin links
-         (url_launcher), taking photos (image_picker) and sharing (share_plus). -->
+    <!-- Package visibility (Android 11+): text processing, opening pin links,
+         calling / texting shops (url_launcher: tel:, sms:), taking photos
+         (image_picker) and sharing (share_plus). -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
@@ -70,6 +71,18 @@
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="http" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="tel" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="sms" />
         </intent>
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE" />

@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { errorMessage, safeNext } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import AuthAside from "@/components/AuthAside";
+import { LogoWordmark } from "@/components/Logo";
 
 function LoginForm() {
   const { login, user, ready } = useAuth();
@@ -39,7 +41,7 @@ function LoginForm() {
 
   return (
     <div className="auth-card">
-      <span className="logo-mark big">M</span>
+      <LogoWordmark height={64} />
       <h1>ModaHouse-a hoş geldiňiz</h1>
       <p className="muted">Täze ideýalary tapmak üçin giriň</p>
       <form className="form" onSubmit={submit} noValidate>
@@ -51,7 +53,7 @@ function LoginForm() {
             autoComplete="username"
             autoCapitalize="none"
             autoFocus
-            placeholder="mysal: aylar.studio"
+            placeholder="mysal: gyzyl.guyze"
           />
         </label>
         <label>
@@ -62,15 +64,23 @@ function LoginForm() {
         <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Girilýär…" : "Giriş"}</button>
       </form>
       <div className="demo-hint">
-        <strong>Synag hasaby</strong>
-        <span>Ulanyjy: <code>aylar.studio</code> · Parol: <code>modahouse123</code></span>
-        <button
-          type="button"
-          className="link-btn"
-          onClick={() => { setLoginName("aylar.studio"); setPassword("modahouse123"); }}
-        >
-          Doldur
-        </button>
+        <strong>Synag hasaplary</strong>
+        <span>Parol: <code>modahouse123</code></span>
+        <div className="demo-buttons">
+          {[
+            { u: "gyzyl.guyze", label: "Dükan" },
+            { u: "ayna.gozel", label: "Alyjy" },
+          ].map((d) => (
+            <button
+              key={d.u}
+              type="button"
+              className="chip"
+              onClick={() => { setLoginName(d.u); setPassword("modahouse123"); }}
+            >
+              {d.label}: {d.u}
+            </button>
+          ))}
+        </div>
       </div>
       <p className="auth-switch">
         Hasabyňyz ýokmy? <Link href={`/register${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="text-link">Hasaba alyň</Link>
@@ -81,7 +91,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="page auth-page">
+    <div className="auth-page">
+      <AuthAside />
       <Suspense fallback={<div className="auth-card" />}>
         <LoginForm />
       </Suspense>

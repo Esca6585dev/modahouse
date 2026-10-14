@@ -55,7 +55,7 @@ export default function Comments({
   };
 
   return (
-    <section className="comments">
+    <section className="comments" id="comments">
       <div className="comments-head">
         <h3>{count ? `${count} teswir` : "Teswirler"}</h3>
         {head}

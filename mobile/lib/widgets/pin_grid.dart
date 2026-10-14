@@ -9,7 +9,10 @@ import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/paged_controller.dart';
 import '../state/pin_updates.dart';
+import '../core/format.dart';
+import 'app_image.dart';
 import 'pin_card.dart';
+import 'post_card.dart';
 import 'save_sheet.dart';
 import 'states.dart';
 
@@ -43,12 +46,12 @@ class PinGridSliver extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final deleted = ref.watch(pinUpdatesProvider.select((u) => u.deleted));
+    final updates = ref.watch(pinUpdatesProvider);
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
         final items = controller.items
-            .where((p) => !deleted.contains(p.id))
+            .where((p) => !updates.isGone(p.id))
             .toList();
 
         if (!controller.loaded && controller.error == null) {
@@ -175,4 +178,173 @@ class PinGridSkeleton extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Instagram view: a single column of [PostCard]s with infinite scroll.
+class PostListSliver extends ConsumerWidget {
+  const PostListSliver({
+    super.key,
+    required this.controller,
+    required this.empty,
+  });
+
+  final PagedController<Pin> controller;
+  final Widget empty;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final updates = ref.watch(pinUpdatesProvider);
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final items = controller.items
+            .where((p) => !updates.isGone(p.id))
+            .toList();
+        if (!controller.loaded && controller.error == null) {
+          return SliverList.list(
+            children: const [
+              Padding(
+                padding: EdgeInsets.all(12),
+                child: Skeleton(height: 44, width: 180, radius: 22),
+              ),
+              Skeleton(height: 420, radius: 0),
+            ],
+          );
+        }
+        if (controller.error != null && items.isEmpty) {
+          return SliverToBoxAdapter(
+            child: ErrorView(
+              error: controller.error!,
+              onRetry: controller.refresh,
+            ),
+          );
+        }
+        if (items.isEmpty) {
+          if (controller.hasMore && !controller.loading) {
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => controller.loadMore(),
+            );
+          }
+          return SliverToBoxAdapter(
+            child: controller.hasMore ? const LoadingView() : empty,
+          );
+        }
+        return SliverList.builder(
+          itemCount: items.length + 1,
+          itemBuilder: (context, i) {
+            if (i == items.length) return _Footer(controller: controller);
+            if (i >= items.length - 3 &&
+                controller.hasMore &&
+                !controller.loading &&
+                controller.error == null) {
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => controller.loadMore(),
+              );
+            }
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 620),
+                child: PostCard(key: ValueKey(items[i].id), pin: items[i]),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// Instagram profile grid: 3 square tiles per row.
+class SquareGridSliver extends ConsumerWidget {
+  const SquareGridSliver({
+    super.key,
+    required this.controller,
+    required this.empty,
+  });
+
+  final PagedController<Pin> controller;
+  final Widget empty;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final updates = ref.watch(pinUpdatesProvider);
+    final p = AppPalette.of(context);
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final items = controller.items
+            .where((x) => !updates.isGone(x.id))
+            .toList();
+        if (!controller.loaded && controller.error == null) {
+          return const SliverToBoxAdapter(child: LoadingView());
+        }
+        if (controller.error != null && items.isEmpty) {
+          return SliverToBoxAdapter(
+            child: ErrorView(
+              error: controller.error!,
+              onRetry: controller.refresh,
+            ),
+          );
+        }
+        if (items.isEmpty) return SliverToBoxAdapter(child: empty);
+        return SliverGrid(
+          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+            maxCrossAxisExtent: 200,
+            mainAxisSpacing: 2,
+            crossAxisSpacing: 2,
+          ),
+          delegate: SliverChildBuilderDelegate((context, i) {
+            if (i >= items.length - 6 &&
+                controller.hasMore &&
+                !controller.loading) {
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => controller.loadMore(),
+              );
+            }
+            final pin = items[i];
+            return Semantics(
+              button: true,
+              label: pin.title,
+              excludeSemantics: true,
+              onTap: () => context.push('/pin/${pin.id}'),
+              child: GestureDetector(
+                onTap: () => context.push('/pin/${pin.id}'),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    AppImage(
+                      pin.imageUrl,
+                      cacheWidth: 200,
+                      placeholder: parseHexColor(pin.color, p.surface),
+                    ),
+                    if (pin.isVideo)
+                      const Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          shadows: [Shadow(blurRadius: 6)],
+                        ),
+                      )
+                    else if (pin.images.length > 1)
+                      const Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Icon(
+                          Icons.collections_rounded,
+                          size: 18,
+                          color: Colors.white,
+                          shadows: [Shadow(blurRadius: 6)],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }, childCount: items.length),
+        );
+      },
+    );
+  }
 }
