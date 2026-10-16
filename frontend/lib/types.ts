@@ -318,6 +318,8 @@ export type AppConfig = {
   /** Public web address used in shared links; "" = client default. */
   webUrl: string;
   registrationOpen: boolean;
+  /** v5: stamp the ModaHouse logo on images of new posts when they are saved (default true). */
+  watermarkUploads: boolean;
   /** ISO time of the last settings change ("" if never changed). */
   updatedAt: string;
 };
@@ -346,3 +348,7 @@ export type AdminReport = {
 };
 
 export type UrlCheck = { ok: boolean; status: number; error: string };
+
+// ---------- v5 ----------
+
+export type BulkUploadResult = { created: Pin[]; failed: { name: string; error: string }[] };

@@ -2,7 +2,7 @@
 // the route handler in app/api/[...path] proxies them to the Go backend at BACKEND_URL (read at runtime).
 
 import type {
-  AdminReport, AdminStats, AdminUser, AdminUserFilter, AppConfig, AuthResponse, Board, BusinessCard, BusinessInput, BusinessStats, Cart, Category, ColorOption, Comment, LikeState, Me,
+  AdminReport, AdminStats, AdminUser, AdminUserFilter, AppConfig, AuthResponse, Board, BulkUploadResult, BusinessCard, BusinessInput, BusinessStats, Cart, Category, ColorOption, Comment, LikeState, Me,
   ListingType, Notification, Order, OrderInput, OrderStatus, Page, Pin, PinImage, Profile, ReportReason, Review, ReviewsPage,
   SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UrlCheck, UserBrief, VisualResult,
 } from "./types";
@@ -89,6 +89,34 @@ export async function request<T>(path: string, opts: Options = {}): Promise<T> {
   return data as T;
 }
 
+/** Multipart POST through XMLHttpRequest, for upload progress (fetch has none). Same errors as request(). */
+export function uploadWithProgress<T>(path: string, form: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api${path}`);
+    xhr.setRequestHeader("Accept", "application/json");
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    if (onProgress) xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onerror = () => reject(new ApiError("Serwer bilen baglanyşyk ýok. Internedi barlaň", 0));
+    xhr.onload = () => {
+      let data: unknown;
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : undefined;
+      } catch {
+        data = undefined;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(data as T);
+      const msg = data && typeof data === "object" && typeof (data as { error?: unknown }).error === "string"
+        ? (data as { error: string }).error
+        : fallbackMessage(xhr.status);
+      if (xhr.status === 401 && token) window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+      reject(new ApiError(msg, xhr.status));
+    };
+    xhr.send(form);
+  });
+}
+
 const qs = (params: Record<string, string | number | undefined | null>) => {
   const s = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== null && v !== "") s.set(k, String(v));
@@ -171,7 +199,8 @@ const meRes = (m: Me): Me => ({ ...normProfile(m), isAdmin: !!m.isAdmin });
 const authRes = (r: AuthResponse): AuthResponse => ({ ...r, user: meRes(r.user) });
 
 function normConfig(c: Partial<AppConfig>): AppConfig {
-  return { apiUrl: c.apiUrl ?? "", webUrl: c.webUrl ?? "", registrationOpen: c.registrationOpen ?? true, updatedAt: c.updatedAt ?? "" };
+  return { apiUrl: c.apiUrl ?? "", webUrl: c.webUrl ?? "", registrationOpen: c.registrationOpen ?? true,
+    watermarkUploads: c.watermarkUploads ?? true, updatedAt: c.updatedAt ?? "" };
 }
 
 function normAdminUser(u: AdminUser): AdminUser {
@@ -349,7 +378,7 @@ export const api = {
   admin: {
     stats: () => request<AdminStats>("/admin/stats"),
     settings: () => request<AppConfig>("/admin/settings").then(normConfig),
-    updateSettings: (b: Partial<Pick<AppConfig, "apiUrl" | "webUrl" | "registrationOpen">>) =>
+    updateSettings: (b: Partial<Pick<AppConfig, "apiUrl" | "webUrl" | "registrationOpen" | "watermarkUploads">>) =>
       request<AppConfig>("/admin/settings", { method: "PUT", body: b }).then(normConfig),
     checkUrl: (url: string) => request<UrlCheck>("/admin/check-url", { method: "POST", body: { url } }),
     users: (p: { q?: string; filter?: AdminUserFilter; page: number; limit?: number }) =>
@@ -362,6 +391,10 @@ export const api = {
         .then((pg) => ({ ...pg, items: (pg.items ?? []).map(normReport) })),
     dismissReports: (pinId: number) => request<void>(`/admin/reports/${pinId}`, { method: "DELETE" }),
     deletePin: (id: number) => request<void>(`/admin/pins/${id}`, { method: "DELETE" }),
+    // v5: each file becomes its own post of `author`
+    bulkUpload: (form: FormData, onProgress?: (fraction: number) => void) =>
+      uploadWithProgress<BulkUploadResult>("/admin/pins/bulk", form, onProgress)
+        .then((r) => ({ created: (r.created ?? []).map(normPin), failed: r.failed ?? [] })),
   },
 };
 

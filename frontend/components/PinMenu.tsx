@@ -7,43 +7,15 @@ import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useLoginHref } from "@/lib/hooks";
 import { REPORT_REASONS } from "@/lib/format";
-import { shareUrl } from "@/lib/share";
+import { copyText, downloadPin } from "@/lib/share";
 import type { Pin, ReportReason } from "@/lib/types";
 import {
   BackIcon, BookmarkIcon, CopyIcon, DotsIcon, DownloadIcon, EditIcon, EyeOffIcon, FlagIcon, ScanIcon, ShareIcon, TrashIcon,
 } from "./Icons";
 import Popover from "./Popover";
 import { BoardPickerBody } from "./SavePicker";
+import { useShare } from "./ShareSheet";
 import { useToast } from "./Toast";
-
-function extOf(url: string, type: string): string {
-  const m = /\.([a-z0-9]{2,5})(?:\?|$)/i.exec(url);
-  if (m) return m[1].toLowerCase();
-  if (type.includes("png")) return "png";
-  if (type.includes("webm")) return "webm";
-  if (type.includes("mp4")) return "mp4";
-  if (type.includes("svg")) return "svg";
-  return "jpg";
-}
-
-function slug(s: string): string {
-  return s.toLocaleLowerCase("tk").replace(/[^a-z0-9äçňöşüýž]+/gi, "-").replace(/^-|-$/g, "").slice(0, 40) || "modahouse";
-}
-
-/** Downloads a same-origin file (image or video) under a readable name. */
-export async function downloadMedia(url: string, title: string) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Faýl ýüklenmedi");
-  const blob = await res.blob();
-  const href = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = href;
-  a.download = `${slug(title)}.${extOf(url, blob.type)}`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(href), 5000);
-}
 
 type View = "menu" | "save" | "report";
 
@@ -52,9 +24,11 @@ type View = "menu" | "save" | "report";
  * (the caller shows the undo); without them the page navigates away.
  */
 export default function PinMenu({
-  pin, savedBoardIds, onSavedChange, onHidden, onDeleted, className = "", light,
+  pin, savedBoardIds, onSavedChange, onHidden, onDeleted, className = "", light, index = 0,
 }: {
   pin: Pin;
+  /** carousel position: "Ýükle" downloads this media item */
+  index?: number;
   savedBoardIds: number[];
   onSavedChange: (ids: number[]) => void;
   onHidden?: () => void;
@@ -67,12 +41,14 @@ export default function PinMenu({
   const router = useRouter();
   const loginHref = useLoginHref();
   const toast = useToast();
+  const openShare = useShare();
   const btn = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [view, setView] = useState<View>("menu");
   const [reason, setReason] = useState<ReportReason | "">("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const own = !!user && user.id === pin.author.id;
   const href = `/pin/${pin.id}`;
 
@@ -97,10 +73,11 @@ export default function PinMenu({
       toast(errorMessage(e), "error");
     } finally {
       setBusy(false);
+      setDownloading(false);
     }
   };
 
-  const media = pin.images[0];
+  const media = pin.images[index] ?? pin.images[0];
   const items: { key: string; icon: React.ReactNode; label: string; onClick?: () => void; href?: string; danger?: boolean }[] = [
     {
       key: "save", icon: <BookmarkIcon size={18} filled={savedBoardIds.length > 0} />,
@@ -109,29 +86,28 @@ export default function PinMenu({
     },
     {
       key: "share", icon: <ShareIcon size={18} />, label: "Paýlaş",
-      onClick: async () => {
+      onClick: () => {
         close();
-        const msg = await shareUrl(href, pin.title);
-        if (msg) toast(msg);
+        openShare(pin, index);
       },
     },
     {
-      key: "download", icon: <DownloadIcon size={18} />, label: media?.type === "video" ? "Wideony ýükle" : "Suraty ýükle",
+      key: "download",
+      icon: downloading ? <span className="spinner" aria-hidden /> : <DownloadIcon size={18} />,
+      label: downloading ? "Ýüklenýär…" : media?.type === "video" ? "Wideony ýükle" : "Suraty ýükle",
       onClick: () => run(async () => {
-        await downloadMedia(media?.url || pin.imageUrl, pin.title);
+        setDownloading(true);
+        // The server stamps images with the ModaHouse watermark.
+        const msg = await downloadPin(pin.id, pin.images[index] ? index : 0);
         close();
+        toast(msg);
       }),
     },
     {
       key: "copy", icon: <CopyIcon size={18} />, label: "Baglanyşygy göçür",
       onClick: async () => {
         close();
-        try {
-          await navigator.clipboard.writeText(new URL(href, window.location.origin).toString());
-          toast("Baglanyşyk göçürildi");
-        } catch {
-          window.prompt("Baglanyşygy göçüriň:", new URL(href, window.location.origin).toString());
-        }
+        if (await copyText(new URL(href, window.location.origin).toString())) toast("Baglanyşyk göçürildi");
       },
     },
     { key: "similar", icon: <ScanIcon size={18} />, label: "Meňzeşini tap", href: `/visual?pin=${pin.id}` },

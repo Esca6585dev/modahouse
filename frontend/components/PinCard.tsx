@@ -6,7 +6,6 @@ import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useAddToCart } from "@/lib/cart";
 import { duration, isForSale } from "@/lib/format";
-import { shareUrl } from "@/lib/share";
 import type { Pin } from "@/lib/types";
 import Avatar from "./Avatar";
 import { CartIcon, ExternalIcon, EyeOffIcon, GridIcon, PlayIcon, ShareIcon, VerifiedIcon } from "./Icons";
@@ -15,6 +14,7 @@ import PinMenu from "./PinMenu";
 import { Badge, ListingChip, Price } from "./Price";
 import QuickAddModal from "./QuickAddModal";
 import SavePicker from "./SavePicker";
+import { useShare } from "./ShareSheet";
 import { useToast } from "./Toast";
 
 export type PinCardAction = { label: string; onClick: (pin: Pin) => void | Promise<void> };
@@ -57,6 +57,7 @@ export default function PinCard({ pin, action }: { pin: Pin; action?: PinCardAct
   const [state, setState] = useState<"shown" | "hidden" | "deleted">("shown");
   const { user } = useAuth();
   const toast = useToast();
+  const openShare = useShare();
   const addToCart = useAddToCart(toast);
   const href = `/pin/${pin.id}`;
   const product = pin.product;
@@ -109,10 +110,7 @@ export default function PinCard({ pin, action }: { pin: Pin; action?: PinCardAct
             <button
               className="round-btn"
               aria-label="Paýlaş"
-              onClick={async () => {
-                const msg = await shareUrl(href, pin.title);
-                if (msg) toast(msg);
-              }}
+              onClick={() => openShare(pin)}
             >
               <ShareIcon size={16} />
             </button>

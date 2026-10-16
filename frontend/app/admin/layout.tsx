@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChartIcon, FlagIcon, SettingsIcon, ShieldIcon, UserIcon } from "@/components/Icons";
+import { ChartIcon, FlagIcon, SettingsIcon, ShieldIcon, UploadIcon, UserIcon } from "@/components/Icons";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/hooks";
 import { AdminBadgeContext } from "./shared";
@@ -13,6 +13,7 @@ const TABS = [
   { href: "/admin/settings", label: "Sazlamalar", icon: <SettingsIcon size={18} /> },
   { href: "/admin/users", label: "Ulanyjylar", icon: <UserIcon size={18} /> },
   { href: "/admin/reports", label: "Şikaýatlar", icon: <FlagIcon size={18} />, badge: true },
+  { href: "/admin/upload", label: "Ýükle", icon: <UploadIcon size={18} /> },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

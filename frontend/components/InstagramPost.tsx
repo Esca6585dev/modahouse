@@ -7,7 +7,6 @@ import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { compact, isForSale, timeAgo } from "@/lib/format";
 import { useLoginHref } from "@/lib/hooks";
-import { shareUrl } from "@/lib/share";
 import type { Pin } from "@/lib/types";
 import Caption, { RichText } from "./RichText";
 import Carousel from "./Carousel";
@@ -17,6 +16,7 @@ import Popover from "./Popover";
 import { HiddenCard } from "./PinCard";
 import { ListingChip, Price } from "./Price";
 import { BoardPickerBody } from "./SavePicker";
+import { useShare } from "./ShareSheet";
 import StoryAvatar from "./StoryAvatar";
 import { useStories } from "./StoryViewer";
 import { useToast } from "./Toast";
@@ -26,6 +26,7 @@ export default function InstagramPost({ pin: initial }: { pin: Pin }) {
   const [pin, setPin] = useState(initial);
   const [state, setState] = useState<"shown" | "hidden" | "deleted">("shown");
   const [heart, setHeart] = useState(0);
+  const [index, setIndex] = useState(0);
   const [saveOpen, setSaveOpen] = useState(false);
   const saveBtn = useRef<HTMLButtonElement>(null);
   const likeBusy = useRef(false);
@@ -34,6 +35,7 @@ export default function InstagramPost({ pin: initial }: { pin: Pin }) {
   const loginHref = useLoginHref();
   const toast = useToast();
   const stories = useStories();
+  const openShare = useShare();
   const href = `/pin/${pin.id}`;
   const product = pin.product;
 
@@ -89,11 +91,12 @@ export default function InstagramPost({ pin: initial }: { pin: Pin }) {
           onSavedChange={(ids) => setPin((p) => ({ ...p, savedBoardIds: ids }))}
           onHidden={() => setState("hidden")}
           onDeleted={() => setState("deleted")}
+          index={index}
         />
       </header>
 
       <div className="igp-media">
-        <Carousel images={pin.images} title={pin.title} thumbs={false} onDoubleTap={doubleTap} maxRatio={1.25} className="igp-carousel">
+        <Carousel images={pin.images} title={pin.title} thumbs={false} onDoubleTap={doubleTap} onIndexChange={setIndex} maxRatio={1.25} className="igp-carousel">
           {product && <ListingChip type={product.listingType} className="igp-chip" />}
         </Carousel>
         {heart > 0 && (
@@ -122,10 +125,7 @@ export default function InstagramPost({ pin: initial }: { pin: Pin }) {
         <button
           className="igp-btn"
           aria-label="Paýlaş"
-          onClick={async () => {
-            const msg = await shareUrl(href, pin.title);
-            if (msg) toast(msg);
-          }}
+          onClick={() => openShare(pin, index)}
         >
           <SendIcon size={24} />
         </button>

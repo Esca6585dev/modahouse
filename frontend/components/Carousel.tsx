@@ -7,13 +7,15 @@ import VideoMedia from "./VideoMedia";
 
 /** Swipeable image carousel with "1/N", arrows and thumbnails. Uses CSS scroll-snap for touch. */
 export default function Carousel({
-  images, title, children, thumbs = true, onDoubleTap, maxRatio = 1.6, className = "",
+  images, title, children, thumbs = true, onDoubleTap, onIndexChange, maxRatio = 1.6, className = "",
 }: {
   images: PinImage[];
   title: string;
   children?: React.ReactNode;
   thumbs?: boolean;
   onDoubleTap?: () => void;
+  /** current slide, e.g. so "Ýükle" downloads the photo being looked at */
+  onIndexChange?: (index: number) => void;
   maxRatio?: number;
   className?: string;
 }) {
@@ -21,14 +23,24 @@ export default function Carousel({
   const lastTap = useRef(0);
   const [index, setIndex] = useState(0);
   const n = images.length;
+  const indexCb = useRef(onIndexChange);
+  indexCb.current = onIndexChange;
+  useEffect(() => {
+    indexCb.current?.(index);
+  }, [index]);
 
   // Tallest image decides the frame ratio (capped), so the box does not jump between slides.
   const ratio = Math.min(maxRatio, Math.max(0.6, ...images.map((im) => (im.height > 0 && im.width > 0 ? im.height / im.width : 1))));
+
+  // While an arrow/thumb scroll animates, scroll events report the slides in between: ignore them
+  // until the target is reached, so quick repeated clicks keep advancing.
+  const pending = useRef<{ target: number; until: number } | null>(null);
 
   const go = useCallback((i: number) => {
     const el = track.current;
     if (!el) return;
     const target = Math.max(0, Math.min(n - 1, i));
+    pending.current = { target, until: Date.now() + 800 };
     el.scrollTo({ left: target * el.clientWidth, behavior: "smooth" });
     setIndex(target);
   }, [n]);
@@ -39,7 +51,15 @@ export default function Carousel({
     let raf = 0;
     const onScroll = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setIndex(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))));
+      raf = requestAnimationFrame(() => {
+        const i = Math.round(el.scrollLeft / Math.max(1, el.clientWidth));
+        const p = pending.current;
+        if (p) {
+          if (i !== p.target && Date.now() < p.until) return;
+          pending.current = null;
+        }
+        setIndex(i);
+      });
     };
     el.addEventListener("scroll", onScroll, { passive: true });
     return () => {

@@ -8,14 +8,15 @@ import Carousel from "@/components/Carousel";
 import Comments from "@/components/Comments";
 import FollowButton from "@/components/FollowButton";
 import {
-  BackIcon, BagIcon, BoxIcon, CalendarIcon, CartIcon, CashIcon, ChatIcon, EditIcon, ExternalIcon, EyeIcon, HeartIcon, LayersIcon,
-  PhoneIcon, ReturnIcon, RulerIcon, ScanIcon, ShareIcon, ShieldIcon, TrashIcon, TruckIcon, VerifiedIcon,
+  BackIcon, BagIcon, BoxIcon, CalendarIcon, CartIcon, CashIcon, ChatIcon, CommentIcon, EditIcon, ExternalIcon, EyeIcon, HeartIcon, LayersIcon,
+  PhoneIcon, ReturnIcon, RulerIcon, ScanIcon, ShareIcon, ShieldIcon, TruckIcon, VerifiedIcon,
 } from "@/components/Icons";
 import { PinFeed } from "@/components/Masonry";
 import { Badge, Price } from "@/components/Price";
 import { ColorSwatches, optionsError, QtyStepper, SizeButtons } from "@/components/ProductOptions";
 import Reviews from "@/components/Reviews";
 import SavePicker from "@/components/SavePicker";
+import { useShare } from "@/components/ShareSheet";
 import Stars from "@/components/Stars";
 import { useToast } from "@/components/Toast";
 import { api, ApiError, errorMessage } from "@/lib/api";
@@ -23,7 +24,6 @@ import { useAuth } from "@/lib/auth";
 import { useAddToCart } from "@/lib/cart";
 import { businessCategoryLabel, categoryName, compact, days, isForSale, money, num, phoneDigits, stockText, timeAgo } from "@/lib/format";
 import { useCategories, useLoginHref, usePaged } from "@/lib/hooks";
-import { shareUrl } from "@/lib/share";
 import type { Business, Pin, Profile } from "@/lib/types";
 import ContactSheet from "@/components/ContactSheet";
 import PinMenu from "@/components/PinMenu";
@@ -191,13 +191,14 @@ export default function PinPage() {
   const loginHref = useLoginHref();
   const toast = useToast();
   const cats = useCategories();
+  const openShare = useShare();
 
   const [pin, setPin] = useState<Pin | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "notfound" | "error">("loading");
   const [loadError, setLoadError] = useState("");
   const [author, setAuthor] = useState<Profile | null>(null);
   const [likeBusy, setLikeBusy] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [slide, setSlide] = useState(0);
   const [nonce, setNonce] = useState(0);
   const viewed = useRef<string | null>(null);
 
@@ -314,19 +315,6 @@ export default function PinPage() {
     }
   };
 
-  const remove = async () => {
-    if (!window.confirm(product ? "Bu harydy pozmalymy? Bu hereketi yzyna gaýtaryp bolmaýar." : "Bu pini pozmalymy? Bu hereketi yzyna gaýtaryp bolmaýar.")) return;
-    setDeleting(true);
-    try {
-      await api.deletePin(pin.id);
-      toast(product ? "Haryt pozuldy" : "Pin pozuldy");
-      router.replace(`/u/${pin.author.username}`);
-    } catch (e) {
-      toast(errorMessage(e), "error");
-      setDeleting(false);
-    }
-  };
-
   const likeBtn = (
     <button
       className={`like ${pin.liked ? "on" : ""}`}
@@ -339,34 +327,41 @@ export default function PinPage() {
     </button>
   );
 
+  // Pinterest-style action row: ♡ count, comments, share, ⋯ on the left; the big red "Sakla" on the right.
+  // Edit and delete live in the ⋯ menu.
   const toolbar = (
     <div className="detail-actions">
       <div className="detail-icons">
         {likeBtn}
-        <button
-          className="icon-btn"
-          aria-label="Paýlaş"
-          title="Paýlaş"
-          onClick={async () => {
-            const msg = await shareUrl(`/pin/${pin.id}`, pin.title);
-            if (msg) toast(msg);
+        <a
+          href="#comments"
+          className="like"
+          aria-label={`Teswirler: ${pin.commentsCount}`}
+          title="Teswirler"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById("comments")?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
         >
-          <ShareIcon size={20} />
+          <CommentIcon size={21} /> {pin.commentsCount > 0 ? compact(pin.commentsCount) : null}
+        </a>
+        <button className="icon-btn" aria-label="Paýlaş" title="Paýlaş" onClick={() => openShare(pin, slide)}>
+          <ShareIcon size={21} />
         </button>
-        {isOwner && (
-          <>
-            <Link href={`/pin/${pin.id}/edit`} className="icon-btn" aria-label="Üýtget" title="Üýtget"><EditIcon size={20} /></Link>
-            <button className="icon-btn danger" onClick={remove} disabled={deleting} aria-label="Poz" title="Poz"><TrashIcon size={20} /></button>
-          </>
-        )}
-        <PinMenu pin={pin} savedBoardIds={pin.savedBoardIds} onSavedChange={(ids) => setPin((p) => (p ? { ...p, savedBoardIds: ids } : p))} className="icon-btn" />
+        <PinMenu
+          pin={pin}
+          index={slide}
+          savedBoardIds={pin.savedBoardIds}
+          onSavedChange={(ids) => setPin((p) => (p ? { ...p, savedBoardIds: ids } : p))}
+          className="icon-btn"
+        />
       </div>
       <div className="detail-save">
         <SavePicker
           pinId={pin.id}
           savedBoardIds={pin.savedBoardIds}
           onChange={(ids) => setPin((p) => (p ? { ...p, savedBoardIds: ids } : p))}
+          className="btn-lg"
         />
       </div>
     </div>
@@ -434,7 +429,7 @@ export default function PinPage() {
         {back}
         <article className="detail">
           <div className="detail-media" style={{ background: pin.color || undefined }}>
-            <Carousel images={pin.images} title={pin.title} />
+            <Carousel images={pin.images} title={pin.title} onIndexChange={setSlide} />
           </div>
           <div className="detail-body">
             {toolbar}
@@ -458,7 +453,7 @@ export default function PinPage() {
       {back}
       <article className="pdp">
         <div className="pdp-gallery">
-          <Carousel images={pin.images} title={pin.title}>
+          <Carousel images={pin.images} title={pin.title} onIndexChange={setSlide}>
             <Badge badge={product.badge} className="pdp-badge" />
           </Carousel>
         </div>

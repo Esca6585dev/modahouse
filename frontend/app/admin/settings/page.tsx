@@ -28,6 +28,7 @@ export default function AdminSettings() {
   const [apiUrl, setApiUrl] = useState("");
   const [webUrl, setWebUrl] = useState("");
   const [registrationOpen, setRegistrationOpen] = useState(true);
+  const [watermarkUploads, setWatermarkUploads] = useState(true);
   const [check, setCheck] = useState<{ url: string; result: UrlCheck } | null>(null);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -38,6 +39,7 @@ export default function AdminSettings() {
     setApiUrl(c.apiUrl);
     setWebUrl(c.webUrl);
     setRegistrationOpen(c.registrationOpen);
+    setWatermarkUploads(c.watermarkUploads);
   };
 
   const load = useCallback(() => {
@@ -61,7 +63,7 @@ export default function AdminSettings() {
   if (!saved) {
     return (
       <>
-        <AdminHead title="Sazlamalar" sub="Serwer salgylary we hasap açmak" />
+        <AdminHead title="Sazlamalar" sub="Serwer salgylary, hasap açmak we logo" />
         <div className="skeleton" style={{ height: 420, borderRadius: 24 }} />
       </>
     );
@@ -69,7 +71,8 @@ export default function AdminSettings() {
 
   const api0 = cleanUrl(apiUrl);
   const web0 = cleanUrl(webUrl);
-  const dirty = api0 !== saved.apiUrl || web0 !== saved.webUrl || registrationOpen !== saved.registrationOpen;
+  const dirty = api0 !== saved.apiUrl || web0 !== saved.webUrl || registrationOpen !== saved.registrationOpen
+    || watermarkUploads !== saved.watermarkUploads;
   const apiInvalid = api0 !== "" && !URL_RE.test(api0);
   const webInvalid = web0 !== "" && !URL_RE.test(web0);
   const shownCheck = check && check.url === api0 ? check.result : null;
@@ -100,7 +103,7 @@ export default function AdminSettings() {
     }
     setSaving(true);
     try {
-      const c = await api.admin.updateSettings({ apiUrl: api0, webUrl: web0, registrationOpen });
+      const c = await api.admin.updateSettings({ apiUrl: api0, webUrl: web0, registrationOpen, watermarkUploads });
       apply(c);
       toast("Sazlamalar saklandy");
     } catch (err) {
@@ -114,7 +117,7 @@ export default function AdminSettings() {
     <>
       <AdminHead
         title="Sazlamalar"
-        sub={saved.updatedAt ? `Soňky üýtgeşme: ${dateTime(saved.updatedAt)}` : "Serwer salgylary we hasap açmak"}
+        sub={saved.updatedAt ? `Soňky üýtgeşme: ${dateTime(saved.updatedAt)}` : "Serwer salgylary, hasap açmak we logo"}
       />
       <form className="form card admin-form" onSubmit={save} noValidate>
         <label>
@@ -176,6 +179,21 @@ export default function AdminSettings() {
           </div>
           <label className="switch" aria-label="Täze hasap açmak">
             <input type="checkbox" checked={registrationOpen} onChange={(e) => setRegistrationOpen(e.target.checked)} />
+            <span className="switch-track"><span /></span>
+          </label>
+        </div>
+
+        <div className="admin-switch-row">
+          <div>
+            <strong>Ýüklenen suratlara ModaHouse logosyny goş</strong>
+            <span className="muted">
+              {watermarkUploads
+                ? "Täze postlaryň suratlaryna saklananda logo we @awtor goşulýar. Awatarlar we hekaýalar üýtgemeýär."
+                : "Täze postlaryň suratlary üýtgedilmän saklanýar. Ýüklenip alnanda logo barybir goşulýar."}
+            </span>
+          </div>
+          <label className="switch" aria-label="Ýüklenen suratlara ModaHouse logosyny goş">
+            <input type="checkbox" checked={watermarkUploads} onChange={(e) => setWatermarkUploads(e.target.checked)} />
             <span className="switch-track"><span /></span>
           </label>
         </div>
