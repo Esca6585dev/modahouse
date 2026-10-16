@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Server addresses and other app-wide configuration.
 ///
 /// The API address is no longer fixed at build time. The build only sets the
@@ -5,13 +7,18 @@
 /// app follows the address the admin sets in the admin panel (`GET /api/config`)
 /// or one the user typed under Sazlamalar → Serwer. See `core/server_config.dart`.
 ///
-/// The default `10.0.2.2` is how the Android emulator reaches the host machine.
+/// Without `API_URL`, release builds (the APK) default to the production server
+/// and debug builds to `10.0.2.2`, which is how the Android emulator reaches
+/// the host machine.
 class AppConfig {
   AppConfig._();
 
+  /// Production server: nginx serves the web app and proxies `/api` and `/uploads`.
+  static const String productionUrl = 'http://216.250.11.30';
+
   static const String _rawApiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://10.0.2.2:8080',
+    defaultValue: kReleaseMode ? productionUrl : 'http://10.0.2.2:8080',
   );
 
   static const String _rawWebUrl = String.fromEnvironment(

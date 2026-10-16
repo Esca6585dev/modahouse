@@ -104,7 +104,7 @@ jobs:
       # variables → Actions → Variables) to bake your server in as the first-launch default.
       - name: Build APK
         env:
-          API_URL: ${{ vars.API_URL || 'http://10.0.2.2:8080' }}
+          API_URL: ${{ vars.API_URL || 'http://216.250.11.30' }}
           WEB_URL: ${{ vars.WEB_URL || 'https://modahouse.tm' }}
           CONFIG_URL: ${{ vars.CONFIG_URL }}
         run: >-
