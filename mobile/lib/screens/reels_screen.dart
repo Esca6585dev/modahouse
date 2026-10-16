@@ -19,6 +19,7 @@ import '../widgets/caption.dart';
 import '../widgets/pin_actions.dart';
 import '../widgets/pin_menu.dart';
 import '../widgets/save_sheet.dart';
+import '../widgets/share_sheet.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 import '../widgets/video_view.dart';
@@ -368,7 +369,7 @@ class _ReelState extends ConsumerState<_Reel>
               rail(
                 Icons.send_outlined,
                 '',
-                () => sharePin(pin),
+                () => showShareSheet(context, pin),
                 semantics: S.share,
               ),
               rail(

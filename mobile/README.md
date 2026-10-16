@@ -12,6 +12,18 @@ bilen işleýär (`docs/API.md` serediň). Programmanyň ähli ýazgylary türkm
   paýlaşmak we saklamak.
 - **"⋯" menýusy:** Sakla, Paýlaş, Ýükle, Baglanyşygy göçür, Meňzeşini tap,
   Gyzyklanmaýaryn, Şikaýat et.
+- **ModaHouse belgisi bilen ýüklemek:** "Ýükle" suraty `GET /api/pins/:id/download?index=N`
+  arkaly alýar (karuseldäki häzirki surat), şonuň üçin oňa "moda HOUSE" logosy we `@awtor`
+  goýulýar. Android 10+ surat rugsatsyz galereýa (`Pictures/ModaHouse`, MediaStore,
+  `MainActivity.kt`) ýazylýar; köne Android-da ulgamyň paýlaşmak penjiresi açylýar
+  ("Enjama sakla"). Webde faýl ýüklenýär.
+- **Paýlaşmak paneli (Pinterest ýaly):** `GET /api/pins/:id/share-card` beren 1080×1920
+  ModaHouse kartoçkasynyň önünden görkezilişi we düwmeler: Baglanyşygy göçür, WhatsApp
+  (`wa.me`), Telegram (`t.me/share`), Instagram (kartoçka + baglanyşyk buferde),
+  Surat bilen paýlaş (kartoçka + baglanyşyk), Ýükle (kartoçkany sakla), Başga….
+- **Pinterest görnüşi:** masonry-de 16 px tegelek suratlar, aşagynda bir setir at we "⋯",
+  dar aralyklar; post sahypasynda ♡, 💬, paýlaş, ⋯ we uly gyzyl "Sakla", soňra awtor,
+  at we "Başga gyzykly postlar".
 - **Post görnüşleri:** Diňe paýlaşmak, Satlyk, Kärende we Sargyt bilen tikmek. Kärende we
   sargyt üçin "Habarlaş" paneli: jaň, WhatsApp, Telegram, IMO, Instagram.
 - **✨ AI bilen ýaz:** post görnüşine laýyk at, düşündiriş, heşteg we baha setirini hödürleýär.

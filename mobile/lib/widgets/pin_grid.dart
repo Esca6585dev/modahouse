@@ -16,8 +16,10 @@ import 'post_card.dart';
 import 'save_sheet.dart';
 import 'states.dart';
 
-const _gridSpacing = 10.0;
-const _gridRunSpacing = 16.0;
+// Tight Pinterest gutters.
+const _gridSpacing = 6.0;
+const _gridRunSpacing = 10.0;
+const _gridPadding = 6.0;
 const _maxTileWidth = 260.0;
 
 /// Masonry pin grid as a sliver: skeletons → pins with infinite scroll driven
@@ -75,9 +77,7 @@ class PinGridSliver extends ConsumerWidget {
         return SliverMainAxisGroup(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppPalette.gutter,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: _gridPadding),
               sliver: SliverMasonryGrid.extent(
                 maxCrossAxisExtent: _maxTileWidth,
                 mainAxisSpacing: _gridRunSpacing,
@@ -159,7 +159,7 @@ class PinGridSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SliverPadding(
-    padding: const EdgeInsets.symmetric(horizontal: AppPalette.gutter),
+    padding: const EdgeInsets.symmetric(horizontal: _gridPadding),
     sliver: SliverMasonryGrid.extent(
       maxCrossAxisExtent: _maxTileWidth,
       mainAxisSpacing: _gridRunSpacing,

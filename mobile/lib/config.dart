@@ -79,6 +79,14 @@ class AppConfig {
   /// Link to a post on the web.
   static String pinLink(int id) => '$webUrl/pin/$id';
 
+  /// `GET /api/pins/:id/download?index=N`: media item [index] of the post,
+  /// with the ModaHouse watermark on images (docs/API.md, v5).
+  static String pinDownloadUrl(int id, {int index = 0}) =>
+      '$apiBase/pins/$id/download?index=${index < 0 ? 0 : index}';
+
+  /// `GET /api/pins/:id/share-card`: the branded 1080×1920 share card (JPEG).
+  static String pinShareCardUrl(int id) => '$apiBase/pins/$id/share-card';
+
   /// The web admin panel.
   static String get adminLink => '$webUrl/admin';
 

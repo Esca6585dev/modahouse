@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../config.dart';
 import '../core/download/download.dart';
 import '../core/format.dart';
+import '../core/share_links.dart';
 import '../core/snack.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
@@ -17,15 +17,16 @@ import '../state/pin_updates.dart';
 import '../state/providers.dart';
 import 'app_image.dart';
 import 'save_sheet.dart';
+import 'share_sheet.dart';
 import 'states.dart';
 
-/// Shares a post's title and link (falls back to copying the link).
+/// Shares a post's title and link through the system share sheet (falls back
+/// to copying the link). "Başga…" in the share sheet.
 Future<void> sharePin(Pin pin) async {
   final link = AppConfig.pinLink(pin.id);
-  final text = [pin.title, link].where((e) => e.isNotEmpty).join('\n');
   try {
     final res = await SharePlus.instance.share(
-      ShareParams(text: text, subject: pin.title),
+      ShareParams(text: pinShareText(pin), subject: pin.title),
     );
     if (res.status == ShareResultStatus.unavailable) {
       throw Exception('unavailable');
@@ -36,27 +37,19 @@ Future<void> sharePin(Pin pin) async {
   }
 }
 
-/// Downloads the post's cover image (a video's poster).
-Future<void> downloadPin(Pin pin) async {
-  final media = pin.gallery.first;
-  final url = resolveImageUrl(media.isVideo ? media.url : media.stillUrl);
-  if (url.isEmpty) return;
+/// Downloads media item [index] of the post from `/pins/:id/download`, so
+/// images carry the ModaHouse watermark, and saves it (gallery on Android,
+/// a file download on the web).
+Future<void> downloadPin(WidgetRef ref, Pin pin, {int index = 0}) async {
+  final i = pin.gallery.isEmpty ? 0 : index.clamp(0, pin.gallery.length - 1);
+  final load = ref.read(mediaLoaderProvider);
   showSnack(S.downloadStarted);
   try {
-    final res = await Dio().get<List<int>>(
-      url,
-      options: Options(responseType: ResponseType.bytes),
-    );
-    final type = res.headers.value('content-type') ?? 'image/jpeg';
-    final ext = Uri.parse(url).path.split('.').last;
-    final safeTitle = pin.title
-        .replaceAll(RegExp(r'[^\w\-ÄäÇçŇňÖöŞşÜüÝýŽž ]'), '')
-        .trim()
-        .replaceAll(' ', '-');
+    final file = await load(AppConfig.pinDownloadUrl(pin.id, index: i));
     await saveFile(
-      res.data ?? const [],
-      'modahouse-${safeTitle.isEmpty ? pin.id : safeTitle}.$ext',
-      type.split(';').first,
+      file.bytes,
+      pinDownloadFileName(pin.id, i, file.mimeType),
+      file.mimeType,
     );
     showSnack(S.downloaded);
   } catch (_) {
@@ -91,10 +84,12 @@ Future<void> hidePin(WidgetRef ref, Pin pin) async {
 
 /// Opens the "⋯" bottom sheet for [pin]. [onEdit] / [onDelete] are used for
 /// the owner's actions (defaults: open the edit screen / delete with confirm).
+/// [index] is the carousel item on screen ("Ýükle" downloads that one).
 Future<void> showPinMenu(
   BuildContext context,
   WidgetRef ref,
   Pin pin, {
+  int index = 0,
   VoidCallback? onEdit,
   VoidCallback? onDelete,
 }) async {
@@ -118,9 +113,9 @@ Future<void> showPinMenu(
     case 'save':
       await showSaveSheet(context, ref, pin);
     case 'share':
-      await sharePin(pin);
+      await showShareSheet(context, pin);
     case 'download':
-      await downloadPin(pin);
+      await downloadPin(ref, pin, index: index);
     case 'copy':
       await Clipboard.setData(ClipboardData(text: AppConfig.pinLink(pin.id)));
       showSnack(S.linkCopied);

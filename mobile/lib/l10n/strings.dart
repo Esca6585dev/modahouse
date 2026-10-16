@@ -731,6 +731,17 @@ class S {
   static const adminPanelOpen = 'Admin panelini aç';
   static const adminPanelFailed = 'Admin panelini açyp bolmady';
 
+  // ---------- v5: watermark and share card ----------
+  static const shareSheetTitle = 'Posty paýlaş';
+  static const shareWithImage = 'Surat bilen paýlaş';
+  static const shareMore = 'Başga…';
+  static const shareCard = 'ModaHouse paýlaşma suraty';
+  static const shareCardLoading = 'Paýlaşma suraty taýýarlanýar';
+  static const shareCardFailed = 'Suraty ýükläp bolmady';
+  static const instagramLinkCopied =
+      'Baglanyşyk göçürildi: Instagram story-de "Baglanyşyk" stikerine goýuň';
+  static const moreIdeas = 'Başga gyzykly postlar';
+
   // ---------- Relative time ----------
   static const justNow = 'şu wagt';
   static const yesterday = 'dün';
