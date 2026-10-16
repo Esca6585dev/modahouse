@@ -67,7 +67,8 @@ açyk goýmaly.
 Serweriň salgysy indi ýygnalanda berk berkidilmeýär, ol programma işläp durka üýtgeýär:
 
 1. **Başlangyç salgy** ýygnalanda berilýär:
-   `--dart-define=API_URL=https://api.example.tm` (berilmese `http://10.0.2.2:8080`).
+   `--dart-define=API_URL=https://api.example.tm` (berilmese release/APK ýygnamasy
+   `http://216.250.11.30`, debug ýygnamasy `http://10.0.2.2:8080` ulanýar).
    Programma ilkinji gezek açylanda şu salgyny ulanýar.
 2. **Admin paneli:** admin web admin panelinde (`/admin` → sazlamalar) `apiUrl` we
    `webUrl` bellese, programma fonda `GET {häzirki salgy}/api/config` soraýar.
@@ -101,8 +102,8 @@ bellemek ýeterlik (köne serwer täze salgyny habar berer ýaly işläp durmaly
 ## APK we Play Store bukjasy
 
 ```bash
-# Gurnap boljak APK
-flutter build apk --release --dart-define=API_URL=http://10.0.2.2:8080
+# Gurnap boljak APK (API_URL berilmese, http://216.250.11.30 serwerine baglanýar)
+flutter build apk --release
 # Netije: build/app/outputs/flutter-apk/app-release.apk
 
 # Google Play üçin App Bundle
