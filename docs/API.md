@@ -543,3 +543,43 @@ type AdminReport = {
 - Suspending a user ends all of their sessions.
 
 **The first admin** comes from the environment: with `ADMIN_USERNAME` (and `ADMIN_PASSWORD`, at least 8 characters), the server makes that user an admin on startup. It creates the user if missing, but never changes an existing password. Further admins can be appointed in the panel.
+
+# v5: ModaHouse watermark, branded share cards and bulk upload
+
+Like Pinterest and TikTok: every image that leaves ModaHouse carries the logo.
+
+## Download with watermark
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/pins/:id/download?index=0` | The media item `index` (0-based, default 0) as an attachment (`Content-Disposition: attachment; filename="modahouse-<id>-<index>.jpg"`). |
+
+- **Images** (including the SVG seed art, rasterised to 1080 px wide) come back as JPEG with the ModaHouse watermark: the "moda HOUSE" logo and `@author` under it.
+- **Where the watermark goes:** the server measures how busy (edges and contrast) each corner of the image is and puts the mark in the calmest corner, preferring the bottom. The logo is white with a soft shadow on dark areas and ink-coloured on light ones. Its size is about 22% of the image width.
+- **Videos** are returned unchanged.
+- Images that already got the watermark when they were uploaded are not marked twice.
+
+## Share card (Pinterest "share screenshot" style)
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/pins/:id/share-card` | `image/jpeg`, 1080×1920 (story size) |
+
+The card is a two-column collage with rounded corners:
+- the post's cover top left;
+- the ModaHouse logo pill (brand red, white logo) under it;
+- up to three similar posts (same category, most liked) filling the rest.
+
+The post title and `@author` are written along the bottom. Clients share the card together with the post link, so it fits Instagram and TikTok stories, WhatsApp and Telegram.
+
+## Watermark on upload
+
+`AppConfig` (and `PUT /admin/settings`) gains `watermarkUploads: boolean`, default `true`. While it is on, images of new posts get the watermark when they are saved. Avatars and story images do not.
+
+## Bulk upload (admin) 🔒
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| POST | `/admin/pins/bulk` | multipart: `author` (username, required), `category` (required), optional `title`, `description`, `tags`, `listingType` (`post` default; `sale`/`rent`/`custom` need a business author and `price`), `price`, and `files` (1–30 images, repeat the field) | 201 `{created: Pin[], failed: {name: string, error: string}[]}` |
+
+Each file becomes its own post. Without a title, the post is named after the category ("Toý köýnekleri"). Use this to add photos you have permission to publish (your own, or a partner shop's).

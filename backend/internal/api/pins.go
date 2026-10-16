@@ -327,6 +327,7 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 		}
 	}
 	videoIdx := 0
+	mark := h.uploadMarker(pin.UserID)
 	for i, fh := range files {
 		if storage.IsVideo(fh) {
 			im, msg := h.saveVideoMedia(fh, posters, durations, videoIdx, "pins")
@@ -344,12 +345,13 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 			removeAll()
 			return badRequest(c, fmt.Sprintf("Surat gaty uly (iň köp %d MB)", h.cfg.MaxUploadMB))
 		}
-		saved, err := h.store.SaveImage(fh, "pins")
+		saved, err := h.store.SaveImageMarked(fh, "pins", mark)
 		if err != nil {
 			removeAll()
 			return badRequest(c, err.Error())
 		}
-		images = append(images, models.PinImage{Kind: "image", URL: saved.URL, Width: saved.Width, Height: saved.Height, Color: saved.Color, Position: i})
+		images = append(images, models.PinImage{Kind: "image", URL: saved.URL, Width: saved.Width, Height: saved.Height,
+			Color: saved.Color, Position: i, Watermarked: saved.Watermarked})
 	}
 	cover := images[0]
 	pin.ImageURL, pin.Width, pin.Height, pin.Color = coverImage(cover), cover.Width, cover.Height, cover.Color

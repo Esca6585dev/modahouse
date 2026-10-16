@@ -115,6 +115,8 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	pins.Delete("/:id", requireAuth, h.deletePin)
 	pins.Get("/:id/similar", h.similarPins)
 	pins.Get("/:id/visual", h.visuallySimilar)
+	pins.Get("/:id/download", h.downloadPin)
+	pins.Get("/:id/share-card", h.shareCard)
 	pins.Post("/:id/view", h.viewPin)
 	pins.Post("/:id/report", requireAuth, h.reportPin)
 	pins.Post("/:id/hide", requireAuth, h.hidePin)
@@ -189,6 +191,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	admin.Get("/reports", h.adminReports)
 	admin.Delete("/reports/:pinId", h.adminDismissReports)
 	admin.Delete("/pins/:id", h.adminDeletePin)
+	admin.Post("/pins/bulk", h.adminBulkPins)
 
 	api.Use(func(c fiber.Ctx) error { return notFound(c) })
 	return app

@@ -157,6 +157,8 @@ type PinImage struct {
 	Height    int
 	Color     string `gorm:"size:9"`
 	Position  int
+	// Watermarked: the stored file already carries the ModaHouse logo.
+	Watermarked bool
 }
 
 // PinView records one view per viewer (user id or hashed IP) per day.
