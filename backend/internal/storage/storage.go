@@ -107,7 +107,7 @@ type Saved struct {
 }
 
 func New(dir string) (*Storage, error) {
-	for _, sub := range []string{"pins", "avatars", "seed", "stories"} {
+	for _, sub := range []string{"pins", "avatars", "seed", "stories", PrivateChat} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
 			return nil, err
 		}
@@ -136,6 +136,11 @@ func (s *Storage) SaveImageMarked(fh *multipart.FileHeader, sub string, mark Mar
 	if err != nil {
 		return nil, err
 	}
+	return s.SaveImageData(data, sub, mark)
+}
+
+// SaveImageData stores image bytes (see SaveImageMarked).
+func (s *Storage) SaveImageData(data []byte, sub string, mark Marker) (*Saved, error) {
 	ext, ok := extByType[http.DetectContentType(data)]
 	if !ok {
 		return nil, ErrUnsupported
@@ -261,4 +266,36 @@ func averageColor(img image.Image) string {
 		return "#e9e9e9"
 	}
 	return fmt.Sprintf("#%02x%02x%02x", r/n, g/n, bl/n)
+}
+
+// PrivateChat holds chat attachments. Directories starting with "." are never
+// served by the /uploads route; these files go out through signed links only.
+const PrivateChat = ".private/chat"
+
+// SavePrivate stores data under sub with a random name and the given extension.
+func (s *Storage) SavePrivate(sub string, data []byte, ext string) (string, error) {
+	name := randomName() + ext
+	if err := os.WriteFile(filepath.Join(s.Dir, filepath.FromSlash(sub), name), data, 0o600); err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+// PrivatePath returns the path of a private file; name must be a plain file name.
+func (s *Storage) PrivatePath(sub, name string) (string, bool) {
+	if name == "" || strings.ContainsAny(name, `/\`) || strings.HasPrefix(name, ".") {
+		return "", false
+	}
+	path := filepath.Join(s.Dir, filepath.FromSlash(sub), name)
+	if _, err := os.Stat(path); err != nil {
+		return "", false
+	}
+	return path, true
+}
+
+// RemovePrivate deletes a private file (best effort).
+func (s *Storage) RemovePrivate(sub, name string) {
+	if path, ok := s.PrivatePath(sub, name); ok {
+		_ = os.Remove(path)
+	}
 }

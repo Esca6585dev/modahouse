@@ -101,7 +101,7 @@ func (e *env) do(method, path, token string, body any, out any) int {
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	resp, err := e.app.Test(req)
+	resp, err := e.app.Test(req, fiber.TestConfig{Timeout: 30 * time.Second})
 	if err != nil {
 		e.t.Fatal(err)
 	}

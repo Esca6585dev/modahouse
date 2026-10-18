@@ -583,3 +583,98 @@ The post title and `@author` are written along the bottom. Clients share the car
 | POST | `/admin/pins/bulk` | multipart: `author` (username, required), `category` (required), optional `title`, `description`, `tags`, `listingType` (`post` default; `sale`/`rent`/`custom` need a business author and `price`), `price`, and `files` (1–30 images, repeat the field) | 201 `{created: Pin[], failed: {name: string, error: string}[]}` |
 
 Each file becomes its own post. Without a title, the post is named after the category ("Toý köýnekleri"). Use this to add photos you have permission to publish (your own, or a partner shop's).
+
+# v6: Chat, real-time events, photo import and production cleanup
+
+## Chat (1:1 messages) 🔒
+
+```ts
+type ChatUser = { id: number; username: string; name: string; avatarUrl: string; isBusiness: boolean; verified: boolean };
+type Attachment = { url: string; name: string; size: number; mimeType: string; width: number; height: number };
+type PinPreview = { id: number; title: string; imageUrl: string; width: number; height: number; color: string; price: number; listingType: string };
+type Message = {
+  id: number; chatId: number; sender: ChatUser;
+  kind: "text" | "image" | "file" | "pin";
+  text: string;                    // caption for image/file/pin; "" when deleted
+  attachment: Attachment | null;   // image or file
+  pin: PinPreview | null;          // a shared post
+  clientId: string;                // echoed from the send request ("" otherwise)
+  mine: boolean;                   // sent by the viewer
+  read: boolean;                   // the other side has read it
+  deleted: boolean;                // "Bu habar pozuldy"
+  createdAt: string;
+};
+type Chat = {
+  id: number; other: ChatUser;
+  lastMessage: Message | null;
+  unreadCount: number;             // messages from the other side not read yet
+  blocked: boolean;                // either side blocked the other: sending is disabled
+  updatedAt: string;
+};
+```
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/chats` | `?page=&limit=` | `Page<Chat>`, most recent first |
+| POST | `/chats` | `{username}` | `Chat`: opens the existing chat or creates it (201). 400 for yourself, 404 for an unknown user, 403 when blocked |
+| GET | `/chats/:id` | | `Chat` |
+| GET | `/chats/:id/messages` | `?before=<messageId>&limit=30` (≤ 50) | `{items: Message[] (oldest → newest), hasMore}` |
+| POST | `/chats/:id/messages` | JSON `{text, pinId?, clientId?}` or multipart `file` + optional `text`, `clientId` | 201 `Message` |
+| POST | `/chats/:id/read` | `{messageId}` | 204: everything up to this message is read |
+| POST | `/chats/:id/typing` | | 204: tells the other side you are typing (send at most every 3 s) |
+| DELETE | `/messages/:id` | | 204: own messages only; the text and file are removed, the bubble shows "Bu habar pozuldy" |
+| GET | `/chats/unread-count` | | `{count}`: unread messages in all chats |
+
+**Rules:**
+- **Text:** up to 2000 characters. A message needs text, a file or a post.
+- **Files:** one per message.
+  - Images (JPG, PNG, WEBP, GIF): up to `MAX_UPLOAD_MB`.
+  - Video (MP4, WebM): up to `MAX_VIDEO_MB`.
+  - Documents (PDF, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT, ZIP) and audio (MP3, M4A, OGG): up to 20 MB.
+  - Other types are refused.
+- **Attachment links:** files are private. Attachment URLs are signed (`/api/chat-files/<name>?exp=…&sig=…`), valid for 24 hours, and returned fresh with every message list.
+- **Blocking:** when either side has blocked the other, sending answers 403 "Bu ulanyja ýazyp bolmaýar". Suspended users cannot send.
+- **Rate limit:** 30 messages per minute per user.
+
+## Real-time events (Server-Sent Events) 🔒
+
+`GET /events?token=<jwt>` (or the `Authorization` header) streams `text/event-stream`. The server sends `X-Accel-Buffering: no` so nginx doesn't buffer it, and a `: ping` comment every 25 s.
+
+| `event:` | `data:` (JSON) |
+|---|---|
+| `ready` | `{userId}` |
+| `message` | `{chatId, message: Message}`: a new message in one of your chats, including your own sends from another device. Match `clientId` to replace an optimistic bubble. |
+| `message_deleted` | `{chatId, messageId}` |
+| `read` | `{chatId, userId, messageId}`: the other side read up to `messageId` |
+| `typing` | `{chatId, userId}`: show "ýazýar…" for about 4 s |
+| `notification` | `{notification: Notification, unreadCount}`: a like, comment, follow, save or order notification, as soon as it happens |
+
+Clients reconnect with exponential backoff (1 s → 30 s). After reconnecting they refetch `/chats` and the open conversation, because events sent while offline are not replayed.
+
+Push notifications while the app is closed need Firebase Cloud Messaging, which is not set up yet. The Android app shows a local notification while it is running in the background.
+
+## Post credit
+
+`Pin` gains `credit: string`: the photo credit for imported, openly licensed photos, e.g. "Surat: A. Author · CC BY-SA 4.0 · Wikimedia Commons". `link` then points to the source page. Clients show the credit under the description. Downloads of credited photos return the original file without the ModaHouse watermark, to keep the licence terms clean.
+
+## Import openly licensed photos (admin) 🔒
+
+The import runs on the server, which needs internet access to Wikimedia Commons.
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/admin/import/commons/search` | `?q=turkmen` | `{categories: {title, files}[]}`: Commons categories matching the query, with file counts |
+| POST | `/admin/import/commons` | `{category, limit (1–50, default 20), appCategory, author?}` | `{created: Pin[], skipped: {title, reason}[]}` |
+
+- **What is imported:** only files licensed CC0, Public domain, CC BY or CC BY-SA.
+- **Each post gets:** the credit, the source link (the Commons file page), a 1080 px image and a title made from the file name.
+- **No duplicates:** a file already imported (same source link) is skipped.
+- **Author:** `author` defaults to the official account `modahouse` (name "ModaHouse", verified). It is created on first use without a usable password; admins manage it from the panel.
+- **Settings:** the Commons API address comes from `COMMONS_API_URL` (default `https://commons.wikimedia.org/w/api.php`).
+
+## Remove demo content (admin) 🔒
+
+| Method | Path | Response |
+|---|---|---|
+| GET | `/admin/demo` | `{users, pins}`: how much demo content (seed accounts and their posts) exists |
+| DELETE | `/admin/demo` | `{users, pins}` removed. The server also records that demo content was removed, so the seeder never adds it again, even with `SEED=true`. |

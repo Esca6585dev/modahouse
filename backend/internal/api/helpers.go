@@ -21,6 +21,7 @@ type Handler struct {
 	// proxies resolves the real client IP behind our own reverse proxies.
 	proxies *proxyTrust
 	cards   cardCache // rendered share cards
+	hub     *hub      // real-time events
 }
 
 type Page[T any] struct {

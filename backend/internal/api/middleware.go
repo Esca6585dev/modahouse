@@ -38,18 +38,29 @@ func (h *Handler) parseToken(raw string) (uint, time.Time, bool) {
 	return uint(id), claims.IssuedAt.Time, true
 }
 
+// userFromToken returns the user id of a valid, current token (0 otherwise):
+// tokens issued before a password change and tokens of suspended users don't count.
+func (h *Handler) userFromToken(raw string) uint {
+	id, issued, ok := h.parseToken(raw)
+	if !ok {
+		return 0
+	}
+	var u models.User
+	// JWT iat has second precision, so compare at that precision.
+	if h.db.Select("id", "tokens_valid_after", "suspended").First(&u, id).Error != nil || u.Suspended ||
+		issued.Before(u.TokensValidAfter.Truncate(time.Second)) {
+		return 0
+	}
+	return id
+}
+
 // optionalAuth stores the user id in locals when a valid Bearer token is sent.
 // It never rejects the request; requireAuth does that.
 func (h *Handler) optionalAuth(c fiber.Ctx) error {
 	header := c.Get(fiber.HeaderAuthorization)
 	if raw, ok := strings.CutPrefix(header, "Bearer "); ok {
-		if id, issued, ok := h.parseToken(strings.TrimSpace(raw)); ok {
-			var u models.User
-			// JWT iat has second precision, so compare at that precision.
-			if h.db.Select("id", "tokens_valid_after", "suspended").First(&u, id).Error == nil && !u.Suspended &&
-				!issued.Before(u.TokensValidAfter.Truncate(time.Second)) {
-				c.Locals(localUserID, id)
-			}
+		if id := h.userFromToken(strings.TrimSpace(raw)); id != 0 {
+			c.Locals(localUserID, id)
 		}
 	}
 	return c.Next()

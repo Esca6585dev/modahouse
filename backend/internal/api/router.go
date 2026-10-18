@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -30,7 +31,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
 	}
 	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats), visual: newVisualIndex(db, store),
-		proxies: newProxyTrust(cfg.TrustedProxies)}
+		proxies: newProxyTrust(cfg.TrustedProxies), hub: newHub()}
 	if !opts.Quiet {
 		logVisualStart(h.visual) // background indexing; tests index on demand
 	}
@@ -59,7 +60,16 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 	}))
 
+	app.Hooks().OnPreShutdown(func() error {
+		h.hub.closeAll() // end open event streams so shutdown doesn't wait on them
+		return nil
+	})
+
 	app.Get("/uploads/*", func(c fiber.Ctx) error {
+		// Dot directories (private chat files, caches) are never served.
+		if strings.Contains(c.Path(), "/.") {
+			return notFound(c)
+		}
 		// Seed images are SVG: forbid scripts if one is opened directly.
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
@@ -176,6 +186,25 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	stories.Post("/:id/view", requireAuth, h.viewStory)
 	stories.Delete("/:id", requireAuth, h.deleteStory)
 
+	api.Get("/events", h.events)
+	api.Get("/chat-files/:name", h.serveChatFile)
+	chatLimit := func(c fiber.Ctx) error { return c.Next() }
+	if !opts.Quiet {
+		chatLimit = limiter.New(limiter.Config{Max: 30, Expiration: time.Minute, KeyGenerator: func(c fiber.Ctx) string {
+			return "chat:" + strconv.FormatUint(uint64(viewerID(c)), 10)
+		}})
+	}
+	chats := api.Group("/chats", requireAuth)
+	chats.Get("/", h.listChats)
+	chats.Post("/", h.openChat)
+	chats.Get("/unread-count", h.chatUnreadCount)
+	chats.Get("/:id", h.getChat)
+	chats.Get("/:id/messages", h.chatMessages)
+	chats.Post("/:id/messages", chatLimit, h.sendMessage)
+	chats.Post("/:id/read", h.readChat)
+	chats.Post("/:id/typing", h.typing)
+	api.Delete("/messages/:id", requireAuth, h.deleteMessage)
+
 	notes := api.Group("/notifications", requireAuth)
 	notes.Get("/", h.listNotifications)
 	notes.Get("/unread-count", h.unreadCount)
@@ -192,6 +221,10 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	admin.Delete("/reports/:pinId", h.adminDismissReports)
 	admin.Delete("/pins/:id", h.adminDeletePin)
 	admin.Post("/pins/bulk", h.adminBulkPins)
+	admin.Get("/import/commons/search", h.adminCommonsSearch)
+	admin.Post("/import/commons", h.adminCommonsImport)
+	admin.Get("/demo", h.adminDemoCounts)
+	admin.Delete("/demo", h.adminRemoveDemo)
 
 	api.Use(func(c fiber.Ctx) error { return notFound(c) })
 	return app

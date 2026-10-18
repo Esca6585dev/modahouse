@@ -106,7 +106,8 @@ func (h *Handler) downloadPin(c fiber.Ctx) error {
 	im := media[idx]
 	name := fmt.Sprintf("modahouse-%d-%d", p.ID, idx)
 
-	if im.Kind == "video" || im.Watermarked {
+	// Videos, already marked images and credited (licensed) photos go out unchanged.
+	if im.Kind == "video" || im.Watermarked || p.Credit != "" {
 		path, ok := h.store.Path(im.URL)
 		if !ok {
 			return notFound(c)

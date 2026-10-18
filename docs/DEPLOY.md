@@ -62,7 +62,7 @@ Doldurmaly zatlar:
 
 **Synag maglumatlary barada:**
 - Synag hasaplarynyň paroly hemmä belli (`modahouse123`).
-- Hakyky işe başlanyňyzda synag ulanyjylaryny admin panelinden petikläň ýa-da serweri `SEED=false` bilen arassa binýatdan başlaň.
+- Hakyky işe başlanyňyzda synag maglumatlaryny aýyryň. Admin panelinde **Umumy → "Demo maglumatlary aýyr"** basyň: synag hasaplary we olaryň ähli postlary pozulýar, seeder hem indi hiç haçan işlemeýär. Soňra `.env` faýlynda `SEED=false` goýuň.
 
 ## 5. DNS
 
@@ -93,6 +93,24 @@ Barlamak üçin:
 | **Şikaýatlar** | Şikaýat edilen postlar. Postuň özüni pozmak ýa-da şikaýatlary ýapmak bolýar. |
 
 Web serweriniň öz API salgysy `BACKEND_URL` üýtgeýjisi bilen berilýär. Ol diňe serwer işläp başlanda okalýar. Üýtgetmek üçin `deploy/docker-compose.yml` faýlyny düzediň we `docker compose up -d` buýrugyny işlediň. Täzeden ýygnamak (rebuild) gerek däl.
+
+## 7a. Production: hakyky suratlar we hat alyşmak
+
+**Hakyky suratlar.** Synag suratlaryny aýyranyňyzdan soň, hakyky suratlary iki ýol bilen goşup bilersiňiz:
+
+1. **Admin → Suratlar importy.** Wikimedia Commons-dan açyk ygtyýarnamaly (CC0, Public domain, CC BY, CC BY-SA) suratlary import edýär.
+   - "Turkmen" ýaly söz bilen gözläň, kategoriýany saýlaň we import ediň.
+   - Her postda suratyň awtory, ygtyýarnamasy we çeşme baglanyşygy görkezilýär.
+   - Postlar resmi `modahouse` hasabyndan çykýar.
+   - Bu işlemek üçin serweriň internete çykyşy bolmaly.
+2. **Admin → Ýükle.** Size degişli ýa-da hyzmatdaş dükanlaryň, atelýeleriň rugsat beren suratlaryny ýükläň.
+
+Pinterest-den ýa-da Instagram-dan rugsatsyz alnan suratlary goşmaň: olaryň awtorlyk hukugy suraty çeken adama degişli, suratdaky gyzlaryň öz razylygy hem gerek.
+
+**Hat alyşmak (chat) we bildirişler.** Hat alyşmak we bildirişler real wagtda işleýär: olar `/api/events` salgysyndan Server-Sent Events arkaly gelýär.
+- nginx ulanylýan bolsa, goşmaça sazlama gerek däl: serwer `X-Accel-Buffering: no` iberýär we her 25 sekuntda "ping" ugradýar.
+- API diňe bir nusgada (bir backend konteýnerinde) işlemeli, sebäbi bildirişler bir prosesiň içinde paýlanýar.
+- Programma doly ýapyk wagty telefona bildiriş ibermek (push) üçin Firebase Cloud Messaging gerek. Ol heniz sazlanmadyk.
 
 ## 8. Android APK
 
