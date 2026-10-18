@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { money, ORDER_STATUS_LABEL, timeAgo } from "@/lib/format";
 import { StatusPill } from "@/components/OrderCard";
 import { usePaged, useRequireAuth } from "@/lib/hooks";
+import { useRealtime } from "@/lib/realtime";
 import type { Notification } from "@/lib/types";
 
 const TEXT: Record<Notification["type"], string> = {
@@ -52,6 +53,14 @@ export default function NotificationsPage() {
     marked.current = true;
     api.readAll().then(() => setUnread(0), () => { marked.current = false; });
   }, [paged.loaded, paged.error, setUnread]);
+
+  // New notifications appear at the top as they happen; this page is open, so they count as read.
+  useRealtime("notification", ({ notification }) => {
+    if (!notification?.id) return;
+    paged.setItems((l) => [notification, ...l.filter((x) => x.id !== notification.id)]);
+    if (document.visibilityState === "visible") api.readAll().then(() => setUnread(0), () => {});
+  });
+  useRealtime("reconnect", () => paged.reload());
 
   // Refresh relative times every minute.
   useEffect(() => {

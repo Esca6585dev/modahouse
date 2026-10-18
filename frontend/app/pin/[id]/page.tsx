@@ -9,7 +9,7 @@ import Comments from "@/components/Comments";
 import FollowButton from "@/components/FollowButton";
 import {
   BackIcon, BagIcon, BoxIcon, CalendarIcon, CartIcon, CashIcon, ChatIcon, CommentIcon, EditIcon, ExternalIcon, EyeIcon, HeartIcon, LayersIcon,
-  PhoneIcon, ReturnIcon, RulerIcon, ScanIcon, ShareIcon, ShieldIcon, TruckIcon, VerifiedIcon,
+  PhoneIcon, ReturnIcon, RulerIcon, ScanIcon, SendIcon, ShareIcon, ShieldIcon, TruckIcon, VerifiedIcon,
 } from "@/components/Icons";
 import { PinFeed } from "@/components/Masonry";
 import { Badge, Price } from "@/components/Price";
@@ -28,6 +28,7 @@ import type { Business, Pin, Profile } from "@/lib/types";
 import ContactSheet from "@/components/ContactSheet";
 import PinMenu from "@/components/PinMenu";
 import { RichText } from "@/components/RichText";
+import { useChat } from "@/components/chat/ChatProvider";
 
 function hostOf(link: string) {
   try {
@@ -123,7 +124,34 @@ function BuyBox({ pin }: { pin: Pin }) {
           {busy ? <span className="spinner" /> : <CartIcon size={22} />}
         </button>
       </div>
+      <AskSeller pin={pin} />
     </>
+  );
+}
+
+/** "Soragyňyz barmy?": opens the in-app chat with the shop, with this product attached. */
+function AskSeller({ pin }: { pin: Pin }) {
+  const { user } = useAuth();
+  const { openChat } = useChat();
+  const [busy, setBusy] = useState(false);
+  if (user?.id === pin.author.id) return null;
+  return (
+    <button
+      type="button"
+      className="ask-seller"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await openChat(pin.author.username, { pin: pin.id, text: "Salam! Şu haryt barada soramak isleýärin." });
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? <span className="spinner" /> : <SendIcon size={17} />}
+      <span>Soragyňyz barmy? <strong>Dükana ModaHouse-da ýazyň</strong></span>
+    </button>
   );
 }
 
@@ -394,7 +422,14 @@ export default function PinPage() {
   const textBlock = (
     <>
       {pin.description && <p className="detail-desc"><RichText text={pin.description} /></p>}
-      {pin.link && (
+      {pin.credit && (
+        pin.link ? (
+          <a className="detail-credit" href={pin.link} target="_blank" rel="noopener noreferrer">📷 {pin.credit}</a>
+        ) : (
+          <p className="detail-credit">📷 {pin.credit}</p>
+        )
+      )}
+      {pin.link && !pin.credit && (
         <a className="detail-link" href={pin.link} target="_blank" rel="noopener noreferrer">
           <ExternalIcon /> {hostOf(pin.link)}
         </a>

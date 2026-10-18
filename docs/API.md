@@ -615,7 +615,7 @@ type Chat = {
 
 | Method | Path | Body / query | Response |
 |---|---|---|---|
-| GET | `/chats` | `?page=&limit=` | `Page<Chat>`, most recent first |
+| GET | `/chats` | `?page=&limit=` | `Page<Chat>`, most recent first; chats without messages are not listed |
 | POST | `/chats` | `{username}` | `Chat`: opens the existing chat or creates it (201). 400 for yourself, 404 for an unknown user, 403 when blocked |
 | GET | `/chats/:id` | | `Chat` |
 | GET | `/chats/:id/messages` | `?before=<messageId>&limit=30` (≤ 50) | `{items: Message[] (oldest → newest), hasMore}` |
@@ -649,6 +649,8 @@ type Chat = {
 | `typing` | `{chatId, userId}`: show "ýazýar…" for about 4 s |
 | `notification` | `{notification: Notification, unreadCount}`: a like, comment, follow, save or order notification, as soon as it happens |
 
+Keep any proxy's read timeout above the 25 s ping interval.
+
 Clients reconnect with exponential backoff (1 s → 30 s). After reconnecting they refetch `/chats` and the open conversation, because events sent while offline are not replayed.
 
 Push notifications while the app is closed need Firebase Cloud Messaging, which is not set up yet. The Android app shows a local notification while it is running in the background.
@@ -677,4 +679,4 @@ The import runs on the server, which needs internet access to Wikimedia Commons.
 | Method | Path | Response |
 |---|---|---|
 | GET | `/admin/demo` | `{users, pins}`: how much demo content (seed accounts and their posts) exists |
-| DELETE | `/admin/demo` | `{users, pins}` removed. The server also records that demo content was removed, so the seeder never adds it again, even with `SEED=true`. |
+| DELETE | `/admin/demo` | `{users, pins}` removed. The server also records that demo content was removed, so the seeder never adds it again, even with `SEED=true`. Answers 400 when the signed-in admin is itself a demo account: create a real admin first (`ADMIN_USERNAME`/`ADMIN_PASSWORD`). |

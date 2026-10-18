@@ -115,6 +115,8 @@ export type Pin = {
   commentsCount: number;
   liked: boolean;
   savedBoardIds: number[];
+  /** v6: photo credit of an imported, openly licensed photo ("" otherwise); `link` then points to the source. */
+  credit: string;
   createdAt: string;
 };
 
@@ -352,3 +354,49 @@ export type UrlCheck = { ok: boolean; status: number; error: string };
 // ---------- v5 ----------
 
 export type BulkUploadResult = { created: Pin[]; failed: { name: string; error: string }[] };
+
+// ---------- v6: chat, real-time events, photo import, demo cleanup ----------
+
+export type ChatUser = UserBrief;
+
+export type Attachment = { url: string; name: string; size: number; mimeType: string; width: number; height: number };
+
+export type PinPreview = {
+  id: number; title: string; imageUrl: string; width: number; height: number; color: string; price: number; listingType: string;
+};
+
+export type MessageKind = "text" | "image" | "file" | "pin";
+
+export type Message = {
+  id: number;
+  chatId: number;
+  sender: ChatUser;
+  kind: MessageKind;
+  /** Caption for image/file/pin; "" when deleted. */
+  text: string;
+  attachment: Attachment | null;
+  pin: PinPreview | null;
+  /** Echoed from the send request ("" otherwise). */
+  clientId: string;
+  mine: boolean;
+  /** The other side has read it. */
+  read: boolean;
+  deleted: boolean;
+  createdAt: string;
+};
+
+export type Chat = {
+  id: number;
+  other: ChatUser;
+  lastMessage: Message | null;
+  unreadCount: number;
+  /** Either side blocked the other: sending is disabled. */
+  blocked: boolean;
+  updatedAt: string;
+};
+
+export type MessagesPage = { items: Message[]; hasMore: boolean };
+
+export type CommonsCategory = { title: string; files: number };
+export type CommonsImportResult = { created: Pin[]; skipped: { title: string; reason: string }[] };
+export type DemoCounts = { users: number; pins: number };

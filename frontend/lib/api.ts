@@ -2,7 +2,8 @@
 // the route handler in app/api/[...path] proxies them to the Go backend at BACKEND_URL (read at runtime).
 
 import type {
-  AdminReport, AdminStats, AdminUser, AdminUserFilter, AppConfig, AuthResponse, Board, BulkUploadResult, BusinessCard, BusinessInput, BusinessStats, Cart, Category, ColorOption, Comment, LikeState, Me,
+  AdminReport, AdminStats, AdminUser, AdminUserFilter, AppConfig, AuthResponse, Board, BulkUploadResult, BusinessCard, BusinessInput, BusinessStats, Cart, Category, Chat, ColorOption, Comment,
+  CommonsCategory, CommonsImportResult, DemoCounts, LikeState, Me, Message, MessagesPage,
   ListingType, Notification, Order, OrderInput, OrderStatus, Page, Pin, PinImage, Profile, ReportReason, Review, ReviewsPage,
   SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UrlCheck, UserBrief, VisualResult,
 } from "./types";
@@ -172,7 +173,37 @@ export function normPin(p: Pin): Pin {
     ordersCount: p.ordersCount ?? 0,
     rating: p.rating ?? 0,
     reviewsCount: p.reviewsCount ?? 0,
+    credit: p.credit ?? "",
     author: normUser(p.author),
+  };
+}
+
+// ---------- v6: chat ----------
+
+export function normMessage(m: Message): Message {
+  const a = m.attachment;
+  return {
+    ...m,
+    sender: normUser(m.sender ?? ({} as UserBrief)),
+    kind: m.kind ?? (m.pin ? "pin" : a ? (a.mimeType?.startsWith("image/") ? "image" : "file") : "text"),
+    text: m.text ?? "",
+    attachment: a ? { ...a, name: a.name ?? "", size: a.size ?? 0, mimeType: a.mimeType ?? "", width: a.width ?? 0, height: a.height ?? 0 } : null,
+    pin: m.pin ? { ...m.pin, price: m.pin.price ?? 0, listingType: m.pin.listingType ?? "", color: m.pin.color ?? "" } : null,
+    clientId: m.clientId ?? "",
+    mine: !!m.mine,
+    read: !!m.read,
+    deleted: !!m.deleted,
+  };
+}
+
+export function normChat(c: Chat): Chat {
+  return {
+    ...c,
+    other: normUser(c.other ?? ({} as UserBrief)),
+    lastMessage: c.lastMessage ? normMessage(c.lastMessage) : null,
+    unreadCount: c.unreadCount ?? 0,
+    blocked: !!c.blocked,
+    updatedAt: c.updatedAt ?? c.lastMessage?.createdAt ?? "",
   };
 }
 
@@ -371,6 +402,28 @@ export const api = {
   aiStatus: () => request<{ enabled: boolean }>("/ai/status"),
   aiSuggest: (form: FormData) => request<Suggestion>("/ai/suggest", { method: "POST", form }),
 
+  // v6: chat
+  chats: (page: number, limit = 30) =>
+    request<Page<Chat>>(`/chats${qs({ page, limit })}`).then((pg) => ({ ...pg, items: (pg.items ?? []).map(normChat) })),
+  openChat: (username: string) => request<Chat>("/chats", { method: "POST", body: { username } }).then(normChat),
+  chat: (id: number | string) => request<Chat>(`/chats/${enc(String(id))}`).then(normChat),
+  messages: (id: number, before?: number, limit = 30) =>
+    request<MessagesPage>(`/chats/${id}/messages${qs({ before, limit })}`)
+      .then((r) => ({ items: (r.items ?? []).map(normMessage), hasMore: !!r.hasMore })),
+  sendMessage: (id: number, b: { text: string; pinId?: number; clientId?: string }) =>
+    request<Message>(`/chats/${id}/messages`, { method: "POST", body: b }).then(normMessage),
+  sendFile: (id: number, file: File, b: { text?: string; clientId?: string }, onProgress?: (fraction: number) => void) => {
+    const f = new FormData();
+    f.append("file", file, file.name);
+    if (b.text) f.append("text", b.text);
+    if (b.clientId) f.append("clientId", b.clientId);
+    return uploadWithProgress<Message>(`/chats/${id}/messages`, f, onProgress).then(normMessage);
+  },
+  markRead: (id: number, messageId: number) => request<void>(`/chats/${id}/read`, { method: "POST", body: { messageId } }),
+  typing: (id: number) => request<void>(`/chats/${id}/typing`, { method: "POST" }),
+  deleteMessage: (id: number) => request<void>(`/messages/${id}`, { method: "DELETE" }),
+  chatUnread: () => request<{ count: number }>("/chats/unread-count"),
+
   // v4: public app config
   config: () => request<AppConfig>("/config").then(normConfig),
 
@@ -395,6 +448,15 @@ export const api = {
     bulkUpload: (form: FormData, onProgress?: (fraction: number) => void) =>
       uploadWithProgress<BulkUploadResult>("/admin/pins/bulk", form, onProgress)
         .then((r) => ({ created: (r.created ?? []).map(normPin), failed: r.failed ?? [] })),
+    // v6: openly licensed photos from Wikimedia Commons (the server downloads them)
+    commonsSearch: (q: string) =>
+      request<{ categories: CommonsCategory[] }>(`/admin/import/commons/search${qs({ q })}`).then((r) => r.categories ?? []),
+    commonsImport: (b: { category: string; limit: number; appCategory: string; author?: string }) =>
+      request<CommonsImportResult>("/admin/import/commons", { method: "POST", body: b })
+        .then((r) => ({ created: (r.created ?? []).map(normPin), skipped: r.skipped ?? [] })),
+    // v6: seed accounts and their posts
+    demo: () => request<DemoCounts>("/admin/demo"),
+    deleteDemo: () => request<DemoCounts>("/admin/demo", { method: "DELETE" }),
   },
 };
 

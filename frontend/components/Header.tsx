@@ -8,8 +8,9 @@ import { useCart } from "@/lib/cart";
 import Avatar from "./Avatar";
 import {
   BagIcon, BellIcon, CartIcon, ChartIcon, ChevronDownIcon, HeartIcon, HomeIcon, LogoutIcon, PlusIcon, ReelsIcon, SearchIcon,
-  SettingsIcon, ShieldIcon, StoreIcon, TrophyIcon, UserIcon,
+  SendIcon, SettingsIcon, ShieldIcon, StoreIcon, TrophyIcon, UserIcon,
 } from "./Icons";
+import { useChat } from "./chat/ChatProvider";
 import { LogoWordmark } from "./Logo";
 import SearchBar from "./SearchBar";
 
@@ -96,6 +97,21 @@ function CartLink({ path }: { path: string }) {
   );
 }
 
+function MessagesLink({ path }: { path: string }) {
+  const { unread } = useChat();
+  return (
+    <Link
+      href="/messages"
+      className={`icon-btn ${path.startsWith("/messages") ? "current" : ""}`}
+      aria-label={unread ? `Habarlar, ${unread} okalmadyk` : "Habarlar"}
+      title="Habarlar"
+    >
+      <SendIcon size={22} />
+      {unread > 0 && <span className="badge">{unread > 99 ? "99+" : unread}</span>}
+    </Link>
+  );
+}
+
 export default function Header() {
   const path = usePathname();
   const { user, ready, unread } = useAuth();
@@ -130,6 +146,7 @@ export default function Header() {
             <span className="header-placeholder" />
           ) : user ? (
             <>
+              <MessagesLink path={path} />
               <Link
                 href="/notifications"
                 className={`icon-btn ${path === "/notifications" ? "current" : ""}`}
@@ -160,6 +177,8 @@ export function BottomNav() {
   const path = usePathname();
   const { user } = useAuth();
   if (path === "/login" || path === "/register") return null;
+  // An open conversation is full screen on phones (its composer sits at the bottom).
+  if (/^\/messages\/\d+/.test(path)) return null;
   const profileHref = user ? `/u/${user.username}` : "/login?next=%2Fprofile";
   const items = [
     { href: "/", label: "Baş sahypa", icon: <HomeIcon size={24} />, active: path === "/" },

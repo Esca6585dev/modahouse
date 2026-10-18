@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -54,7 +55,8 @@ func (h *Handler) commonsGet(ctx context.Context, params url.Values, out any) er
 }
 
 func commonsUnreachable(c fiber.Ctx, err error) error {
-	return fail(c, fiber.StatusBadGateway, "Wikimedia Commons bilen baglanyşyk ýok: serweriň internete çykyşyny barlaň ("+err.Error()+")")
+	log.Printf("commons: %v", err)
+	return fail(c, fiber.StatusBadGateway, "Wikimedia Commons bilen baglanyşyk ýok: serweriň internete çykyşyny barlaň")
 }
 
 // adminCommonsSearch finds Commons categories for a query, with their file counts.

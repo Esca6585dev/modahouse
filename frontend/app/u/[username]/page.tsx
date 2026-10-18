@@ -8,8 +8,8 @@ import BoardCard from "@/components/BoardCard";
 import BoardFormModal from "@/components/BoardFormModal";
 import FollowButton from "@/components/FollowButton";
 import {
-  BagIcon, BanIcon, BoardsIcon, CommentIcon, HeartIcon, CameraIcon, ChartIcon, ChatIcon, ClockIcon, GridIcon, MasonryIcon, PhoneIcon, PinMapIcon, PlusIcon,
-  SettingsIcon, ShareIcon, ShieldIcon, StoreIcon, TruckIcon, VerifiedIcon,
+  BagIcon, BanIcon, BoardsIcon, HeartIcon, CameraIcon, ChartIcon, ChatIcon, ClockIcon, GridIcon, MasonryIcon, PhoneIcon, PinMapIcon, PlusIcon,
+  SendIcon, SettingsIcon, ShareIcon, ShieldIcon, StoreIcon, TruckIcon, VerifiedIcon,
 } from "@/components/Icons";
 import { PinFeed } from "@/components/Masonry";
 import ProductGrid from "@/components/ProductGrid";
@@ -23,6 +23,7 @@ import { useAuth } from "@/lib/auth";
 import { businessCategoryLabel, compact, days } from "@/lib/format";
 import { usePaged, useStoredState } from "@/lib/hooks";
 import { socialLinks } from "@/components/ContactSheet";
+import { useChat } from "@/components/chat/ChatProvider";
 import { PROFILE_VIEWS, ProfileViewSwitch, SquareGrid, type ProfileView } from "@/components/FeedViews";
 import ProfileMenu from "@/components/ProfileMenu";
 import { shareUrl } from "@/lib/share";
@@ -238,8 +239,6 @@ function ProfileView() {
   };
 
   const links = biz ? socialLinks(biz, `Salam! ModaHouse-da profilňizi gördüm.`) : [];
-  const chat = links.find((l) => l.key === "whatsapp") ?? links.find((l) => l.key === "telegram") ?? links.find((l) => l.key === "instagram");
-  const contactHref = chat?.href ?? (biz?.phone ? `sms:${biz.phone.replace(/[^\d+]/g, "")}` : null);
   const socials = links.filter((l) => l.key !== "phone");
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -340,12 +339,8 @@ function ProfileView() {
                 onChange={(on, p) =>
                   setProfile((cur) => p ?? (cur ? { ...cur, isFollowing: on, followersCount: cur.followersCount + (on === cur.isFollowing ? 0 : on ? 1 : -1) } : cur))}
               />
+              {!profile.isBlocked && <MessageButton username={profile.username} />}
               {biz?.phone && <a href={phoneHref(biz.phone)} className="btn btn-secondary"><PhoneIcon size={16} /> Jaň et</a>}
-              {contactHref && (
-                <a href={contactHref} className="btn btn-secondary" target={chat?.external ? "_blank" : undefined} rel="noopener noreferrer">
-                  <CommentIcon size={17} /> Habarlaş
-                </a>
-              )}
               <button className="btn btn-secondary icon-only" onClick={share} aria-label="Paýlaş"><ShareIcon size={18} /></button>
             </>
           )}
@@ -417,6 +412,28 @@ function ProfileView() {
         />
       )}
     </>
+  );
+}
+
+/** "Habar ýaz": opens the in-app chat with this user. */
+function MessageButton({ username }: { username: string }) {
+  const { openChat } = useChat();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      className="btn btn-secondary"
+      disabled={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await openChat(username);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {busy ? <span className="spinner" /> : <SendIcon size={17} />} Habar ýaz
+    </button>
   );
 }
 

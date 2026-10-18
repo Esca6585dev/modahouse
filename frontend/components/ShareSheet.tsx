@@ -1,10 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { errorMessage } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { absUrl, copyText, downloadPin, fetchShareCard, shareCardFile } from "@/lib/share";
 import type { Pin } from "@/lib/types";
-import { DotsIcon, DownloadIcon, ImagesIcon, LinkIcon, TelegramIcon, WhatsappIcon } from "./Icons";
+import ChatPicker from "./chat/ChatPicker";
+import { DotsIcon, DownloadIcon, ImagesIcon, LinkIcon, SendIcon, TelegramIcon, WhatsappIcon } from "./Icons";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
 
@@ -35,6 +38,9 @@ type Busy = "" | "card" | "download" | "more";
  */
 export default function ShareSheet({ pin, index = 0, onClose }: { pin: Pin; index?: number; onClose: () => void }) {
   const toast = useToast();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [picking, setPicking] = useState(false);
   const [card, setCard] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [cardError, setCardError] = useState<string | null>(null);
@@ -101,6 +107,23 @@ export default function ShareSheet({ pin, index = 0, onClose }: { pin: Pin; inde
   const isVideo = pin.images[index]?.type === "video";
   const loading = !card && !cardError;
 
+  const sendInChat = () => {
+    if (!user) {
+      onClose();
+      router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      return;
+    }
+    setPicking(true);
+  };
+
+  if (picking) {
+    return (
+      <Modal title="Habar bilen ugrat" onClose={onClose}>
+        <ChatPicker mode="share" pin={pin} onDone={onClose} />
+      </Modal>
+    );
+  }
+
   return (
     <Modal title="Paýlaş" onClose={onClose}>
       <div className="share-sheet">
@@ -132,6 +155,10 @@ export default function ShareSheet({ pin, index = 0, onClose }: { pin: Pin; inde
         </div>
 
         <div className="ss-grid">
+          <button type="button" className="ss-btn" onClick={sendInChat}>
+            <span className="ss-icon brand"><SendIcon size={25} /></span>
+            <span>Habar bilen ugrat</span>
+          </button>
           <button type="button" className="ss-btn" onClick={copyLink}>
             <span className="ss-icon grey"><LinkIcon size={26} /></span>
             <span>Baglanyşygy göçür</span>
