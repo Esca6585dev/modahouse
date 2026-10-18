@@ -2,6 +2,7 @@ export 'board.dart';
 export 'business.dart';
 export 'cart.dart';
 export 'category.dart';
+export 'chat.dart';
 export 'comment.dart';
 export 'json.dart';
 export 'notification.dart';

@@ -11,8 +11,10 @@ import '../core/snack.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
+import '../state/auth.dart';
 import '../state/providers.dart';
 import 'pin_menu.dart';
+import 'send_to_chat_sheet.dart';
 import 'states.dart';
 
 /// Opens the Pinterest-style share sheet for [pin]: a preview of the branded
@@ -27,7 +29,16 @@ Future<void> showShareSheet(BuildContext context, Pin pin) =>
     );
 
 /// The targets, in order. Keys are `share-<name>` in widget tests.
-enum ShareTarget { copy, whatsapp, telegram, instagram, image, download, more }
+enum ShareTarget {
+  message,
+  copy,
+  whatsapp,
+  telegram,
+  instagram,
+  image,
+  download,
+  more,
+}
 
 class ShareSheet extends ConsumerStatefulWidget {
   const ShareSheet({super.key, required this.pin});
@@ -137,6 +148,13 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     if (nav.canPop()) nav.pop();
     try {
       switch (target) {
+        case ShareTarget.message:
+          // The share sheet is closed: open the next one from the navigator.
+          if (!ref.read(authProvider).isLoggedIn) {
+            showSnack(S.unauthorized, error: true);
+            return;
+          }
+          await showSendToChatSheet(nav.context, pin);
         case ShareTarget.copy:
           await Clipboard.setData(ClipboardData(text: _link));
           showSnack(S.linkCopied);
@@ -197,6 +215,12 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     );
 
     final targets = [
+      target(
+        ShareTarget.message,
+        S.sendViaMessage,
+        Icons.send_rounded,
+        color: AppPalette.accent,
+      ),
       target(ShareTarget.copy, S.menuCopyLink, Icons.link_rounded),
       target(
         ShareTarget.whatsapp,

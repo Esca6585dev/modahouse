@@ -19,6 +19,7 @@ import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/avatar.dart';
 import '../widgets/cart_flow.dart';
+import '../widgets/chat_launch.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
@@ -475,6 +476,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   style: const TextStyle(fontSize: 16, height: 1.45),
                 ),
               ],
+              if (pin.credit.isNotEmpty) PhotoCredit(pin: pin),
               if (pin.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Wrap(
@@ -920,6 +922,21 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               if (product.isSale) ...[
                 const SizedBox(height: 14),
                 const HowToOrderCard(),
+                if (!isOwner) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    key: const Key('contact-seller'),
+                    onPressed: () => showContactSheet(
+                      context,
+                      shop: pin.author,
+                      business: _author?.business,
+                      title: pin.title,
+                      pin: pinPreviewOf(pin),
+                    ),
+                    icon: const Icon(Icons.send_outlined, size: 19),
+                    label: const Text(S.contactSeller),
+                  ),
+                ],
               ],
               if (pin.description.isNotEmpty) ...[
                 gap,
@@ -928,6 +945,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   style: const TextStyle(fontSize: 15.5, height: 1.5),
                 ),
               ],
+              if (pin.credit.isNotEmpty) PhotoCredit(pin: pin),
               if (pin.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Wrap(
@@ -1048,6 +1066,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
       shop: pin.author,
       business: _author?.business,
       title: pin.title,
+      pin: pinPreviewOf(pin),
     );
     return Container(
       decoration: BoxDecoration(
@@ -1441,6 +1460,54 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// "📷 Surat: A. Author · CC BY-SA 4.0 · Wikimedia Commons" under the
+/// description of imported photos; tap opens the source page ([Pin.link]).
+class PhotoCredit extends StatelessWidget {
+  const PhotoCredit({super.key, required this.pin});
+
+  final Pin pin;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    final uri = Uri.tryParse(pin.link);
+    final canOpen = uri != null && uri.hasScheme && pin.link.isNotEmpty;
+    final text = Text(
+      '${S.credit} ${pin.credit}',
+      key: const Key('pin-credit'),
+      style: TextStyle(
+        color: p.muted,
+        fontSize: 12.5,
+        height: 1.35,
+        decoration: canOpen ? TextDecoration.underline : null,
+        decorationColor: p.muted.withValues(alpha: 0.5),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: canOpen
+          ? Semantics(
+              link: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () async {
+                  var ok = false;
+                  try {
+                    ok = await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } catch (_) {}
+                  if (!ok) showSnack(S.cannotOpenLink, error: true);
+                },
+                child: text,
+              ),
+            )
+          : text,
     );
   }
 }

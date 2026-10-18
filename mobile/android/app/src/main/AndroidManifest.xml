@@ -12,6 +12,10 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
+    <!-- flutter_local_notifications: new chat messages while the app runs in the
+         background. Android 13+ asks the user (from the Habarlar screen). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- The camera is optional: the gallery works without it. -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 

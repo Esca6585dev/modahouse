@@ -10,6 +10,7 @@ import '../data/auth_repository.dart';
 import '../data/boards_repository.dart';
 import '../data/business_repository.dart';
 import '../data/cart_repository.dart';
+import '../data/chats_repository.dart';
 import '../data/comments_repository.dart';
 import '../data/notifications_repository.dart';
 import '../data/orders_repository.dart';
@@ -74,6 +75,9 @@ final aiRepositoryProvider = Provider(
 );
 final storiesRepositoryProvider = Provider(
   (ref) => StoriesRepository(ref.watch(apiClientProvider)),
+);
+final chatsRepositoryProvider = Provider(
+  (ref) => ChatsRepository(ref.watch(apiClientProvider)),
 );
 
 /// Categories rarely change: load once and keep.

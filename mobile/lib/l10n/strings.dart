@@ -742,6 +742,82 @@ class S {
       'Baglanyşyk göçürildi: Instagram story-de "Baglanyşyk" stikerine goýuň';
   static const moreIdeas = 'Başga gyzykly postlar';
 
+  // ---------- v6: chat ----------
+  static const chats = 'Habarlar';
+  static const chatsEmptyTitle = 'Entek habar ýok';
+  static const chatsEmptyText =
+      'Dükanlar we dostlaryňyz bilen şu ýerde ýazyşyň. '
+      'Profildäki "Habar ýaz" düwmesine basyň.';
+  static const chatSearchHint = 'Gözle';
+  static const chatSearchEmpty = 'Hiç kim tapylmady';
+  static const writeMessage = 'Habar ýaz';
+  static const writeOnModaHouse = 'ModaHouse-da ýaz';
+  static const writeOnModaHouseHint = 'Dükan bilen programmanyň içinde ýazyşyň';
+  static const sendViaMessage = 'Habar bilen ugrat';
+  static const sendToTitle = 'Kime ugratmaly?';
+  static const sendTo = 'Ugrat';
+  static const sentDone = 'Iberildi';
+  static const addMessageHint = 'Habar goşuň (hökman däl)';
+  static const typing = 'ýazýar…';
+  static const photoPreview = '📷 Surat';
+  static const videoPreview = '🎬 Wideo';
+  static const postPreview = '🔗 Post';
+  static String filePreview(String name) => '📎 $name';
+  static const messageDeleted = 'Bu habar pozuldy';
+  static String youPrefix(String text) => 'Siz: $text';
+  static const today = 'Şu gün';
+  static const yesterdayDay = 'Düýn';
+  static String minutesShort(int n) => '$n min';
+  static String hoursShort(int n) => '$n sag';
+  static String daysShort(int n) => '$n gün';
+  static const months = [
+    'ýanwar',
+    'fewral',
+    'mart',
+    'aprel',
+    'maý',
+    'iýun',
+    'iýul',
+    'awgust',
+    'sentýabr',
+    'oktýabr',
+    'noýabr',
+    'dekabr',
+  ];
+  static const newMessages = 'Täze habarlar';
+  static const messageHint = 'Habar…';
+  static const captionHint = 'Ýazgy goşuň…';
+  static const sendMessage = 'Ugrat';
+  static const attach = 'Faýl goş';
+  static const fileLabel = 'Faýl';
+  static const sending = 'Ugradylýar…';
+  static const notSent = 'Ugradylmady';
+  static const retrySend = 'Gaýtadan ugrat';
+  static const discard = 'Aýyr';
+  static const deleteMessageTitle = 'Habary pozmalymy?';
+  static const deleteMessageText =
+      'Habar iki tarapda hem "Bu habar pozuldy" bolup galar.';
+  static const messageRead = 'Okaldy';
+  static const messageSent = 'Iberildi';
+  static const chatBlocked = 'Bu ulanyja ýazyp bolmaýar';
+  static const chatBlockedText =
+      'Siz ýa-da bu ulanyjy beýlekisini petikledi, şonuň üçin habar ugradyp '
+      'bolmaýar.';
+  static const chatNotFound = 'Söhbetdeşlik tapylmady';
+  static const openFile = 'Faýly aç';
+  static const saveImage = 'Suraty sakla';
+  static const imageSaved = 'Surat saklandy';
+  static const loadingOlder = 'Öňki habarlar ýüklenýär…';
+  static const notifPermissionTitle = 'Täze habarlary sypdyrmaň';
+  static const notifPermissionText =
+      'Size ýazanlarynda telefonda bildiriş görkezeris.';
+  static const notifAllow = 'Rugsat ber';
+  static const notifLater = 'Soňra';
+  static const notifChannel = 'Habarlar';
+  static const notifChannelText = 'ModaHouse-da gelen täze habarlar';
+  static String newMessageFrom(String name) => '$name size ýazdy';
+  static const credit = '📷';
+
   // ---------- Relative time ----------
   static const justNow = 'şu wagt';
   static const yesterday = 'dün';

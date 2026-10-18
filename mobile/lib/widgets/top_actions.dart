@@ -5,15 +5,24 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
 import '../state/auth.dart';
+import '../state/chat_state.dart';
 import '../state/notifications_state.dart';
 import '../state/shop_state.dart';
 
 /// Icon with a small red count badge.
 class BadgeIcon extends StatelessWidget {
-  const BadgeIcon({super.key, required this.icon, required this.count});
+  const BadgeIcon({
+    super.key,
+    required this.icon,
+    required this.count,
+    this.angle = 0,
+  });
 
   final IconData icon;
   final int count;
+
+  /// Icon rotation in radians (the tilted paper plane).
+  final double angle;
 
   @override
   Widget build(BuildContext context) => Badge(
@@ -25,8 +34,27 @@ class BadgeIcon extends StatelessWidget {
       count > 99 ? '99+' : '$count',
       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
     ),
-    child: Icon(icon, size: 27),
+    child: angle == 0
+        ? Icon(icon, size: 27)
+        : Transform.rotate(angle: angle, child: Icon(icon, size: 25)),
   );
+}
+
+/// Instagram-style paper plane with the unread message count; opens
+/// `/chats` (login first if needed).
+class ChatsButton extends ConsumerWidget {
+  const ChatsButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unread = ref.watch(chatUnreadProvider);
+    return IconButton(
+      key: const Key('chats-button'),
+      tooltip: unread > 0 ? '${S.chats} ($unread)' : S.chats,
+      onPressed: () => context.push('/chats'),
+      icon: BadgeIcon(icon: Icons.send_outlined, count: unread, angle: -0.45),
+    );
+  }
 }
 
 /// Cart button with the item count; opens `/cart` (login first if needed).

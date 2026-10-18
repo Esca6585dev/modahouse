@@ -7,6 +7,7 @@ import '../core/theme.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
 import 'avatar.dart';
+import 'chat_launch.dart';
 import 'shop_ui.dart';
 
 String _digits(String phone) => phone.replaceAll(RegExp(r'[^0-9]'), '');
@@ -215,12 +216,15 @@ class SocialButtons extends StatelessWidget {
 }
 
 /// "Kärendä al" / "Sargyt et": every way to reach the shop plus the
-/// prefilled message "Salam! ModaHouse-da «…» gördüm…".
+/// prefilled message "Salam! ModaHouse-da «…» gördüm…". The first option,
+/// "ModaHouse-da ýaz", opens the in-app chat with that message and [pin]
+/// attached.
 Future<void> showContactSheet(
   BuildContext context, {
   required UserBrief shop,
   required Business? business,
   String title = '',
+  PinPreview? pin,
 }) {
   final message = title.isEmpty ? '' : S.contactMessage(title);
   final links = business == null
@@ -278,6 +282,33 @@ Future<void> showContactSheet(
                 ),
               ],
               const SizedBox(height: 8),
+              ListTile(
+                key: const Key('contact-chat'),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                leading: const CircleAvatar(
+                  backgroundColor: AppPalette.accent,
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  S.writeOnModaHouse,
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: const Text(S.writeOnModaHouseHint),
+                trailing: Icon(Icons.chevron_right_rounded, color: p.muted),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  openChatWith(
+                    context,
+                    shop.username,
+                    draft: message,
+                    pin: pin,
+                  );
+                },
+              ),
               for (final l in links)
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 4),

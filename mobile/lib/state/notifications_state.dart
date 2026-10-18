@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'auth.dart';
 import 'providers.dart';
+import 'realtime.dart';
 
-/// Unread notification count for the bottom-nav badge.
-/// Polled every 60 seconds while the user is logged in.
+/// Unread notification count for the bell badge. Updated instantly by
+/// `notification` events from `/events`, refetched when the event stream
+/// reconnects and polled every 60 seconds as a fallback.
 class UnreadCountNotifier extends Notifier<int> {
   static const interval = Duration(seconds: 60);
   Timer? _timer;
@@ -19,6 +21,14 @@ class UnreadCountNotifier extends Notifier<int> {
     _timer = null;
     ref.onDispose(() => _timer?.cancel());
     if (!loggedIn) return 0;
+    final sub = ref.read(realtimeHubProvider).events.listen((e) {
+      if (e is NotificationEvent) {
+        state = e.unreadCount;
+      } else if (e is ReconnectedEvent) {
+        unawaited(refresh());
+      }
+    });
+    ref.onDispose(sub.cancel);
     _timer = Timer.periodic(interval, (_) => refresh());
     unawaited(Future.microtask(refresh));
     return 0;
@@ -35,6 +45,8 @@ class UnreadCountNotifier extends Notifier<int> {
   }
 
   void reset() => state = 0;
+
+  void set(int count) => state = count < 0 ? 0 : count;
 }
 
 final unreadCountProvider = NotifierProvider<UnreadCountNotifier, int>(

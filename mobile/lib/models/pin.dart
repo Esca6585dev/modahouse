@@ -29,6 +29,7 @@ class Pin {
     this.reviewsCount = 0,
     this.mediaType = 'image',
     this.latestComments = const [],
+    this.credit = '',
   });
 
   factory Pin.fromJson(Json j) => Pin(
@@ -63,6 +64,7 @@ class Pin {
       j['latestComments'],
       (e) => Comment.fromJson(asJson(e)),
     ),
+    credit: asString(j['credit']),
   );
 
   final int id;
@@ -107,6 +109,10 @@ class Pin {
 
   /// The two latest comments (only with `?withComments=1`).
   final List<Comment> latestComments;
+
+  /// Photo credit of an imported, openly licensed photo (e.g. "Surat:
+  /// A. Author · CC BY-SA 4.0 · Wikimedia Commons"); [link] is the source.
+  final String credit;
 
   bool get isSaved => savedBoardIds.isNotEmpty;
 
@@ -164,6 +170,7 @@ class Pin {
     reviewsCount: reviewsCount ?? this.reviewsCount,
     mediaType: mediaType,
     latestComments: latestComments,
+    credit: credit,
   );
 }
 
