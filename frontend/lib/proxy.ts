@@ -89,5 +89,55 @@ export async function proxy(req: NextRequest): Promise<Response> {
   for (const c of res.headers.getSetCookie()) out.append("set-cookie", c);
 
   const noBody = req.method === "HEAD" || res.status === 204 || res.status === 304;
+  if (!noBody && res.body && isEventStream(res.headers.get("content-type"))) {
+    return new Response(eventStream(res.body, req.signal), { status: res.status, statusText: res.statusText, headers: sseHeaders(out) });
+  }
   return new Response(noBody ? null : res.body, { status: res.status, statusText: res.statusText, headers: out });
+}
+
+// ---------- Server-Sent Events (GET /api/events) ----------
+// In production nginx proxies /api straight to Go; this path is for `next dev` / `node server.js`
+// without nginx. Every chunk must reach the browser as soon as the backend writes it.
+
+const isEventStream = (ct: string | null) => !!ct && ct.toLowerCase().startsWith("text/event-stream");
+
+function sseHeaders(h: Headers): Headers {
+  h.delete("content-length");
+  h.delete("content-encoding");
+  // "no-transform" makes Next's built-in compression skip the response: gzip would hold events
+  // back until its buffer fills. X-Accel-Buffering does the same for an nginx in front of Next.
+  h.set("cache-control", "no-cache, no-transform");
+  h.set("x-accel-buffering", "no");
+  return h;
+}
+
+/**
+ * Pipes the backend stream chunk by chunk (no buffering) and cancels the upstream request as soon
+ * as the browser goes away, so long-lived connections never pile up on the backend.
+ */
+function eventStream(body: ReadableStream<Uint8Array>, signal: AbortSignal): ReadableStream<Uint8Array> {
+  const reader = body.getReader();
+  const stop = () => reader.cancel().catch(() => {});
+  signal.addEventListener("abort", stop, { once: true });
+  return new ReadableStream<Uint8Array>({
+    async pull(ctl) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          signal.removeEventListener("abort", stop);
+          ctl.close();
+        } else {
+          ctl.enqueue(value);
+        }
+      } catch {
+        signal.removeEventListener("abort", stop);
+        // Backend restarted or the connection dropped: end the stream; EventSource reconnects.
+        try { ctl.close(); } catch { /* already closed */ }
+      }
+    },
+    cancel() {
+      signal.removeEventListener("abort", stop);
+      return reader.cancel().catch(() => {});
+    },
+  }, { highWaterMark: 0 });
 }

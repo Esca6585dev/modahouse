@@ -2,13 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../config.dart';
 import '../core/api_exception.dart';
 import '../core/format.dart';
 import '../core/snack.dart';
@@ -22,12 +19,14 @@ import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/avatar.dart';
 import '../widgets/cart_flow.dart';
+import '../widgets/chat_launch.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
 import '../widgets/pin_menu.dart';
 import '../widgets/product_sections.dart';
 import '../widgets/save_sheet.dart';
+import '../widgets/share_sheet.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 import '../widgets/top_actions.dart';
@@ -53,6 +52,9 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
   String _size = '';
   int _qty = 1;
   bool _cartBusy = false;
+
+  /// The carousel item on screen ("Ýükle" in ⋯ downloads this one).
+  int _index = 0;
   late final PagedController<Comment> _comments;
   late final PagedController<Pin> _similar;
 
@@ -196,25 +198,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     }
   }
 
-  Future<void> _share(Pin pin) async {
-    final image = resolveImageUrl(pin.imageUrl);
-    final text = [
-      pin.title,
-      if (pin.link.isNotEmpty) pin.link,
-      image,
-    ].join('\n');
-    try {
-      final res = await SharePlus.instance.share(
-        ShareParams(text: text, subject: pin.title),
-      );
-      if (res.status == ShareResultStatus.unavailable) {
-        throw Exception('unavailable');
-      }
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: text));
-      showSnack(S.linkCopied);
-    }
-  }
+  Future<void> _share(Pin pin) => showShareSheet(context, pin);
 
   Future<void> _openLink(String link) async {
     final uri = Uri.tryParse(link);
@@ -295,17 +279,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
           slivers: [
             SliverToBoxAdapter(child: _hero(pin, isOwner)),
             SliverToBoxAdapter(child: _body(pin, me, isOwner)),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-                child: Text(
-                  S.similar,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
+            SliverToBoxAdapter(child: _moreIdeasHeading()),
             PinGridSliver(
               controller: _similar,
               empty: const EmptyView(title: S.noSimilar, compact: true),
@@ -325,6 +299,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     final width = math.min(size.width, 720.0) - 16;
     final height = math.min(width / pin.aspectRatio, size.height * 0.72);
     final top = MediaQuery.paddingOf(context).top;
+    final gallery = pin.gallery;
     return Padding(
       padding: EdgeInsets.fromLTRB(8, top + 8, 8, 0),
       child: Center(
@@ -336,7 +311,29 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (pin.isVideo)
+                if (gallery.length > 1)
+                  PageView.builder(
+                    key: const Key('pin-carousel'),
+                    itemCount: gallery.length,
+                    onPageChanged: (i) => setState(() => _index = i),
+                    itemBuilder: (context, i) => gallery[i].isVideo
+                        ? AutoVideo(
+                            url: gallery[i].url,
+                            posterUrl: gallery[i].posterUrl,
+                            color: gallery[i].color,
+                            active: i == _index,
+                            semanticLabel: pin.title,
+                          )
+                        : AppImage(
+                            gallery[i].url,
+                            placeholder: parseHexColor(
+                              gallery[i].color,
+                              p.surface,
+                            ),
+                            semanticLabel: i == 0 ? pin.title : null,
+                          ),
+                  )
+                else if (pin.isVideo)
                   AutoVideo(
                     url: pin.gallery.first.url,
                     posterUrl: pin.gallery.first.posterUrl,
@@ -349,6 +346,32 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                     placeholder: parseHexColor(pin.color, p.surface),
                     semanticLabel: pin.title,
                   ),
+                if (gallery.length > 1)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 12,
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          S.imageIndex(_index + 1, gallery.length),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   left: 12,
                   top: 12,
@@ -359,7 +382,6 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                         context.canPop() ? context.pop() : context.go('/'),
                   ),
                 ),
-                Positioned(right: 12, top: 12, child: _moreButton(pin)),
               ],
             ),
           ),
@@ -384,7 +406,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Actions: like, comments, share | save
+              // Pinterest: ♡ count, 💬 count, share, ⋯ | big red "Sakla".
               Row(
                 children: [
                   _LikeButton(
@@ -410,23 +432,18 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                     ),
                   ),
                   IconButton(
+                    key: const Key('pin-share'),
                     tooltip: S.share,
                     onPressed: () => _share(pin),
-                    icon: const Icon(Icons.ios_share_rounded),
+                    icon: const Icon(Icons.share_outlined),
                   ),
+                  _moreIcon(pin),
                   const Spacer(),
-                  FilledButton(
-                    style: pin.isSaved
-                        ? FilledButton.styleFrom(
-                            backgroundColor: p.text,
-                            foregroundColor: p.bg,
-                          )
-                        : null,
-                    onPressed: () => showSaveSheet(context, ref, pin),
-                    child: Text(pin.isSaved ? S.saved : S.saveAction),
-                  ),
+                  _saveButton(pin),
                 ],
               ),
+              const SizedBox(height: 10),
+              _authorRow(pin, isOwner, compact: true),
               const SizedBox(height: 12),
               if (pin.category.isNotEmpty)
                 InkWell(
@@ -459,6 +476,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   style: const TextStyle(fontSize: 16, height: 1.45),
                 ),
               ],
+              if (pin.credit.isNotEmpty) PhotoCredit(pin: pin),
               if (pin.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Wrap(
@@ -500,9 +518,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   label: const Text(S.openLink),
                 ),
               ],
-              const SizedBox(height: 20),
-              _authorRow(pin, isOwner),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               _CommentsSection(
                 pin: pin,
                 controller: _comments,
@@ -533,9 +549,68 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
       : RoundIconButton(
           icon: Icons.more_horiz_rounded,
           tooltip: S.postOptions,
-          onPressed: () =>
-              showPinMenu(context, ref, pin, onEdit: _edit, onDelete: _delete),
+          onPressed: () => _openMenu(pin),
         );
+
+  void _openMenu(Pin pin) => showPinMenu(
+    context,
+    ref,
+    pin,
+    index: _index,
+    onEdit: _edit,
+    onDelete: _delete,
+  );
+
+  /// "⋯" in the action row under the image (Pinterest).
+  Widget _moreIcon(Pin pin) => IconButton(
+    key: const Key('pin-more'),
+    tooltip: _deleting ? S.deleting : S.postOptions,
+    onPressed: _deleting ? null : () => _openMenu(pin),
+    icon: _deleting
+        ? const Spinner(size: 18)
+        : const Icon(Icons.more_horiz_rounded, size: 28),
+  );
+
+  /// The big red "Sakla" pill (black "Saklandy" once saved).
+  Widget _saveButton(Pin pin) {
+    final p = AppPalette.of(context);
+    return FilledButton(
+      key: const Key('pin-save'),
+      style: FilledButton.styleFrom(
+        backgroundColor: pin.isSaved ? p.text : AppPalette.accent,
+        foregroundColor: pin.isSaved ? p.bg : Colors.white,
+        minimumSize: const Size(0, 50),
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800),
+      ),
+      onPressed: () => showSaveSheet(context, ref, pin),
+      child: Text(pin.isSaved ? S.saved : S.saveAction),
+    );
+  }
+
+  /// "Başga gyzykly postlar" above the masonry, left-aligned like Pinterest.
+  Widget _moreIdeasHeading() => Center(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 720),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppPalette.gutter,
+          28,
+          AppPalette.gutter,
+          12,
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          child: Text(
+            S.moreIdeas,
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ),
+      ),
+    ),
+  );
 
   Widget _productScaffold(Pin pin, Me? me, bool isOwner) {
     final product = pin.product!;
@@ -554,6 +629,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   constraints: const BoxConstraints(maxWidth: 720),
                   child: ProductGallery(
                     pin: pin,
+                    onIndexChanged: (i) => setState(() => _index = i),
                     overlay: [
                       Positioned(
                         left: 12,
@@ -598,17 +674,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               ),
             ),
             SliverToBoxAdapter(child: _productBody(pin, product, me, isOwner)),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
-                child: Text(
-                  S.similar,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
+            SliverToBoxAdapter(child: _moreIdeasHeading()),
             PinGridSliver(
               controller: _similar,
               empty: const EmptyView(title: S.noSimilar, compact: true),
@@ -816,16 +882,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                     icon: const Icon(Icons.image_search_rounded),
                   ),
                   const Spacer(),
-                  FilledButton(
-                    style: pin.isSaved
-                        ? FilledButton.styleFrom(
-                            backgroundColor: p.text,
-                            foregroundColor: p.bg,
-                          )
-                        : null,
-                    onPressed: () => showSaveSheet(context, ref, pin),
-                    child: Text(pin.isSaved ? S.saved : S.saveAction),
-                  ),
+                  _saveButton(pin),
                 ],
               ),
               if (product.colors.isNotEmpty) ...[
@@ -865,6 +922,21 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               if (product.isSale) ...[
                 const SizedBox(height: 14),
                 const HowToOrderCard(),
+                if (!isOwner) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    key: const Key('contact-seller'),
+                    onPressed: () => showContactSheet(
+                      context,
+                      shop: pin.author,
+                      business: _author?.business,
+                      title: pin.title,
+                      pin: pinPreviewOf(pin),
+                    ),
+                    icon: const Icon(Icons.send_outlined, size: 19),
+                    label: const Text(S.contactSeller),
+                  ),
+                ],
               ],
               if (pin.description.isNotEmpty) ...[
                 gap,
@@ -873,6 +945,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
                   style: const TextStyle(fontSize: 15.5, height: 1.5),
                 ),
               ],
+              if (pin.credit.isNotEmpty) PhotoCredit(pin: pin),
               if (pin.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 Wrap(
@@ -993,6 +1066,7 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
       shop: pin.author,
       business: _author?.business,
       title: pin.title,
+      pin: pinPreviewOf(pin),
     );
     return Container(
       decoration: BoxDecoration(
@@ -1044,14 +1118,14 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
     );
   }
 
-  Widget _authorRow(Pin pin, bool isOwner) {
+  Widget _authorRow(Pin pin, bool isOwner, {bool compact = false}) {
     final p = AppPalette.of(context);
     final author = _author;
     void open() =>
         context.push('/user/${Uri.encodeComponent(pin.author.username)}');
     return Row(
       children: [
-        UserAvatar(user: pin.author, size: 48, onTap: open),
+        UserAvatar(user: pin.author, size: compact ? 36 : 48, onTap: open),
         const SizedBox(width: 12),
         Expanded(
           child: InkWell(
@@ -1386,6 +1460,54 @@ class _CommentsSectionState extends ConsumerState<_CommentsSection> {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// "📷 Surat: A. Author · CC BY-SA 4.0 · Wikimedia Commons" under the
+/// description of imported photos; tap opens the source page ([Pin.link]).
+class PhotoCredit extends StatelessWidget {
+  const PhotoCredit({super.key, required this.pin});
+
+  final Pin pin;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    final uri = Uri.tryParse(pin.link);
+    final canOpen = uri != null && uri.hasScheme && pin.link.isNotEmpty;
+    final text = Text(
+      '${S.credit} ${pin.credit}',
+      key: const Key('pin-credit'),
+      style: TextStyle(
+        color: p.muted,
+        fontSize: 12.5,
+        height: 1.35,
+        decoration: canOpen ? TextDecoration.underline : null,
+        decorationColor: p.muted.withValues(alpha: 0.5),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: canOpen
+          ? Semantics(
+              link: true,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () async {
+                  var ok = false;
+                  try {
+                    ok = await launchUrl(
+                      uri,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } catch (_) {}
+                  if (!ok) showSnack(S.cannotOpenLink, error: true);
+                },
+                child: text,
+              ),
+            )
+          : text,
     );
   }
 }

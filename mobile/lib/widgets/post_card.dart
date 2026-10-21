@@ -14,6 +14,7 @@ import 'caption.dart';
 import 'pin_actions.dart';
 import 'pin_menu.dart';
 import 'save_sheet.dart';
+import 'share_sheet.dart';
 import 'shop_ui.dart';
 import 'video_view.dart';
 
@@ -137,7 +138,8 @@ class _PostCardState extends ConsumerState<PostCard>
                   ),
                   IconButton(
                     tooltip: S.postOptions,
-                    onPressed: () => showPinMenu(context, ref, pin),
+                    onPressed: () =>
+                        showPinMenu(context, ref, pin, index: _page),
                     icon: const Icon(Icons.more_horiz_rounded),
                   ),
                 ],
@@ -304,7 +306,7 @@ class _PostCardState extends ConsumerState<PostCard>
                   ),
                   IconButton(
                     tooltip: S.share,
-                    onPressed: () => sharePin(pin),
+                    onPressed: () => showShareSheet(context, pin),
                     icon: const Icon(Icons.send_outlined),
                   ),
                   if (gallery.length > 1)

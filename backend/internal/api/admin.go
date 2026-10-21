@@ -24,6 +24,7 @@ const (
 	settingAPIURL       = "api_url"
 	settingWebURL       = "web_url"
 	settingRegistration = "registration_open"
+	settingWatermark    = "watermark_uploads"
 )
 
 // AppConfig is the public client configuration (GET /api/config).
@@ -31,6 +32,7 @@ type AppConfig struct {
 	APIURL           string `json:"apiUrl"`
 	WebURL           string `json:"webUrl"`
 	RegistrationOpen bool   `json:"registrationOpen"`
+	WatermarkUploads bool   `json:"watermarkUploads"`
 	UpdatedAt        string `json:"updatedAt"`
 }
 
@@ -50,7 +52,7 @@ func normalizeOrigin(raw string) (string, bool) {
 }
 
 func (h *Handler) appConfig() AppConfig {
-	cfg := AppConfig{RegistrationOpen: true}
+	cfg := AppConfig{RegistrationOpen: true, WatermarkUploads: true}
 	cfg.APIURL, _ = normalizeOrigin(h.cfg.PublicAPIURL)
 	cfg.WebURL, _ = normalizeOrigin(h.cfg.PublicWebURL)
 	var rows []models.Setting
@@ -64,6 +66,8 @@ func (h *Handler) appConfig() AppConfig {
 			cfg.WebURL = r.Value
 		case settingRegistration:
 			cfg.RegistrationOpen = r.Value != "false"
+		case settingWatermark:
+			cfg.WatermarkUploads = r.Value != "false"
 		}
 		if r.UpdatedAt.After(latest) {
 			latest = r.UpdatedAt
@@ -101,6 +105,7 @@ type settingsReq struct {
 	APIURL           *string `json:"apiUrl"`
 	WebURL           *string `json:"webUrl"`
 	RegistrationOpen *bool   `json:"registrationOpen"`
+	WatermarkUploads *bool   `json:"watermarkUploads"`
 }
 
 func (h *Handler) adminUpdateSettings(c fiber.Ctx) error {
@@ -124,9 +129,11 @@ func (h *Handler) adminUpdateSettings(c fiber.Ctx) error {
 		}
 		updates[key] = &v
 	}
-	if req.RegistrationOpen != nil {
-		v := fmt.Sprint(*req.RegistrationOpen)
-		updates[settingRegistration] = &v
+	for key, b := range map[string]*bool{settingRegistration: req.RegistrationOpen, settingWatermark: req.WatermarkUploads} {
+		if b != nil {
+			v := fmt.Sprint(*b)
+			updates[key] = &v
+		}
 	}
 	err := h.db.Transaction(func(tx *gorm.DB) error {
 		for key, v := range updates {

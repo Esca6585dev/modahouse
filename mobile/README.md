@@ -12,6 +12,18 @@ bilen işleýär (`docs/API.md` serediň). Programmanyň ähli ýazgylary türkm
   paýlaşmak we saklamak.
 - **"⋯" menýusy:** Sakla, Paýlaş, Ýükle, Baglanyşygy göçür, Meňzeşini tap,
   Gyzyklanmaýaryn, Şikaýat et.
+- **ModaHouse belgisi bilen ýüklemek:** "Ýükle" suraty `GET /api/pins/:id/download?index=N`
+  arkaly alýar (karuseldäki häzirki surat), şonuň üçin oňa "moda HOUSE" logosy we `@awtor`
+  goýulýar. Android 10+ surat rugsatsyz galereýa (`Pictures/ModaHouse`, MediaStore,
+  `MainActivity.kt`) ýazylýar; köne Android-da ulgamyň paýlaşmak penjiresi açylýar
+  ("Enjama sakla"). Webde faýl ýüklenýär.
+- **Paýlaşmak paneli (Pinterest ýaly):** `GET /api/pins/:id/share-card` beren 1080×1920
+  ModaHouse kartoçkasynyň önünden görkezilişi we düwmeler: Baglanyşygy göçür, WhatsApp
+  (`wa.me`), Telegram (`t.me/share`), Instagram (kartoçka + baglanyşyk buferde),
+  Surat bilen paýlaş (kartoçka + baglanyşyk), Ýükle (kartoçkany sakla), Başga….
+- **Pinterest görnüşi:** masonry-de 16 px tegelek suratlar, aşagynda bir setir at we "⋯",
+  dar aralyklar; post sahypasynda ♡, 💬, paýlaş, ⋯ we uly gyzyl "Sakla", soňra awtor,
+  at we "Başga gyzykly postlar".
 - **Post görnüşleri:** Diňe paýlaşmak, Satlyk, Kärende we Sargyt bilen tikmek. Kärende we
   sargyt üçin "Habarlaş" paneli: jaň, WhatsApp, Telegram, IMO, Instagram.
 - **✨ AI bilen ýaz:** post görnüşine laýyk at, düşündiriş, heşteg we baha setirini hödürleýär.
@@ -20,6 +32,28 @@ bilen işleýär (`docs/API.md` serediň). Programmanyň ähli ýazgylary türkm
 - **Biznes hasaby:** dükan, atelýe, gelin salony, kärende salony, şaý-sep we gözellik salony;
   sosial ulgamlar, telefon, iş wagty, harytlar, sebet, sargytlar we statistika.
 - Wideo we surat story-ler, heşteg sahypalary, halanlarym, gizlenen postlar we bloklamak.
+- **Habarlar (çat, Instagram Direct / Telegram ýaly):** baş sahypanyň ýokarsyndaky kagyz
+  uçar nyşany (okalmadyk habarlaryň sany bilen), profillerde "Habar ýaz", "Habarlaş"
+  panelinde birinji "ModaHouse-da ýaz" (post we taýýar habar bilen) we paýlaşmak
+  panelinde "Habar bilen ugrat" (soňky söhbetdeşlikler we gözleg). Söhbetdeşlikde surat
+  (doly ekranda ulaltmak we saklamak), faýl (PDF, Word, Excel, ZIP, ses…), paýlaşylan
+  post kartoçkasy, "ýazýar…", ✓ iberildi / ✓✓ okaldy, gün bölüjileri, köne habarlary
+  ýokary aýlap ýüklemek, "Täze habarlar" düwmesi, ugradylmadyk habary
+  "Gaýtadan ugrat", uzak basyp "Göçür" / "Poz".
+- **Hakyky wagtda täzelenmeler:** programma girilen wagty `GET /api/events`
+  (Server-Sent Events) akymyny açyk saklaýar: täze habarlar, okaldy bellikleri,
+  "ýazýar…" we bildirişler (jaňjagaz belgisi) derrew görünýär. Baglanyşyk kesilse
+  1 s → 30 s aralykda gaýtadan birikýär, programma açylanda we serweriň salgysy
+  üýtgände derrew birikýär we sanawlary täzeden alýar.
+- **Telefon bildirişleri:** programma fonda işläp durka (ýa-da başga sahypa açyk
+  bolsa) täze habar üçin ýerli bildiriş (`flutter_local_notifications`) görkezilýär,
+  basylanda şol söhbetdeşlik açylýar. Android 13+ rugsady programma açylanda däl,
+  "Habarlar" sahypasynda sypaýy sorag bilen soralýar. **Üns beriň:** programma
+  doly ýapylanda (prosess öçende) bildiriş gelmegi üçin Firebase Cloud Messaging
+  (push) gerek, ol entek sazlanmadyk.
+- **Surat awtorlygy:** açyk ygtyýarnamaly import edilen suratlarda düşündirişiň
+  aşagynda "📷 Surat: … · CC BY-SA 4.0 · Wikimedia Commons" görkezilýär, basylanda
+  çeşme sahypasy açylýar.
 
 ## Talaplar
 
@@ -122,12 +156,17 @@ flutter build appbundle --release --dart-define=API_URL=https://api.example.tm
   çäklendiriň).
 - Programmanyň ID-si `tm.modahouse.app`, ady `ModaHouse`, iň pes Android
   wersiýasy API 24 (Android 7.0).
+- `flutter_local_notifications` üçin `android/app/build.gradle.kts` içinde core library
+  desugaring açyk (`desugar_jdk_libs`), `AndroidManifest.xml`-da `POST_NOTIFICATIONS`
+  rugsady bar. Bildirişiň kiçi nyşany `res/drawable/ic_stat_notification.xml`,
+  R8 ony aýyrmaz ýaly `res/raw/keep.xml` goşuldy.
 
 ## Barlaglar
 
 ```bash
 flutter analyze   # ýalňyşlyk we duýduryş bolmaly däl
-flutter test      # JSON modelleri (v1–v4), API ýalňyşlyklary, serweriň salgysy, kartoçkalar, post, ⋯ menýu, çarçuwa, giriş formasy, Serwer sahypasy
+flutter test      # JSON modelleri (v1–v6), API ýalňyşlyklary, serweriň salgysy, kartoçkalar, post, ⋯ menýu, çarçuwa, giriş formasy, Serwer sahypasy,
+                  # SSE parseri we gaýtadan birikmek, çat modelleri, clientId boýunça optimistik habarlar, çat widgetleri
 ```
 
 Web görnüşinde barlamak hem mümkin (meselem, brauzer bilen awtomatik synag üçin):
@@ -164,6 +203,7 @@ mobile/
 │   │   ├── strings.dart       # ähli türkmençe ýazgylar şu ýerde
 │   │   └── material_tk.dart   # Flutter-iň öz düwmeleri üçin türkmençe ýazgylar
 │   ├── core/                  # Dio müşderisi, ApiException, serweri saýlamak (server_config),
+│   │                          # SSE parseri we birikme (sse.dart, sse_transport/), ýerli bildirişler,
 │   │                          # tema, format, SnackBar,
 │   │                          # ýükläp almak we wideo maglumatlary (platforma boýunça)
 │   ├── models/                # UserBrief, Profile, Me, Pin, Board, Comment,
@@ -173,7 +213,8 @@ mobile/
 │   ├── data/                  # repozitoriýalar: auth, users, pins, boards,
 │   │                          # comments, notifications, business, cart,
 │   │                          # orders, reviews, stories, ai
-│   ├── state/                 # Riverpod: giriş ýagdaýy, bildiriş sanawy,
+│   ├── state/                 # Riverpod: giriş ýagdaýy, bildiriş sanawy, hakyky wagt
+│   │                          # (realtime.dart), çat sanawy we söhbetdeşlik (chat_*.dart, conversation.dart),
 │   │                          # sahypalaýyn ýükleýji, pin üýtgeşmeleri,
 │   │                          # ýatda saklanýan sazlamalar (lenta görnüşi)
 │   ├── widgets/               # pin kartoçkasy, Instagram posty, masonry tor,
@@ -197,7 +238,8 @@ mobile/
 `flutter_secure_storage` (JWT saklamak), `cached_network_image` we `flutter_svg`
 (suratlar; synag suratlary SVG), `flutter_staggered_grid_view` (masonry tor),
 `image_picker` (galereýa we kamera), `share_plus` (paýlaşmak), `url_launcher`
-(baglanyşyklar, jaň we habarlaşmak), `timeago` (türkmençe wagt: "3 minut öň", "dün"),
+(baglanyşyklar, jaň, habarlaşmak we çat faýllaryny açmak), `file_picker` (çatda
+resminamalar), `flutter_local_notifications` (täze habarlar barada bildiriş), `timeago` (türkmençe wagt: "3 minut öň", "dün"),
 `video_player` (reels we wideo postlar), `shared_preferences` (lenta görnüşini we serweriň salgysyny ýatda saklamak).
 
 Üns beriň: synag reels-leri WebM formatynda. Android-de işleýär, iOS üçin MP4 gerek bolar.

@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api_client.dart';
@@ -7,6 +10,7 @@ import '../data/auth_repository.dart';
 import '../data/boards_repository.dart';
 import '../data/business_repository.dart';
 import '../data/cart_repository.dart';
+import '../data/chats_repository.dart';
 import '../data/comments_repository.dart';
 import '../data/notifications_repository.dart';
 import '../data/orders_repository.dart';
@@ -72,6 +76,9 @@ final aiRepositoryProvider = Provider(
 final storiesRepositoryProvider = Provider(
   (ref) => StoriesRepository(ref.watch(apiClientProvider)),
 );
+final chatsRepositoryProvider = Provider(
+  (ref) => ChatsRepository(ref.watch(apiClientProvider)),
+);
 
 /// Categories rarely change: load once and keep.
 final categoriesProvider = FutureProvider<List<Category>>((ref) {
@@ -93,3 +100,36 @@ final businessCategoriesProvider = FutureProvider<List<Category>>((ref) async {
 
 /// Set to false in widget tests so no network images are requested.
 final networkImagesProvider = Provider<bool>((ref) => true);
+
+/// A file fetched from the API (watermarked download, share card).
+class FetchedMedia {
+  const FetchedMedia(this.bytes, this.mimeType);
+
+  final Uint8List bytes;
+  final String mimeType;
+}
+
+/// Fetches binary media by absolute URL (through the shared client, so the
+/// token goes along). Overridden in widget tests.
+typedef MediaLoader = Future<FetchedMedia> Function(String url);
+
+final mediaLoaderProvider = Provider<MediaLoader>((ref) {
+  final client = ref.watch(apiClientProvider);
+  return (url) async {
+    final res = await client.dio.get<List<int>>(
+      url,
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: {'Accept': '*/*'},
+        receiveTimeout: const Duration(seconds: 60),
+      ),
+    );
+    final bytes = res.data ?? const <int>[];
+    if (bytes.isEmpty) throw StateError('empty response');
+    final type = (res.headers.value('content-type') ?? 'image/jpeg')
+        .split(';')
+        .first
+        .trim();
+    return FetchedMedia(Uint8List.fromList(bytes), type);
+  };
+});

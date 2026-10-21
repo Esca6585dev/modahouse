@@ -11,6 +11,7 @@ import Popover from "@/components/Popover";
 import { Price } from "@/components/Price";
 import { RichText } from "@/components/RichText";
 import { BoardPickerBody } from "@/components/SavePicker";
+import { useShare } from "@/components/ShareSheet";
 import StoryAvatar from "@/components/StoryAvatar";
 import { useStories } from "@/components/StoryViewer";
 import { useToast } from "@/components/Toast";
@@ -19,7 +20,6 @@ import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { compact } from "@/lib/format";
 import { useLoginHref, usePaged } from "@/lib/hooks";
-import { shareUrl } from "@/lib/share";
 import type { Pin } from "@/lib/types";
 
 function Reel({ pin: initial, active }: { pin: Pin; active: boolean }) {
@@ -38,6 +38,7 @@ function Reel({ pin: initial, active }: { pin: Pin; active: boolean }) {
   const router = useRouter();
   const loginHref = useLoginHref();
   const toast = useToast();
+  const openShare = useShare();
   const stories = useStories();
   const media = pin.images.find((m) => m.type === "video") ?? pin.images[0];
   const [following, setFollowing] = useState<boolean | null>(null);
@@ -149,10 +150,7 @@ function Reel({ pin: initial, active }: { pin: Pin; active: boolean }) {
           <button
             className="rail-btn"
             aria-label="Paýlaş"
-            onClick={async () => {
-              const msg = await shareUrl(`/pin/${pin.id}`, pin.title);
-              if (msg) toast(msg);
-            }}
+            onClick={() => openShare(pin)}
           >
             <SendIcon size={26} /><span>Paýlaş</span>
           </button>

@@ -9,6 +9,7 @@ import 'models/models.dart';
 import 'screens/board_screen.dart';
 import 'screens/business_screens.dart';
 import 'screens/cart_screens.dart';
+import 'screens/chat_screens.dart';
 import 'screens/create_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -30,6 +31,7 @@ import 'screens/user_list_screen.dart';
 import 'screens/visual_search_screen.dart';
 import 'state/auth.dart';
 import 'widgets/cart_flow.dart';
+import 'widgets/chat_launch.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 
@@ -108,6 +110,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/blocked',
         redirect: requireLogin,
         builder: (_, _) => const BlockedUsersScreen(),
+      ),
+      GoRoute(
+        path: '/chats',
+        redirect: requireLogin,
+        builder: (_, _) => const ChatsScreen(),
+      ),
+      GoRoute(
+        path: '/chats/:id',
+        redirect: requireLogin,
+        builder: (_, s) => ConversationScreen(
+          key: ValueKey('chat-${s.pathParameters['id']}'),
+          chatId: _intParam(s, 'id') ?? 0,
+          launch: s.extra is ChatLaunch ? s.extra! as ChatLaunch : null,
+        ),
       ),
       GoRoute(
         path: '/notifications',

@@ -23,6 +23,7 @@ import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/board_card.dart';
 import '../widgets/board_form.dart';
+import '../widgets/chat_launch.dart';
 import '../widgets/contact_sheet.dart';
 import '../widgets/follow_button.dart';
 import '../widgets/pin_grid.dart';
@@ -619,15 +620,14 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
                     },
                   ),
                 ),
-                if (b != null && b.phone.isNotEmpty) ...[
+                if (!profile.isBlocked) ...[
                   const SizedBox(width: 8),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: ElevatedButton(
+                      key: const Key('profile-message'),
                       style: buttonStyle,
-                      onPressed: () =>
-                          launchExternal(telUri(b.phone), error: S.cannotCall),
-                      icon: const Icon(Icons.call_outlined, size: 18),
-                      label: const Text(S.call),
+                      onPressed: () => openChatWith(context, profile.username),
+                      child: const FittedBox(child: Text(S.writeMessage)),
                     ),
                   ),
                 ],

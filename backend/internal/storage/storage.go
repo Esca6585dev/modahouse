@@ -8,8 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"image/draw"
 	_ "image/gif"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 	"io"
 	"mime/multipart"
@@ -98,14 +99,15 @@ type Storage struct {
 }
 
 type Saved struct {
-	URL    string
-	Width  int
-	Height int
-	Color  string
+	Watermarked bool
+	URL         string
+	Width       int
+	Height      int
+	Color       string
 }
 
 func New(dir string) (*Storage, error) {
-	for _, sub := range []string{"pins", "avatars", "seed", "stories"} {
+	for _, sub := range []string{"pins", "avatars", "seed", "stories", PrivateChat} {
 		if err := os.MkdirAll(filepath.Join(dir, sub), 0o755); err != nil {
 			return nil, err
 		}
@@ -116,6 +118,15 @@ func New(dir string) (*Storage, error) {
 // SaveImage validates the file by its content (not its name), stores it under
 // sub/ and returns its public URL and dimensions.
 func (s *Storage) SaveImage(fh *multipart.FileHeader, sub string) (*Saved, error) {
+	return s.SaveImageMarked(fh, sub, nil)
+}
+
+// Marker draws onto an uploaded image (e.g. the ModaHouse watermark).
+type Marker func(image.Image) image.Image
+
+// SaveImageMarked is SaveImage with an optional marker. A marked image is stored
+// as JPEG (transparency flattened onto white); animated GIFs are kept as they are.
+func (s *Storage) SaveImageMarked(fh *multipart.FileHeader, sub string, mark Marker) (*Saved, error) {
 	f, err := fh.Open()
 	if err != nil {
 		return nil, err
@@ -125,6 +136,11 @@ func (s *Storage) SaveImage(fh *multipart.FileHeader, sub string) (*Saved, error
 	if err != nil {
 		return nil, err
 	}
+	return s.SaveImageData(data, sub, mark)
+}
+
+// SaveImageData stores image bytes (see SaveImageMarked).
+func (s *Storage) SaveImageData(data []byte, sub string, mark Marker) (*Saved, error) {
 	ext, ok := extByType[http.DetectContentType(data)]
 	if !ok {
 		return nil, ErrUnsupported
@@ -142,12 +158,25 @@ func (s *Storage) SaveImage(fh *multipart.FileHeader, sub string) (*Saved, error
 		return nil, ErrUnsupported
 	}
 	b := img.Bounds()
+	avg := averageColor(img) // of the original, so the placeholder matches the photo
+
+	marked := false
+	if mark != nil && ext != ".gif" {
+		flat := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+		draw.Draw(flat, flat.Bounds(), image.White, image.Point{}, draw.Src)
+		draw.Draw(flat, flat.Bounds(), img, b.Min, draw.Over)
+		var buf bytes.Buffer
+		if err := jpeg.Encode(&buf, mark(flat), &jpeg.Options{Quality: 90}); err != nil {
+			return nil, err
+		}
+		data, ext, marked = buf.Bytes(), ".jpg", true
+	}
 
 	name := randomName() + ext
 	if err := os.WriteFile(filepath.Join(s.Dir, sub, name), data, 0o644); err != nil {
 		return nil, err
 	}
-	return &Saved{URL: "/uploads/" + sub + "/" + name, Width: b.Dx(), Height: b.Dy(), Color: averageColor(img)}, nil
+	return &Saved{URL: "/uploads/" + sub + "/" + name, Width: b.Dx(), Height: b.Dy(), Color: avg, Watermarked: marked}, nil
 }
 
 // WriteFile stores raw bytes (used by the seeder for generated SVGs).
@@ -168,6 +197,46 @@ func (s *Storage) Read(url string) ([]byte, error) {
 }
 
 // Remove deletes a file previously returned as a /uploads/ URL. Unknown URLs are ignored.
+// cacheDir holds derived files (rasterised seed art) inside the uploads volume,
+// so it is writable wherever uploads are.
+func (s *Storage) cacheDir() string { return filepath.Join(s.Dir, ".cache") }
+
+// ReadCache returns a cached derived file by key (a plain file name).
+func (s *Storage) ReadCache(key string) ([]byte, error) {
+	if strings.ContainsAny(key, `/\`) {
+		return nil, os.ErrNotExist
+	}
+	return os.ReadFile(filepath.Join(s.cacheDir(), key))
+}
+
+// WriteCache stores a derived file; errors are ignored (the cache is best effort).
+func (s *Storage) WriteCache(key string, data []byte) {
+	if strings.ContainsAny(key, `/\`) {
+		return
+	}
+	dir := s.cacheDir()
+	if os.MkdirAll(dir, 0o755) != nil {
+		return
+	}
+	tmp := filepath.Join(dir, key+".tmp"+randomName())
+	if os.WriteFile(tmp, data, 0o644) == nil {
+		_ = os.Rename(tmp, filepath.Join(dir, key))
+	}
+}
+
+// Path maps an /uploads/... URL to its file path.
+func (s *Storage) Path(url string) (string, bool) {
+	rel, ok := strings.CutPrefix(url, "/uploads/")
+	if !ok || rel == "" || strings.Contains(rel, "..") {
+		return "", false
+	}
+	path := filepath.Join(s.Dir, filepath.FromSlash(rel))
+	if _, err := os.Stat(path); err != nil {
+		return "", false
+	}
+	return path, true
+}
+
 func (s *Storage) Remove(url string) {
 	rel, ok := strings.CutPrefix(url, "/uploads/")
 	if !ok || strings.Contains(rel, "..") {
@@ -197,4 +266,36 @@ func averageColor(img image.Image) string {
 		return "#e9e9e9"
 	}
 	return fmt.Sprintf("#%02x%02x%02x", r/n, g/n, bl/n)
+}
+
+// PrivateChat holds chat attachments. Directories starting with "." are never
+// served by the /uploads route; these files go out through signed links only.
+const PrivateChat = ".private/chat"
+
+// SavePrivate stores data under sub with a random name and the given extension.
+func (s *Storage) SavePrivate(sub string, data []byte, ext string) (string, error) {
+	name := randomName() + ext
+	if err := os.WriteFile(filepath.Join(s.Dir, filepath.FromSlash(sub), name), data, 0o600); err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+// PrivatePath returns the path of a private file; name must be a plain file name.
+func (s *Storage) PrivatePath(sub, name string) (string, bool) {
+	if name == "" || strings.ContainsAny(name, `/\`) || strings.HasPrefix(name, ".") {
+		return "", false
+	}
+	path := filepath.Join(s.Dir, filepath.FromSlash(sub), name)
+	if _, err := os.Stat(path); err != nil {
+		return "", false
+	}
+	return path, true
+}
+
+// RemovePrivate deletes a private file (best effort).
+func (s *Storage) RemovePrivate(sub, name string) {
+	if path, ok := s.PrivatePath(sub, name); ok {
+		_ = os.Remove(path)
+	}
 }

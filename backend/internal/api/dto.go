@@ -131,6 +131,7 @@ type PinDTO struct {
 	Product        *ProductDTO   `json:"product"`
 	LatestComments []CommentDTO  `json:"latestComments,omitempty"`
 	MediaType      string        `json:"mediaType"` // image or video (the cover)
+	Credit         string        `json:"credit"`    // photo credit of imported photos
 	ViewsCount     int           `json:"viewsCount"`
 	OrdersCount    int           `json:"ordersCount"`
 	Rating         float64       `json:"rating"`

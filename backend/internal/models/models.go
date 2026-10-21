@@ -50,6 +50,7 @@ type Pin struct {
 	ViewsCount   int
 	OrdersCount  int
 	HasVideo     bool       `gorm:"index"`
+	Credit       string     `gorm:"size:300"` // photo credit of imported, openly licensed photos
 	Images       []PinImage `gorm:"constraint:OnDelete:CASCADE"`
 	CreatedAt    time.Time  `gorm:"index"`
 	UpdatedAt    time.Time
@@ -157,6 +158,8 @@ type PinImage struct {
 	Height    int
 	Color     string `gorm:"size:9"`
 	Position  int
+	// Watermarked: the stored file already carries the ModaHouse logo.
+	Watermarked bool
 }
 
 // PinView records one view per viewer (user id or hashed IP) per day.
@@ -291,7 +294,7 @@ type PinFeature struct {
 func All() []any {
 	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{},
 		&Business{}, &PinImage{}, &PinView{}, &CartItem{}, &Order{}, &OrderItem{}, &Review{}, &Story{}, &StoryView{},
-		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}}
+		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}, &Chat{}, &Message{}}
 }
 
 // Setting is an admin-editable key/value pair (see api.AppConfig).
@@ -299,4 +302,40 @@ type Setting struct {
 	Key       string `gorm:"primaryKey;size:50"`
 	Value     string `gorm:"type:text"`
 	UpdatedAt time.Time
+}
+
+// Chat is a one-to-one conversation. UserAID < UserBID, so a pair has one chat.
+type Chat struct {
+	ID        uint `gorm:"primaryKey"`
+	UserAID   uint `gorm:"uniqueIndex:idx_chat_pair;not null"`
+	UserBID   uint `gorm:"uniqueIndex:idx_chat_pair;index;not null"`
+	UserA     User `gorm:"foreignKey:UserAID;constraint:OnDelete:CASCADE"`
+	UserB     User `gorm:"foreignKey:UserBID;constraint:OnDelete:CASCADE"`
+	ReadA     uint // last message id read by UserA
+	ReadB     uint // last message id read by UserB
+	LastID    uint // last message id (0 = no messages yet)
+	CreatedAt time.Time
+	UpdatedAt time.Time `gorm:"index"`
+}
+
+// Message is one chat message: text, an attachment (private file) or a shared pin.
+type Message struct {
+	ID        uint   `gorm:"primaryKey"`
+	ChatID    uint   `gorm:"index;not null"`
+	Chat      Chat   `gorm:"constraint:OnDelete:CASCADE"`
+	SenderID  uint   `gorm:"index;not null"`
+	Sender    User   `gorm:"constraint:OnDelete:CASCADE"`
+	Kind      string `gorm:"size:10;not null"` // text, image, file, pin
+	Text      string `gorm:"type:text"`
+	File      string `gorm:"size:80"` // private file name under uploads/.private/chat
+	FileName  string `gorm:"size:200"`
+	FileMime  string `gorm:"size:100"`
+	FileSize  int64
+	Width     int
+	Height    int
+	PinID     *uint  `gorm:"index"`
+	Pin       *Pin   `gorm:"constraint:OnDelete:SET NULL"`
+	ClientID  string `gorm:"size:64"`
+	Deleted   bool
+	CreatedAt time.Time
 }

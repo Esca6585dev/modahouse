@@ -26,9 +26,13 @@ class ProductGallery extends StatefulWidget {
     required this.pin,
     this.overlay = const [],
     this.height,
+    this.onIndexChanged,
   });
 
   final Pin pin;
+
+  /// Called with the carousel item now on screen.
+  final ValueChanged<int>? onIndexChanged;
 
   /// Buttons placed over the image (back, like, menu).
   final List<Widget> overlay;
@@ -71,7 +75,10 @@ class _ProductGalleryState extends State<ProductGallery> {
               PageView.builder(
                 controller: _pages,
                 itemCount: images.length,
-                onPageChanged: (i) => setState(() => _index = i),
+                onPageChanged: (i) {
+                  setState(() => _index = i);
+                  widget.onIndexChanged?.call(i);
+                },
                 itemBuilder: (context, i) => images[i].isVideo
                     ? AutoVideo(
                         url: images[i].url,

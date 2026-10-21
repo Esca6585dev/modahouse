@@ -28,7 +28,33 @@ var users = []demoUser{
 
 // Run seeds an empty database and adds later demo layers (shops, the fashion
 // community) once, so databases created by older versions get them too.
+// DemoRemovedKey is the settings key recorded when an admin removes the demo
+// content; the seeder then never runs again.
+const DemoRemovedKey = "demo_removed"
+
+// DemoUsernames lists every account the seeder creates.
+func DemoUsernames() []string {
+	var out []string
+	for _, u := range users {
+		out = append(out, u.username)
+	}
+	for _, b := range businesses {
+		out = append(out, b.username)
+	}
+	for _, c := range creators {
+		out = append(out, c.username)
+	}
+	for _, eb := range extraBusinesses {
+		out = append(out, eb.username)
+	}
+	return out
+}
+
 func Run(db *gorm.DB, store *storage.Storage) error {
+	var removed models.Setting
+	if db.Where("key = ?", DemoRemovedKey).First(&removed).Error == nil && removed.Value == "true" {
+		return nil
+	}
 	var n int64
 	db.Model(&models.User{}).Count(&n)
 	if n == 0 {

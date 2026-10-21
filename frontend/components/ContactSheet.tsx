@@ -1,20 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { phoneDigits } from "@/lib/format";
 import type { Business, Pin } from "@/lib/types";
+import { useChat } from "./chat/ChatProvider";
 import {
-  CheckIcon, CopyIcon, GlobeIcon, ImoIcon, InstagramIcon, PhoneIcon, TelegramIcon, TiktokIcon, WhatsappIcon, YoutubeIcon,
+  CheckIcon, ChevronRightIcon, CopyIcon, GlobeIcon, ImoIcon, InstagramIcon, PhoneIcon, SendIcon, TelegramIcon, TiktokIcon, WhatsappIcon,
+  YoutubeIcon,
 } from "./Icons";
 import Modal from "./Modal";
 import { useToast } from "./Toast";
 
-export function contactMessage(pin: Pin): string {
-  const url = typeof window !== "undefined" ? new URL(`/pin/${pin.id}`, window.location.origin).toString() : `/pin/${pin.id}`;
-  const want = pin.product?.listingType === "rent"
+function wantText(pin: Pin): string {
+  return pin.product?.listingType === "rent"
     ? "Kärendä almak isleýärin."
     : pin.product?.listingType === "custom" ? "Şuňa meňzeşini tikdirmek isleýärin." : "Satyn almak isleýärin.";
-  return `Salam! ModaHouse-da «${pin.title}» gördüm. ${want} Maglumat berip bilersiňizmi? ${url}`;
+}
+
+export function contactMessage(pin: Pin): string {
+  const url = typeof window !== "undefined" ? new URL(`/pin/${pin.id}`, window.location.origin).toString() : `/pin/${pin.id}`;
+  return `Salam! ModaHouse-da «${pin.title}» gördüm. ${wantText(pin)} Maglumat berip bilersiňizmi? ${url}`;
+}
+
+/** First line of an in-app chat about a post (the post itself goes along as a card). */
+export function chatMessage(pin: Pin): string {
+  return `Salam! ${wantText(pin)} Maglumat berip bilersiňizmi?`;
 }
 
 const handle = (h: string) => h.trim().replace(/^@/, "");
@@ -43,7 +54,11 @@ export function socialLinks(b: Business, message?: string): SocialLink[] {
 
 export default function ContactSheet({ pin, business, onClose }: { pin: Pin; business: Business | null; onClose: () => void }) {
   const toast = useToast();
+  const { user } = useAuth();
+  const { openChat } = useChat();
   const [copied, setCopied] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const canChat = user?.id !== pin.author.id;
   const message = contactMessage(pin);
   const links = business ? socialLinks(business, message) : [];
   const title = pin.product?.listingType === "rent" ? "Kärendä almak" : pin.product?.listingType === "custom" ? "Tikdirmek üçin sargyt" : "Dükan bilen habarlaş";
@@ -62,8 +77,27 @@ export default function ContactSheet({ pin, business, onClose }: { pin: Pin; bus
     <Modal title={title} onClose={onClose}>
       <div className="contact-sheet">
         <p className="muted small">{pin.author.name} bilen göni habarlaşyň. Töleg we eltip bermek dükan bilen ylalaşylýar.</p>
+        {canChat && (
+          <button
+            type="button"
+            className="contact-row c-modahouse"
+            disabled={opening}
+            onClick={async () => {
+              setOpening(true);
+              try {
+                await openChat(pin.author.username, { pin: pin.id, text: chatMessage(pin) });
+              } finally {
+                setOpening(false);
+              }
+            }}
+          >
+            <span className="contact-icon">{opening ? <span className="spinner light" /> : <SendIcon size={20} />}</span>
+            <span className="contact-text"><strong>ModaHouse-da ýaz</strong><span>Post bilen bilelikde, programmanyň içinde</span></span>
+            <ChevronRightIcon size={18} />
+          </button>
+        )}
         {links.length === 0 ? (
-          <p className="form-error">Dükanyň aragatnaşyk maglumaty ýok.</p>
+          !canChat && <p className="form-error">Dükanyň aragatnaşyk maglumaty ýok.</p>
         ) : (
           <ul className="contact-list">
             {links.map((l) => (

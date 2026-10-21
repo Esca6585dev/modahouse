@@ -65,16 +65,19 @@ Widget _app(Widget child, {List overrides = const []}) => ProviderScope(
 
 void main() {
   group('PinCard', () {
-    testWidgets('shows title, author and keeps the image aspect ratio', (
+    testWidgets('Pinterest tile: title and ⋯, keeps the image aspect ratio', (
       tester,
     ) async {
       await tester.pumpWidget(
         _app(SizedBox(width: 180, child: PinCard(pin: _pin))),
       );
       expect(find.text('Güýz üçin gatlakly geýim'), findsOneWidget);
-      expect(find.text('Aýlar Studio'), findsOneWidget);
-      // Letter avatar (no avatarUrl).
-      expect(find.text('A'), findsOneWidget);
+      expect(find.byTooltip(S.postOptions), findsOneWidget);
+      // Like Pinterest, no author row under plain posts.
+      expect(find.text('Aýlar Studio'), findsNothing);
+      // 16 px rounded image.
+      final clip = tester.widget<ClipRRect>(find.byType(ClipRRect).first);
+      expect(clip.borderRadius, BorderRadius.circular(16));
       final ratio = tester.widget<AspectRatio>(find.byType(AspectRatio));
       expect(ratio.aspectRatio, closeTo(600 / 840, 1e-9));
       // Placeholder uses the pin color.
@@ -82,8 +85,8 @@ void main() {
       expect(boxes.any((b) => b.color.toARGB32() == 0xFFF2D0B6), isTrue);
     });
 
-    testWidgets('tap, long-press and author tap callbacks', (tester) async {
-      var taps = 0, longPresses = 0, authorTaps = 0;
+    testWidgets('tap and long-press callbacks', (tester) async {
+      var taps = 0, longPresses = 0;
       await tester.pumpWidget(
         _app(
           SizedBox(
@@ -92,18 +95,15 @@ void main() {
               pin: _pin,
               onTap: () => taps++,
               onLongPress: () => longPresses++,
-              onAuthorTap: () => authorTaps++,
             ),
           ),
         ),
       );
       await tester.tap(find.byType(AspectRatio));
       await tester.longPress(find.byType(AspectRatio));
-      await tester.tap(find.text('Aýlar Studio'));
       await tester.pump();
       expect(taps, 1);
       expect(longPresses, 1);
-      expect(authorTaps, 1);
     });
   });
 

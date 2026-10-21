@@ -13,6 +13,7 @@ type appConfig struct {
 	APIURL           string `json:"apiUrl"`
 	WebURL           string `json:"webUrl"`
 	RegistrationOpen bool   `json:"registrationOpen"`
+	WatermarkUploads bool   `json:"watermarkUploads"`
 	UpdatedAt        string `json:"updatedAt"`
 }
 

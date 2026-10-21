@@ -28,6 +28,8 @@ type Config struct {
 	// Defaults for GET /api/config until the admin sets them in the panel.
 	PublicAPIURL string
 	PublicWebURL string
+	// Wikimedia Commons API used by the admin photo import.
+	CommonsAPIURL string
 }
 
 func Load() Config {
@@ -48,6 +50,7 @@ func Load() Config {
 		AdminPassword:  os.Getenv("ADMIN_PASSWORD"),
 		PublicAPIURL:   env("PUBLIC_API_URL", ""),
 		PublicWebURL:   env("PUBLIC_WEB_URL", ""),
+		CommonsAPIURL:  env("COMMONS_API_URL", "https://commons.wikimedia.org/w/api.php"),
 	}
 }
 

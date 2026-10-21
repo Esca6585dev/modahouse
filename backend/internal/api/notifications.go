@@ -41,6 +41,16 @@ func (h *Handler) notifyOrder(recipient, actor uint, kind string, o models.Order
 func (h *Handler) createNotification(n models.Notification) {
 	if err := h.db.Create(&n).Error; err != nil {
 		log.Printf("notify: %v", err)
+		return
+	}
+	if !h.hub.online(n.UserID) {
+		return
+	}
+	// Push it live to the recipient's open apps.
+	if h.db.Preload("Actor").Preload("Pin").First(&n, n.ID).Error == nil {
+		var unread int64
+		h.db.Model(&models.Notification{}).Where("user_id = ? AND read = ?", n.UserID, false).Count(&unread)
+		h.hub.publish(n.UserID, "notification", fiber.Map{"notification": h.notificationDTO(n), "unreadCount": unread})
 	}
 }
 
@@ -65,27 +75,31 @@ func (h *Handler) listNotifications(c fiber.Ctx) error {
 	list, more := trimPage(list, limit)
 	items := make([]NotificationDTO, len(list))
 	for i, n := range list {
-		d := NotificationDTO{ID: n.ID, Type: n.Type, Read: n.Read, Actor: brief(n.Actor), CreatedAt: n.CreatedAt}
-		if n.Pin != nil {
-			d.Pin = &PinBrief{ID: n.Pin.ID, Title: n.Pin.Title, ImageURL: n.Pin.ImageURL}
-		}
-		if n.OrderID != nil {
-			var o models.Order
-			if h.db.Select("id", "status", "total", "buyer_id").First(&o, *n.OrderID).Error == nil {
-				status := o.Status
-				if n.OrderStatus != "" {
-					status = n.OrderStatus // what happened at that moment, not the current state
-				}
-				role := "seller"
-				if o.BuyerID == n.UserID {
-					role = "buyer"
-				}
-				d.Order = &OrderBrief{ID: o.ID, Status: status, CurrentStatus: o.Status, Total: o.Total, Role: role}
-			}
-		}
-		items[i] = d
+		items[i] = h.notificationDTO(n)
 	}
 	return c.JSON(Page[NotificationDTO]{Items: items, Page: page, Limit: limit, HasMore: more})
+}
+
+func (h *Handler) notificationDTO(n models.Notification) NotificationDTO {
+	d := NotificationDTO{ID: n.ID, Type: n.Type, Read: n.Read, Actor: brief(n.Actor), CreatedAt: n.CreatedAt}
+	if n.Pin != nil {
+		d.Pin = &PinBrief{ID: n.Pin.ID, Title: n.Pin.Title, ImageURL: n.Pin.ImageURL}
+	}
+	if n.OrderID != nil {
+		var o models.Order
+		if h.db.Select("id", "status", "total", "buyer_id").First(&o, *n.OrderID).Error == nil {
+			status := o.Status
+			if n.OrderStatus != "" {
+				status = n.OrderStatus // what happened at that moment, not the current state
+			}
+			role := "seller"
+			if o.BuyerID == n.UserID {
+				role = "buyer"
+			}
+			d.Order = &OrderBrief{ID: o.ID, Status: status, CurrentStatus: o.Status, Total: o.Total, Role: role}
+		}
+	}
+	return d
 }
 
 func (h *Handler) unreadCount(c fiber.Ctx) error {

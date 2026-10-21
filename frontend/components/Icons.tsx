@@ -91,3 +91,5 @@ export const TiktokIcon = ({ size = 18 }: P) => (<svg {...base(size)}><path d="M
 export const YoutubeIcon = ({ size = 18 }: P) => (<svg {...base(size)}><rect x="2.5" y="5.5" width="19" height="13" rx="4" /><path d="m10 9.5 5 2.5-5 2.5Z" fill="currentColor" /></svg>);
 export const ImoIcon = ({ size = 18 }: P) => (<svg {...base(size)}><path d="M20 12a8 8 0 0 1-11.7 7.1L4 20l1-4A8 8 0 1 1 20 12Z" /><path d="M9 10v4M12 10v4M15 10v4" /></svg>);
 export const RulerIcon = ({ size = 20 }: P) => (<svg {...base(size)}><path d="m3 17 14-14 4 4L7 21Z" /><path d="m7 13 2 2M10 10l2 2M13 7l2 2" /></svg>);
+export const ImageIcon = ({ size = 18 }: P) => (<svg {...base(size)}><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="m21 15-4.5-4.5L6 21" /></svg>);
+export const ImagesIcon = ({ size = 18 }: P) => (<svg {...base(size)}><rect x="7" y="3" width="14" height="14" rx="2.5" /><path d="M17 21H5a2 2 0 0 1-2-2V7" /><circle cx="12" cy="8" r="1.6" /><path d="m21 13-3.5-3.5L10 17" /></svg>);

@@ -103,7 +103,7 @@ func (h *Handler) enrichPins(pins []models.Pin, viewer uint) []PinDTO {
 			Tags: splitTags(p.Tags), ImageURL: p.ImageURL, Width: p.Width, Height: p.Height, Color: p.Color,
 			Author: brief(p.User), LikesCount: likes[p.ID], CommentsCount: comments[p.ID],
 			Liked: liked[p.ID], SavedBoardIDs: boards, CreatedAt: p.CreatedAt,
-			Images: imgs, MediaType: mediaType, Product: productDTO(p, now), ViewsCount: p.ViewsCount, OrdersCount: p.OrdersCount,
+			Images: imgs, MediaType: mediaType, Credit: p.Credit, Product: productDTO(p, now), ViewsCount: p.ViewsCount, OrdersCount: p.OrdersCount,
 			Rating: round1(ratings[p.ID].Avg), ReviewsCount: ratings[p.ID].N,
 		}
 	}
@@ -327,6 +327,7 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 		}
 	}
 	videoIdx := 0
+	mark := h.uploadMarker(pin.UserID)
 	for i, fh := range files {
 		if storage.IsVideo(fh) {
 			im, msg := h.saveVideoMedia(fh, posters, durations, videoIdx, "pins")
@@ -344,12 +345,13 @@ func (h *Handler) createPin(c fiber.Ctx) error {
 			removeAll()
 			return badRequest(c, fmt.Sprintf("Surat gaty uly (iň köp %d MB)", h.cfg.MaxUploadMB))
 		}
-		saved, err := h.store.SaveImage(fh, "pins")
+		saved, err := h.store.SaveImageMarked(fh, "pins", mark)
 		if err != nil {
 			removeAll()
 			return badRequest(c, err.Error())
 		}
-		images = append(images, models.PinImage{Kind: "image", URL: saved.URL, Width: saved.Width, Height: saved.Height, Color: saved.Color, Position: i})
+		images = append(images, models.PinImage{Kind: "image", URL: saved.URL, Width: saved.Width, Height: saved.Height,
+			Color: saved.Color, Position: i, Watermarked: saved.Watermarked})
 	}
 	cover := images[0]
 	pin.ImageURL, pin.Width, pin.Height, pin.Color = coverImage(cover), cover.Width, cover.Height, cover.Color
@@ -451,6 +453,9 @@ func (h *Handler) removePin(p models.Pin) error {
 			return err
 		}
 		if err := tx.Model(&models.Story{}).Where("pin_id = ?", p.ID).Update("pin_id", nil).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&models.Message{}).Where("pin_id = ?", p.ID).Update("pin_id", nil).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&models.Pin{}, p.ID).Error

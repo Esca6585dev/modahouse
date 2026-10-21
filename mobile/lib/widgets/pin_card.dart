@@ -13,8 +13,8 @@ import 'pin_menu.dart';
 import 'shop_ui.dart';
 import 'video_view.dart';
 
-/// Masonry tile: image (with the pin color as placeholder and the real aspect
-/// ratio), title and author. Products also show the badge, the price (with the
+/// Masonry tile (Pinterest): image with 16 px corners (the pin color as
+/// placeholder, the real aspect ratio), one line of title and "⋯" under it. Products also show the badge, the price (with the
 /// struck old price) and a quick add-to-cart button.
 class PinCard extends ConsumerWidget {
   const PinCard({
@@ -86,53 +86,28 @@ class PinCard extends ConsumerWidget {
             ),
           ),
         ),
+        // Pinterest: one line of title and "⋯" under the image, no author.
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 6, 0, 0),
+          padding: const EdgeInsets.fromLTRB(6, 2, 0, 0),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: ExcludeSemantics(
-                    child: Text(
-                      current.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: p.text,
-                        height: 1.3,
-                      ),
+                child: ExcludeSemantics(
+                  child: Text(
+                    current.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      color: p.text,
+                      height: 1.25,
                     ),
                   ),
                 ),
               ),
               _MoreButton(pin: current),
             ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 2, 4, 0),
-          child: InkWell(
-            onTap: onAuthorTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                UserAvatar(user: current.author, size: 22),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    current.author.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: p.muted),
-                  ),
-                ),
-              ],
-            ),
           ),
         ),
       ],
@@ -339,8 +314,8 @@ class _MoreButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => SizedBox(
-    width: 30,
-    height: 26,
+    width: 32,
+    height: 30,
     child: IconButton(
       padding: EdgeInsets.zero,
       iconSize: 20,
