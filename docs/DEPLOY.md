@@ -185,3 +185,13 @@ docker compose logs -f caddy       # HTTPS / domen ýalňyşlyklary
 docker compose restart backend     # API-ni täzeden başlatmak
 sudo ufw allow 80,443/tcp          # brandmauer ulanylýan bolsa
 ```
+
+## Google-da tapylmak (SEO)
+
+Saýt `robots.txt`, `sitemap.xml` we ýörite `/fasonlar` sahypasyny özi berýär. «fasonlar», «köýnek fasonlary», «ştapel fasonlar» ýaly gözleglerde çykmak üçin:
+
+1. Admin panelinde **Sazlamalar → Web salgysy** (ýa-da `PUBLIC_WEB_URL`) hakyky domene (`https://modahouse.tm`) deň bolsun: sitemap şol salgy bilen düzülýär.
+2. [Google Search Console](https://search.google.com/search-console)-da domeni goşuň, DNS arkaly tassyklaň we `https://DOMAIN/sitemap.xml` faýlyny iberiň.
+3. `/fasonlar` sahypasyny Instagram, TikTok we Telegram profilleriňizde salgy hökmünde goýuň: daşky salgylanmalar Google-da ýokary çykmaga kömek edýär.
+
+Google täze saýty birnäçe günden birnäçe hepdä çenli indeksleýär.

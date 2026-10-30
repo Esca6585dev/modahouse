@@ -4,8 +4,13 @@ import Providers from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ModaHouse — moda ideýalary we dükanlar",
-  description: "Köýnekler, tikinçiler we moda ideýalary: tap, sakla we sargyt et.",
+  title: "ModaHouse — fasonlar, köýnekler we tikinçiler",
+  description:
+    "Fasonlar we köýnek fasonlary: milli köýnekler, ştapel fasonlar, gelin we toý köýnekleri, ýaka fasonlary, el keşdeleri. " +
+    "Tikinçiler, el keşdeçiler, kirpikçiler we dyrnakçylar bir ýerde.",
+  keywords: ["fasonlar", "köýnek fasonlary", "ştapel fasonlar", "milli köýnekler", "türkmen fasonlar", "gelin köýnekleri", "tikinçi", "ModaHouse"],
+  applicationName: "ModaHouse",
+  openGraph: { siteName: "ModaHouse", locale: "tk_TM", type: "website" },
 };
 
 export const viewport: Viewport = {

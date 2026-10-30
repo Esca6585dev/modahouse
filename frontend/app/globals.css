@@ -2313,3 +2313,13 @@ a.detail-credit:hover { color: var(--text); text-decoration: underline; }
 .starter-progress { height: 10px; border-radius: 999px; background: var(--surface); overflow: hidden; margin: 12px 0 6px; }
 .starter-progress > span { display: block; height: 100%; background: var(--brand); transition: width 0.4s; }
 .inline-label { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+
+/* ---------- v7: /fasonlar (server-rendered, for search engines) ---------- */
+.fason-head { max-width: 760px; margin-bottom: 8px; }
+.fason-grid { list-style: none; margin: 0; padding: 0; columns: 5 220px; column-gap: 16px; }
+.fason-grid li { break-inside: avoid; margin-bottom: 16px; }
+.fason-item { display: grid; gap: 4px; }
+.fason-item img { width: 100%; height: auto; border-radius: 16px; display: block; }
+.fason-title { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fason-pager { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 24px 0 40px; }
+@media (max-width: 600px) { .fason-grid { columns: 2; column-gap: 10px; } .fason-grid li { margin-bottom: 10px; } }
