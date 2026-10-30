@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	_ "embed"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -121,6 +122,7 @@ type commonsFile struct {
 	Artist    string
 	Desc      string
 	Object    string
+	Tags      string // added to the post, comma separated
 }
 
 var tagRe = regexp.MustCompile(`<[^>]*>`)
@@ -183,6 +185,27 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 		return badRequest(c, err.Error())
 	}
 
+	created, skipped, err := h.importCommons(c.Context(), url.Values{"generator": {"categorymembers"},
+		"gcmtitle": {cat}, "gcmtype": {"file"}, "gcmlimit": {fmt.Sprint(min(req.Limit*3, 200))}},
+		req.Limit, author, req.AppCategory, "")
+	if err != nil {
+		return commonsUnreachable(c, err)
+	}
+	out := []PinDTO{}
+	if len(created) > 0 {
+		out = h.enrichPins(created, viewerID(c))
+	}
+	return c.JSON(fiber.Map{"created": out, "skipped": skipped})
+}
+
+type commonsSkip struct {
+	Title  string `json:"title"`
+	Reason string `json:"reason"`
+}
+
+// importCommons lists files with the given generator parameters and imports up
+// to limit openly licensed photos as posts of author in category.
+func (h *Handler) importCommons(ctx context.Context, gen url.Values, limit int, author models.User, category, tags string) ([]models.Pin, []commonsSkip, error) {
 	var res struct {
 		Query struct {
 			Pages []struct {
@@ -192,6 +215,7 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 					ThumbURL       string `json:"thumburl"`
 					DescriptionURL string `json:"descriptionurl"`
 					Mime           string `json:"mime"`
+					Width          int    `json:"width"`
 					ExtMetadata    map[string]struct {
 						Value any `json:"value"`
 					} `json:"extmetadata"`
@@ -199,17 +223,15 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 			} `json:"pages"`
 		} `json:"query"`
 	}
-	if err := h.commonsGet(c.Context(), url.Values{"action": {"query"}, "generator": {"categorymembers"},
-		"gcmtitle": {cat}, "gcmtype": {"file"}, "gcmlimit": {fmt.Sprint(min(req.Limit*3, 200))},
-		"prop": {"imageinfo"}, "iiprop": {"url|mime|extmetadata"}, "iiurlwidth": {"1080"}}, &res); err != nil {
-		return commonsUnreachable(c, err)
+	params := url.Values{"action": {"query"}, "prop": {"imageinfo"}, "iiprop": {"url|mime|size|extmetadata"}, "iiurlwidth": {"1080"}}
+	for k, v := range gen {
+		params[k] = v
+	}
+	if err := h.commonsGet(ctx, params, &res); err != nil {
+		return nil, nil, err
 	}
 
-	type skip struct {
-		Title  string `json:"title"`
-		Reason string `json:"reason"`
-	}
-	skipped := []skip{}
+	skipped := []commonsSkip{}
 	var files []commonsFile
 	meta := func(m map[string]struct {
 		Value any `json:"value"`
@@ -228,21 +250,23 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 		ii := p.ImageInfo[0]
 		f := commonsFile{Title: p.Title, ThumbURL: ii.ThumbURL, SourceURL: ii.DescriptionURL, Mime: ii.Mime,
 			License: stripHTML(meta(ii.ExtMetadata, "LicenseShortName")), Artist: stripHTML(meta(ii.ExtMetadata, "Artist")),
-			Desc: stripHTML(meta(ii.ExtMetadata, "ImageDescription")), Object: meta(ii.ExtMetadata, "ObjectName")}
+			Desc: stripHTML(meta(ii.ExtMetadata, "ImageDescription")), Object: meta(ii.ExtMetadata, "ObjectName"), Tags: tags}
 		if f.ThumbURL == "" {
 			f.ThumbURL = ii.URL
 		}
 		switch {
 		case !strings.HasPrefix(f.Mime, "image/") || f.Mime == "image/svg+xml" || f.Mime == "image/gif":
-			skipped = append(skipped, skip{p.Title, "Surat däl"})
+			skipped = append(skipped, commonsSkip{p.Title, "Surat däl"})
+		case ii.Width > 0 && ii.Width < 500:
+			skipped = append(skipped, commonsSkip{p.Title, "Hili pes (kiçi surat)"})
 		case !allowedLicense(f.License):
-			skipped = append(skipped, skip{p.Title, "Ygtyýarnamasy laýyk däl: " + f.License})
+			skipped = append(skipped, commonsSkip{p.Title, "Ygtyýarnamasy laýyk däl: " + f.License})
 		default:
 			var n int64
 			h.db.Model(&models.Pin{}).Where("link = ?", f.SourceURL).Count(&n)
 			if n > 0 {
-				skipped = append(skipped, skip{p.Title, "Eýýäm import edilen"})
-			} else if len(files) < req.Limit {
+				skipped = append(skipped, commonsSkip{p.Title, "Eýýäm import edilen"})
+			} else if len(files) < limit {
 				files = append(files, f)
 			}
 		}
@@ -251,7 +275,7 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 	// Download up to four thumbnails at a time.
 	type result struct {
 		pin  *models.Pin
-		skip *skip
+		skip *commonsSkip
 	}
 	results := make([]result, len(files))
 	var wg sync.WaitGroup
@@ -262,9 +286,9 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 			defer wg.Done()
 			sem <- struct{}{}
 			defer func() { <-sem }()
-			p, reason := h.importCommonsFile(c.Context(), f, author, req.AppCategory)
+			p, reason := h.importCommonsFile(ctx, f, author, category)
 			if reason != "" {
-				results[i] = result{skip: &skip{f.Title, reason}}
+				results[i] = result{skip: &commonsSkip{f.Title, reason}}
 			} else {
 				results[i] = result{pin: p}
 			}
@@ -282,11 +306,7 @@ func (h *Handler) adminCommonsImport(c fiber.Ctx) error {
 			}
 		}
 	}
-	out := []PinDTO{}
-	if len(created) > 0 {
-		out = h.enrichPins(created, viewerID(c))
-	}
-	return c.JSON(fiber.Map{"created": out, "skipped": skipped})
+	return created, skipped, nil
 }
 
 func (h *Handler) importCommonsFile(ctx context.Context, f commonsFile, author models.User, category string) (*models.Pin, string) {
@@ -318,6 +338,9 @@ func (h *Handler) importCommonsFile(ctx context.Context, f commonsFile, author m
 	credit := clean(fmt.Sprintf("Surat: %s · %s · Wikimedia Commons", artist, f.License), 300)
 	str := func(v string) *string { return &v }
 	fields := pinFields{Title: str(commonsTitle(f)), Description: str(clean(f.Desc, 600)), Link: str(f.SourceURL), Category: str(category)}
+	if f.Tags != "" {
+		fields.Tags = &f.Tags
+	}
 	pin := models.Pin{UserID: author.ID, Credit: credit}
 	if msg := fields.apply(&pin); msg != "" {
 		h.store.Remove(saved.URL)
@@ -350,6 +373,7 @@ func (h *Handler) importAuthor(username string) (models.User, error) {
 		return u, nil
 	}
 	if h.db.Where("username = ?", OfficialUsername).First(&u).Error == nil {
+		h.officialAvatar(&u)
 		return u, nil
 	}
 	// No usable password: nobody can log in as the official account.
@@ -366,7 +390,22 @@ func (h *Handler) importAuthor(username string) (models.User, error) {
 		return u, err
 	}
 	h.db.Create(&models.Board{UserID: u.ID, Name: DefaultBoardName})
+	h.officialAvatar(&u)
 	return u, nil
+}
+
+//go:embed official-avatar.svg
+var officialAvatarSVG []byte
+
+// officialAvatar gives the official account the ModaHouse badge as its photo.
+func (h *Handler) officialAvatar(u *models.User) {
+	if u.AvatarURL != "" {
+		return
+	}
+	if url, err := h.store.WriteFile("avatars", "modahouse-official.svg", officialAvatarSVG); err == nil {
+		u.AvatarURL = url
+		h.db.Model(u).UpdateColumn("avatar_url", url)
+	}
 }
 
 // --- demo content ---

@@ -22,6 +22,7 @@ type Handler struct {
 	proxies *proxyTrust
 	cards   cardCache // rendered share cards
 	hub     *hub      // real-time events
+	starter *starterJob
 }
 
 type Page[T any] struct {

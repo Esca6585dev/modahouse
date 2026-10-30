@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/esca6585dev/modahouse/backend/internal/config"
 )
@@ -49,6 +50,16 @@ func fakeCommons(t *testing.T) *httptest.Server {
 			out = map[string]any{"query": map[string]any{"pages": []any{
 				map[string]any{"title": "Category:Turkmen dresses", "categoryinfo": map[string]any{"files": 12}},
 				map[string]any{"title": "Category:Turkmen jewellery", "categoryinfo": map[string]any{"files": 40}}}}}
+		case q.Get("generator") == "search":
+			// Three good photos per search page and one too small to use.
+			base := strings.Fields(q.Get("gsrsearch"))[0] + "_" + q.Get("gsroffset")
+			pages := []any{}
+			for i, w := range []int{1200, 1600, 900, 200} {
+				f := file("File:"+base+"_"+string(rune('a'+i))+".jpg", "image/jpeg", "CC BY 4.0", "Fotograf", "")
+				f["imageinfo"].([]any)[0].(map[string]any)["width"] = w
+				pages = append(pages, f)
+			}
+			out = map[string]any{"query": map[string]any{"pages": pages}}
 		case q.Get("generator") == "categorymembers":
 			if q.Get("gcmtitle") != "Category:Turkmen dresses" {
 				out = map[string]any{"batchcomplete": true}
@@ -194,4 +205,46 @@ func TestRemoveDemo(t *testing.T) {
 		t.Fatalf("chat with a removed account: %+v", chats.Items)
 	}
 	e.expect(200, "GET", "/api/me", real.Token, nil, nil)
+}
+
+func TestStarterPack(t *testing.T) {
+	commons := fakeCommons(t)
+	e := newEnvWith(t, false, func(c *config.Config) {
+		c.AdminUsername, c.AdminPassword = "boss", "boss-pass-123"
+		c.CommonsAPIURL = commons.URL + "/w/api.php"
+	})
+	admin := e.login("boss", "boss-pass-123")
+	user := e.register("guly")
+	e.expect(403, "POST", "/api/admin/import/starter", user.Token, map[string]int{"total": 10}, nil)
+
+	type status struct {
+		Running bool   `json:"running"`
+		Target  int    `json:"target"`
+		Created int    `json:"created"`
+		Skipped int    `json:"skipped"`
+		Error   string `json:"error"`
+	}
+	var st status
+	e.expect(202, "POST", "/api/admin/import/starter", admin.Token, map[string]int{"total": 10}, &st)
+	if !st.Running || st.Target != 10 {
+		t.Fatalf("start: %+v", st)
+	}
+	deadline := time.Now().Add(20 * time.Second)
+	for st.Running && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+		e.expect(200, "GET", "/api/admin/import/starter", admin.Token, nil, &st)
+	}
+	if st.Running || st.Created != 10 || st.Error != "" {
+		t.Fatalf("finished: %+v", st)
+	}
+	var feed struct {
+		Items []struct {
+			Credit string   `json:"credit"`
+			Tags   []string `json:"tags"`
+		} `json:"items"`
+	}
+	e.expect(200, "GET", "/api/pins?author=modahouse&limit=50", "", nil, &feed)
+	if len(feed.Items) != 10 || !strings.Contains(feed.Items[0].Credit, "CC BY 4.0") || len(feed.Items[0].Tags) == 0 {
+		t.Fatalf("imported: %+v", feed.Items)
+	}
 }

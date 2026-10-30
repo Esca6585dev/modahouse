@@ -680,3 +680,60 @@ The import runs on the server, which needs internet access to Wikimedia Commons.
 |---|---|---|
 | GET | `/admin/demo` | `{users, pins}`: how much demo content (seed accounts and their posts) exists |
 | DELETE | `/admin/demo` | `{users, pins}` removed. The server also records that demo content was removed, so the seeder never adds it again, even with `SEED=true`. Answers 400 when the signed-in admin is itself a demo account: create a real admin first (`ADMIN_USERNAME`/`ADMIN_PASSWORD`). |
+
+# v7: Profile crafts, chat encryption, interests and the starter pack
+
+## Profile crafts
+
+Any profile, personal or business, may show its craft. `UserBrief` and
+`Profile` gain `category` (omitted when empty).
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/profile-categories` | | `{slug, name}[]`: tailor, kurte, atelier, designer, embroidery, dress, boutique, bridal, rental, fata, beauty, hair, makeup, lashes, nails, jewelry, accessories |
+| PUT 🔒 | `/me` | `{category}` (`""` clears it; a business profile must keep one) | `Me` |
+| GET | `/masters` | `?category=&q=&page&limit` | `Page<BusinessCard>`: every profile with a craft; personal profiles show their latest posts as covers |
+
+`/business-categories` returns the same list. Opening a business profile
+takes the craft as its category, and changing either keeps both in sync.
+
+## Chat encryption at rest
+
+Message text, attachment names and attachment files are stored encrypted
+with AES-256-GCM. The API is unchanged. The key comes from
+`CHAT_ENCRYPTION_KEY`, or from `JWT_SECRET` when it is not set. Messages
+from before encryption are encrypted on startup.
+
+## Interests and the personal feed
+
+Views, likes, saves, comments, adding to the cart, text searches and
+"not interested" teach the server what each user likes, per category and
+tag; older signals fade with a 30-day half-life.
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET 🔒 | `/me/interests` | | `{items: {kind: "category"\|"tag", key, name, score}[], picked}`; `picked: false` → show the "what do you like?" screen |
+| PUT 🔒 | `/me/interests` | `{categories: string[]}` | same as GET |
+| DELETE 🔒 | `/me/interests` | | 204, forgets everything learned |
+| GET | `/pins?feed=foryou` | the usual filters, `page`, `limit` | `Page<Pin>` ranked by the viewer's interests, freshness and variety; newest first for guests and new users |
+
+## Analytics (admin) 🔒
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/admin/analytics` | `?days=30` (1–365) | `{days, activeUsers, newUsers, searches, usersWithTaste, daily: {day, newUsers, activeUsers, views, searches}[], categories: {key, name, score, users}[], tags, topSearches: {query, count, results}[], emptySearches, topPins: {id, title, imageUrl, category, views}[], crafts: {slug, name, count}[]}` |
+| GET | `/admin/users/:id/interests` | | `{items}` as in `/me/interests` |
+
+`emptySearches` lists what people looked for and did not find: content to add.
+
+## Starter pack (admin) 🔒
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| POST | `/admin/import/starter` | `{total: 200}` (max 400) | 202 `StarterStatus`; imports in the background |
+| GET | `/admin/import/starter` | | `{running, target, created, skipped, step, error?, started?, finished?}` |
+
+It searches Wikimedia Commons for Turkmen and Central Asian dresses,
+wedding dresses, embroidery, jewellery, hair, makeup and nails, keeps only
+photos at least 500 px wide under CC0 / CC BY / CC BY-SA, and posts them
+as `@modahouse` with the author and licence in `credit`.

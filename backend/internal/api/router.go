@@ -35,7 +35,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
 	}
 	h := &Handler{db: db, store: store, cfg: cfg, ai: ai.New(cfg.AIModel, cats), visual: newVisualIndex(db, store),
-		proxies: newProxyTrust(cfg.TrustedProxies), hub: newHub()}
+		proxies: newProxyTrust(cfg.TrustedProxies), hub: newHub(), starter: &starterJob{}}
 	if !opts.Quiet {
 		logVisualStart(h.visual) // background indexing; tests index on demand
 	}
@@ -234,6 +234,8 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	admin.Post("/pins/bulk", h.adminBulkPins)
 	admin.Get("/import/commons/search", h.adminCommonsSearch)
 	admin.Post("/import/commons", h.adminCommonsImport)
+	admin.Get("/import/starter", h.adminStarterStatus)
+	admin.Post("/import/starter", h.adminStarterImport)
 	admin.Get("/demo", h.adminDemoCounts)
 	admin.Delete("/demo", h.adminRemoveDemo)
 
