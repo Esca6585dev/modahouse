@@ -17,6 +17,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/esca6585dev/modahouse/backend/internal/ai"
+	"github.com/esca6585dev/modahouse/backend/internal/chatcrypt"
 	"github.com/esca6585dev/modahouse/backend/internal/config"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
@@ -26,6 +27,9 @@ type Options struct {
 }
 
 func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *fiber.App {
+	if err := chatcrypt.SetKey(cfg.ChatKey()); err != nil {
+		log.Fatalf("chat encryption: %v", err)
+	}
 	cats := make([]ai.Category, len(Categories))
 	for i, c := range Categories {
 		cats[i] = ai.Category{Slug: c.Slug, Name: c.Name}
@@ -80,6 +84,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	api.Get("/health", func(c fiber.Ctx) error { return c.JSON(fiber.Map{"status": "ok"}) })
 	api.Get("/categories", listCategories)
 	api.Get("/business-categories", listBusinessCategories)
+	api.Get("/profile-categories", listBusinessCategories)
 	api.Get("/config", h.getConfig)
 
 	// Only credential endpoints are rate limited, per client IP.
@@ -150,6 +155,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	boards.Delete("/:id/pins/:pinId", requireAuth, h.unsavePin)
 
 	api.Get("/businesses", h.listBusinesses)
+	api.Get("/masters", h.listMasters)
 	api.Get("/search", h.search)
 	api.Post("/search/image", h.searchByImage)
 	aiLimit := func(c fiber.Ctx) error { return c.Next() }

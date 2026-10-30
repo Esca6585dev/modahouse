@@ -38,6 +38,7 @@ func main() {
 	}
 
 	app := api.New(db, store, cfg, api.Options{})
+	api.EncryptOldChats(db, store)
 
 	go func() {
 		quit := make(chan os.Signal, 1)

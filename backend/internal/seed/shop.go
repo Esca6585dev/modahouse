@@ -136,7 +136,7 @@ func seedShop(db *gorm.DB, store *storage.Storage) error {
 					break
 				}
 			}
-			u.IsBusiness, u.Verified, u.Bio = true, b.verified, b.bio
+			u.IsBusiness, u.Verified, u.Bio, u.Category = true, b.verified, b.bio, b.category
 			if err := tx.Save(&u).Error; err != nil {
 				return err
 			}

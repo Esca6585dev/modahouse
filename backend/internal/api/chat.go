@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"log"
 	"mime"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -18,8 +20,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/adaptor"
 	"gorm.io/gorm"
 
+	"github.com/esca6585dev/modahouse/backend/internal/chatcrypt"
 	"github.com/esca6585dev/modahouse/backend/internal/models"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
@@ -132,13 +136,29 @@ func (h *Handler) serveChatFile(c fiber.Ctx) error {
 	if ct == "" {
 		ct = "application/octet-stream"
 	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return notFound(c)
+	}
+	data, err := chatcrypt.DecryptFile(raw)
+	if err != nil {
+		log.Printf("chat file %s: %v", name, err)
+		return notFound(c)
+	}
 	c.Set("X-Content-Type-Options", "nosniff")
 	c.Set(fiber.HeaderCacheControl, "private, max-age=3600")
 	if !strings.HasPrefix(ct, "image/") && !strings.HasPrefix(ct, "video/") && !strings.HasPrefix(ct, "audio/") {
 		c.Set(fiber.HeaderContentDisposition, "attachment")
 	}
-	c.Set(fiber.HeaderContentType, ct)
-	return c.SendFile(path)
+	// ServeContent answers Range requests, so videos can be seeked.
+	mod := time.Time{}
+	if st, err := os.Stat(path); err == nil {
+		mod = st.ModTime()
+	}
+	return adaptor.HTTPHandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", ct)
+		http.ServeContent(w, r, name, mod, bytes.NewReader(data))
+	})(c)
 }
 
 // --- DTOs ---
@@ -417,7 +437,7 @@ func (h *Handler) sendMessage(c fiber.Ctx) error {
 		if problem != "" {
 			return badRequest(c, problem)
 		}
-		name, err := h.store.SavePrivate(storage.PrivateChat, fileData, ext)
+		name, err := h.store.SavePrivate(storage.PrivateChat, chatcrypt.EncryptFile(fileData), ext)
 		if err != nil {
 			return err
 		}

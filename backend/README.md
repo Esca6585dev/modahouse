@@ -65,6 +65,7 @@ TEST_POSTGRES_URL="postgres://moda:moda@localhost:5432/modahouse_test?sslmode=di
 | `DB_DRIVER` | `postgres` ýa-da `sqlite` (adaty: sqlite) |
 | `DATABASE_URL` | Postgres DSN ýa-da SQLite faýly (adaty: `modahouse.db`) |
 | `JWT_SECRET` | Önümçilikde hökman üýtgediň |
+| `CHAT_ENCRYPTION_KEY` | Chat habarlaryny şifrlemek üçin açar; boş bolsa `JWT_SECRET`-den alynýar. Üýtgetmäň |
 | `UPLOAD_DIR` | Suratlaryň bukjasy, `/uploads/...` salgysynda berilýär |
 | `CORS_ORIGINS` | Rugsat berlen çeşmeler, otur bilen |
 | `SEED` | `true` bolsa boş baza demo maglumatlar bilen doldurylýar |

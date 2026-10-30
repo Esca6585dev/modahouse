@@ -6,6 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
 )
@@ -46,6 +47,7 @@ type updateMeReq struct {
 	Name     *string `json:"name"`
 	Bio      *string `json:"bio"`
 	Username *string `json:"username"`
+	Category *string `json:"category"` // "" clears it
 }
 
 func (h *Handler) updateMe(c fiber.Ctx) error {
@@ -77,7 +79,26 @@ func (h *Handler) updateMe(c fiber.Ctx) error {
 		}
 		u.Username = name
 	}
-	if err := h.db.Save(&u).Error; err != nil {
+	if req.Category != nil {
+		cat := strings.TrimSpace(*req.Category)
+		if cat != "" && !validBusinessCategory(cat) {
+			return badRequest(c, "Kategoriýa nädogry")
+		}
+		if cat == "" && u.IsBusiness {
+			return badRequest(c, "Biznes hasabynyň kategoriýasy bolmaly")
+		}
+		u.Category = cat
+	}
+	err := h.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(&u).Error; err != nil {
+			return err
+		}
+		if req.Category != nil && u.IsBusiness {
+			return tx.Model(&models.Business{}).Where("user_id = ?", u.ID).UpdateColumn("category", u.Category).Error
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	return c.JSON(h.me(u))

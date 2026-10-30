@@ -1,7 +1,11 @@
 // Package models defines the database schema.
 package models
 
-import "time"
+import (
+	"time"
+
+	_ "github.com/esca6585dev/modahouse/backend/internal/chatcrypt" // registers the chatcrypt serializer
+)
 
 type User struct {
 	ID           uint   `gorm:"primaryKey"`
@@ -12,9 +16,11 @@ type User struct {
 	Bio          string `gorm:"size:300"`
 	AvatarURL    string `gorm:"size:255"`
 	IsBusiness   bool   `gorm:"index"`
-	Verified     bool
-	IsAdmin      bool `gorm:"index"`
-	Suspended    bool `gorm:"index"` // cannot log in; tokens are rejected
+	// Category is the profile's craft, e.g. tailor, lashes, nails (see api.ProfileCategories).
+	Category  string `gorm:"size:20;index"`
+	Verified  bool
+	IsAdmin   bool `gorm:"index"`
+	Suspended bool `gorm:"index"` // cannot log in; tokens are rejected
 	// Tokens issued before this moment are rejected (set on password change).
 	TokensValidAfter time.Time
 	CreatedAt        time.Time
@@ -325,10 +331,10 @@ type Message struct {
 	Chat      Chat   `gorm:"constraint:OnDelete:CASCADE"`
 	SenderID  uint   `gorm:"index;not null"`
 	Sender    User   `gorm:"constraint:OnDelete:CASCADE"`
-	Kind      string `gorm:"size:10;not null"` // text, image, file, pin
-	Text      string `gorm:"type:text"`
-	File      string `gorm:"size:80"` // private file name under uploads/.private/chat
-	FileName  string `gorm:"size:200"`
+	Kind      string `gorm:"size:10;not null"`               // text, image, file, pin
+	Text      string `gorm:"type:text;serializer:chatcrypt"` // encrypted at rest (chatcrypt)
+	File      string `gorm:"size:80"`                        // private file name under uploads/.private/chat (encrypted)
+	FileName  string `gorm:"type:text;serializer:chatcrypt"`
 	FileMime  string `gorm:"size:100"`
 	FileSize  int64
 	Width     int

@@ -25,6 +25,7 @@ services:
       DB_DRIVER: postgres
       DATABASE_URL: postgres://moda:${POSTGRES_PASSWORD}@db:5432/modahouse?sslmode=disable
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET .env faýlynda bolmaly}
+      CHAT_ENCRYPTION_KEY: ${CHAT_ENCRYPTION_KEY:-}
       CORS_ORIGINS: "*"
       SEED: ${SEED:-true}
       # Caddy and the web server reach the API over the Docker network.

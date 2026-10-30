@@ -12,25 +12,37 @@ import (
 	"github.com/esca6585dev/modahouse/backend/internal/models"
 )
 
-var BusinessCategories = []Category{
-	{"dress", "Köýnek dükany"},
+// ProfileCategories are the crafts a profile can show, business or personal:
+// a tailor, a lash or nail artist, a hand embroiderer, a veil seller...
+var ProfileCategories = []Category{
 	{"tailor", "Tikinçi"},
+	{"kurte", "Kürte tikinçi"},
 	{"atelier", "Atelýe"},
+	{"designer", "Dizaýner"},
+	{"embroidery", "El keşdeçi"},
+	{"dress", "Köýnek dükany"},
+	{"boutique", "Butik"},
 	{"bridal", "Gelin salony"},
 	{"rental", "Kärende salony"},
-	{"boutique", "Butik"},
-	{"designer", "Dizaýner"},
-	{"jewelry", "Şaý-sep ussasy"},
+	{"fata", "Fata satyjy"},
 	{"beauty", "Gözellik salony"},
+	{"hair", "Saç ussasy"},
+	{"makeup", "Makiýažçy"},
+	{"lashes", "Kirpikçi"},
+	{"nails", "Dyrnakçy"},
+	{"jewelry", "Şaý-sep ussasy"},
 	{"accessories", "Aksessuarlar"},
 }
+
+// BusinessCategories is kept for the /business-categories route.
+var BusinessCategories = ProfileCategories
 
 func listBusinessCategories(c fiber.Ctx) error { return c.JSON(BusinessCategories) }
 
 var phoneRe = regexp.MustCompile(`^\+?[0-9][0-9 ()\-]{6,18}[0-9]$`)
 
 func validBusinessCategory(s string) bool {
-	for _, c := range BusinessCategories {
+	for _, c := range ProfileCategories {
 		if c.Slug == s {
 			return true
 		}
@@ -198,6 +210,9 @@ func (h *Handler) saveBusiness(c fiber.Ctx, opening bool) error {
 	}
 	b := models.Business{UserID: u.ID, DeliveryDays: 7, ReturnDays: 14}
 	h.db.First(&b, u.ID) // keep earlier details when re-opening
+	if b.Category == "" {
+		b.Category = u.Category // the craft chosen on the profile
+	}
 	if msg := req.apply(&b); msg != "" {
 		return badRequest(c, msg)
 	}
@@ -205,12 +220,12 @@ func (h *Handler) saveBusiness(c fiber.Ctx, opening bool) error {
 		if err := tx.Save(&b).Error; err != nil {
 			return err
 		}
-		return tx.Model(&u).Update("is_business", true).Error
+		return tx.Model(&u).UpdateColumns(map[string]any{"is_business": true, "category": b.Category}).Error
 	})
 	if err != nil {
 		return err
 	}
-	u.IsBusiness = true
+	u.IsBusiness, u.Category = true, b.Category
 	return c.JSON(h.me(u))
 }
 
@@ -377,6 +392,33 @@ func (h *Handler) listBusinesses(c fiber.Ctx) error {
 	}
 	users, more := trimPage(users, limit)
 	return c.JSON(Page[BusinessCard]{Items: h.businessCards(users, viewerID(c)), Page: page, Limit: limit, HasMore: more})
+}
+
+// listMasters: GET /masters?category=&q= lists every profile that picked a
+// craft, personal or business: tailors, lash and nail artists, embroiderers...
+func (h *Handler) listMasters(c fiber.Ctx) error {
+	page, limit, offset := paging(c, 20)
+	q := h.db.Model(&models.User{}).Where("category <> '' AND suspended = ?", false)
+	if cat := c.Query("category"); cat != "" {
+		q = q.Where("category = ?", cat)
+	}
+	if term := strings.ToLower(strings.TrimSpace(c.Query("q"))); term != "" {
+		like := "%" + escapeLike(term) + "%"
+		q = q.Where(`(username LIKE ? ESCAPE '\' OR LOWER(name) LIKE ? ESCAPE '\')`, like, like)
+	}
+	var users []models.User
+	if err := q.Order("verified DESC, is_business DESC, id ASC").Offset(offset).Limit(limit + 1).Find(&users).Error; err != nil {
+		return err
+	}
+	users, more := trimPage(users, limit)
+	cards := h.businessCards(users, viewerID(c))
+	for i, u := range users {
+		cards[i].Category = u.Category
+		if len(cards[i].Covers) == 0 { // personal profiles show their latest posts
+			h.db.Model(&models.Pin{}).Where("user_id = ?", u.ID).Order("created_at DESC").Limit(4).Pluck("image_url", &cards[i].Covers)
+		}
+	}
+	return c.JSON(Page[BusinessCard]{Items: cards, Page: page, Limit: limit, HasMore: more})
 }
 
 // businessStats: GET /business/stats?period=

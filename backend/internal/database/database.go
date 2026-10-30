@@ -50,5 +50,8 @@ func Open(driver, dsn string) (*gorm.DB, error) {
 	if err := db.AutoMigrate(models.All()...); err != nil {
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// Business profiles had their craft only on the business row.
+	db.Exec(`UPDATE users SET category = (SELECT category FROM businesses WHERE businesses.user_id = users.id)
+		WHERE is_business = ? AND (category IS NULL OR category = '')`, true)
 	return db, nil
 }

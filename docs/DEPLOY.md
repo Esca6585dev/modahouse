@@ -51,6 +51,7 @@ Doldurmaly zatlar:
 | `DOMAIN` | `modahouse.tm` | Domeniňiz. Domen ýok bolsa `:80` goýuň. |
 | `POSTGRES_PASSWORD` | uzyn tötänleýin setir | Binýadyň paroly. |
 | `JWT_SECRET` | uzyn tötänleýin setir | Giriş tokenleriniň açary. Soňra üýtgetseňiz, hemme ulanyjy täzeden girmeli bolar. |
+| `CHAT_ENCRYPTION_KEY` | uzyn tötänleýin setir (islege görä) | Chat habarlary we faýllary bu açar bilen şifrlenip saklanýar (AES-256-GCM). Boş bolsa `JWT_SECRET`-den alynýar. Goýandan soň üýtgetmäň, ýogsa öňki habarlar okalmaz. |
 | `ADMIN_USERNAME` / `ADMIN_PASSWORD` | `admin` / azyndan 8 simwol | Ilkinji administrator. |
 | `PUBLIC_API_URL` / `PUBLIC_WEB_URL` | `https://modahouse.tm` | Programmalar üçin başlangyç salgylar. Admin panelinden hem üýtgedip bolýar. |
 | `SEED` | `true` | Ilkinji açylyşda synag postlaryny goşýar. |

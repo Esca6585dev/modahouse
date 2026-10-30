@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"gorm.io/gorm"
 
 	"github.com/esca6585dev/modahouse/backend/internal/api"
 	"github.com/esca6585dev/modahouse/backend/internal/config"
@@ -27,9 +28,11 @@ import (
 )
 
 type env struct {
-	t   *testing.T
-	app *fiber.App
-	dir string // upload dir
+	t     *testing.T
+	app   *fiber.App
+	dir   string // upload dir
+	db    *gorm.DB
+	store *storage.Storage
 }
 
 func newEnv(t *testing.T, withSeed bool) *env {
@@ -78,7 +81,7 @@ func newEnvWith(t *testing.T, withSeed bool, mod func(*config.Config)) *env {
 	if err := api.EnsureAdmin(db, cfg); err != nil {
 		t.Fatal(err)
 	}
-	return &env{t: t, app: api.New(db, store, cfg, api.Options{Quiet: true}), dir: store.Dir}
+	return &env{t: t, app: api.New(db, store, cfg, api.Options{Quiet: true}), dir: store.Dir, db: db, store: store}
 }
 
 // do sends a request and decodes the JSON response into out (if non-nil). It returns the status code.

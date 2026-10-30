@@ -42,6 +42,9 @@ var creators = []creator{
 	{"arzuw.stil", "Arzuw", "Şaý-sep we aksessuar saýlamak", "shay"},
 }
 
+// creatorCrafts gives creators whose focus is a craft a profile category.
+var creatorCrafts = map[string]string{"sac": "hair", "makiyaj": "makeup", "dyrnak": "nails", "keshde": "embroidery", "yaka": "tailor"}
+
 type extraBusiness struct {
 	demoBusiness
 	listing string // what its products are: rent, custom, sale
@@ -194,7 +197,7 @@ func seedFashion(db *gorm.DB, store *storage.Storage) error {
 			if err != nil {
 				return err
 			}
-			tx.Model(&u).Update("avatar_url", avatar)
+			tx.Model(&u).UpdateColumns(map[string]any{"avatar_url": avatar, "category": creatorCrafts[c.focus]})
 			tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.Board{UserID: u.ID, Name: "Saklananlar"})
 			ids[c.username] = u.ID
 			people = append(people, u.ID)
@@ -203,7 +206,7 @@ func seedFashion(db *gorm.DB, store *storage.Storage) error {
 		// Extra businesses: bridal rental, atelier, jeweller, beauty salon.
 		for i, eb := range extraBusinesses {
 			b := eb.demoBusiness
-			u := models.User{Username: b.username, Name: b.name, Bio: b.bio, Email: b.username + "@modahouse.tm", PasswordHash: string(hash), IsBusiness: true, Verified: b.verified}
+			u := models.User{Username: b.username, Name: b.name, Bio: b.bio, Email: b.username + "@modahouse.tm", PasswordHash: string(hash), IsBusiness: true, Verified: b.verified, Category: b.category}
 			if err := tx.Where("username = ?", b.username).FirstOrCreate(&u).Error; err != nil {
 				return err
 			}

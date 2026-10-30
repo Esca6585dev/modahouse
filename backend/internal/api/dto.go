@@ -13,6 +13,7 @@ type UserBrief struct {
 	AvatarURL  string `json:"avatarUrl"`
 	IsBusiness bool   `json:"isBusiness"`
 	Verified   bool   `json:"verified"`
+	Category   string `json:"category,omitempty"` // profile craft slug
 }
 
 type Profile struct {
@@ -183,5 +184,5 @@ type PinBrief struct {
 }
 
 func brief(u models.User) UserBrief {
-	return UserBrief{ID: u.ID, Username: u.Username, Name: u.Name, AvatarURL: u.AvatarURL, IsBusiness: u.IsBusiness, Verified: u.Verified}
+	return UserBrief{ID: u.ID, Username: u.Username, Name: u.Name, AvatarURL: u.AvatarURL, IsBusiness: u.IsBusiness, Verified: u.Verified, Category: u.Category}
 }
