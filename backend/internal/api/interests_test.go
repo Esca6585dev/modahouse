@@ -1,6 +1,7 @@
 package api_test
 
 import (
+	"net/url"
 	"testing"
 
 	"github.com/esca6585dev/modahouse/backend/internal/config"
@@ -162,5 +163,39 @@ func TestInterestsAndForYou(t *testing.T) {
 	e.expect(200, "GET", "/api/admin/users/"+itoa(guly.User.ID)+"/interests", admin.Token, nil, &ui)
 	if len(ui.Items) < 2 {
 		t.Fatalf("user interests: %+v", ui)
+	}
+}
+
+func TestMultilingualSearch(t *testing.T) {
+	e := newEnv(t, false)
+	a := e.register("aysoltan")
+	dress := e.post(a.Token, "Gyzyl ştapel köýnek", "koynekler", "fason")
+	nails := e.post(a.Token, "Gül nagyşly", "dyrnak", "")
+	kurte := e.post(a.Token, "Täze kürte", "gundelik", "kürte,bukja")
+	find := func(q string) map[uint]bool {
+		var page struct {
+			Items []pinResp `json:"items"`
+		}
+		e.expect(200, "GET", "/api/pins?q="+url.QueryEscape(q), "", nil, &page)
+		got := map[uint]bool{}
+		for _, p := range page.Items {
+			got[p.ID] = true
+		}
+		return got
+	}
+	for q, want := range map[string][]uint{
+		"koynek": {dress.ID}, "платье": {dress.ID}, "dress": {dress.ID}, "stapel": {dress.ID},
+		"маникюр": {nails.ID}, "nails": {nails.ID}, "kurte": {kurte.ID}, "курте": {kurte.ID}, "bukja": {kurte.ID},
+		"fasonlar": {dress.ID, nails.ID, kurte.ID}, "мода": {dress.ID, nails.ID, kurte.ID},
+	} {
+		got := find(q)
+		if len(got) != len(want) {
+			t.Errorf("%q: got %v, want %v", q, got, want)
+		}
+		for _, id := range want {
+			if !got[id] {
+				t.Errorf("%q: missing %d (got %v)", q, id, got)
+			}
+		}
 	}
 }

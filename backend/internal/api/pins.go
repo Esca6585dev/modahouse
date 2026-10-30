@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
+	"github.com/esca6585dev/modahouse/backend/internal/search"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
@@ -133,7 +134,7 @@ func (h *Handler) pagePins(c fiber.Ctx, q *gorm.DB, defLimit int) error {
 }
 
 func searchText(p *models.Pin) string {
-	return strings.ToLower(strings.Join([]string{p.Title, p.Description, p.Tags}, " "))
+	return search.IndexText(p.Title, p.Description, p.Tags, p.Category)
 }
 
 func escapeLike(s string) string {
@@ -146,10 +147,17 @@ func (h *Handler) listPins(c fiber.Ctx) error {
 	if cat := c.Query("category"); cat != "" {
 		q = q.Where("pins.category = ?", cat)
 	}
-	if term := strings.ToLower(strings.TrimSpace(c.Query("q"))); term != "" {
-		for _, w := range strings.Fields(term) {
-			q = q.Where(`pins.search_text LIKE ? ESCAPE '\'`, "%"+escapeLike(w)+"%")
+	// Turkmen with or without its letters, Russian and English all work (package search).
+	for _, alts := range search.Terms(c.Query("q")) {
+		cond, args := "", []any{}
+		for i, a := range alts {
+			if i > 0 {
+				cond += " OR "
+			}
+			cond += `pins.search_text LIKE ? ESCAPE '\'`
+			args = append(args, "%"+escapeLike(a)+"%")
 		}
+		q = q.Where("("+cond+")", args...)
 	}
 	switch c.Query("type") {
 	case "products":

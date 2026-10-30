@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
+	"github.com/esca6585dev/modahouse/backend/internal/search"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
@@ -185,7 +186,7 @@ func seedShop(db *gorm.DB, store *storage.Storage) error {
 				st := p.stock
 				pin.Stock = &st
 			}
-			pin.SearchText = strings.ToLower(pin.Title + " " + pin.Description + " " + pin.Tags)
+			pin.SearchText = search.IndexText(pin.Title, pin.Description, pin.Tags, pin.Category)
 			if err := tx.Create(&pin).Error; err != nil {
 				return err
 			}

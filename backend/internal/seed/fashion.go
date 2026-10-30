@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
+	"github.com/esca6585dev/modahouse/backend/internal/search"
 	"github.com/esca6585dev/modahouse/backend/internal/storage"
 )
 
@@ -272,7 +273,7 @@ func seedFashion(db *gorm.DB, store *storage.Storage) error {
 				Price: l.price, Deposit: l.deposit, MinDays: l.minDays, ReadyDays: l.readyDays, ReturnDays: 7, DeliveryDays: 3,
 				ImageURL: url, Width: 600, Height: 800, Color: "#EADBC8", CreatedAt: now.Add(-time.Duration(i*5+1) * time.Hour)}
 			p.Tags = strings.Join(captionHashtags(l.desc), ",")
-			p.SearchText = strings.ToLower(p.Title + " " + p.Description + " " + p.Tags)
+			p.SearchText = search.IndexText(p.Title, p.Description, p.Tags, p.Category)
 			if err := tx.Create(&p).Error; err != nil {
 				return err
 			}
@@ -331,7 +332,7 @@ func seedFashion(db *gorm.DB, store *storage.Storage) error {
 				p := models.Pin{UserID: ids[a.username], Title: title, Description: desc, Category: cat, ListingType: "post",
 					Tags: strings.Join(tags, ","), ImageURL: url, Width: 600, Height: h, Color: "#EFE6DC",
 					CreatedAt: now.Add(-time.Duration(i*3+next(3)) * time.Hour), ViewsCount: 40 + next(900)}
-				p.SearchText = strings.ToLower(p.Title + " " + p.Description + " " + p.Tags)
+				p.SearchText = search.IndexText(p.Title, p.Description, p.Tags, p.Category)
 				if err := tx.Create(&p).Error; err != nil {
 					return err
 				}
@@ -428,7 +429,7 @@ func seedReels(tx *gorm.DB, store *storage.Storage, ids map[string]uint, people 
 		p := models.Pin{UserID: ids[r.author], Title: r.title, Description: r.desc, Category: r.category, ListingType: "post",
 			Tags: strings.Join(captionHashtags(r.desc), ","), ImageURL: posterURL, Width: 360, Height: 640, Color: "#2B2328",
 			HasVideo: true, ViewsCount: 300 + i*157, CreatedAt: now.Add(-time.Duration(i*5+2) * time.Hour)}
-		p.SearchText = strings.ToLower(p.Title + " " + p.Description + " " + p.Tags)
+		p.SearchText = search.IndexText(p.Title, p.Description, p.Tags, p.Category)
 		if err := tx.Create(&p).Error; err != nil {
 			return err
 		}

@@ -68,6 +68,8 @@ func (h *Handler) appConfig() AppConfig {
 			cfg.RegistrationOpen = r.Value != "false"
 		case settingWatermark:
 			cfg.WatermarkUploads = r.Value != "false"
+		default:
+			continue // internal bookkeeping such as the search index version
 		}
 		if r.UpdatedAt.After(latest) {
 			latest = r.UpdatedAt

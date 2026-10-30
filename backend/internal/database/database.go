@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm/logger"
 
 	"github.com/esca6585dev/modahouse/backend/internal/models"
+	"github.com/esca6585dev/modahouse/backend/internal/search"
 )
 
 func Open(driver, dsn string) (*gorm.DB, error) {
@@ -53,5 +54,24 @@ func Open(driver, dsn string) (*gorm.DB, error) {
 	// Business profiles had their craft only on the business row.
 	db.Exec(`UPDATE users SET category = (SELECT category FROM businesses WHERE businesses.user_id = users.id)
 		WHERE is_business = ? AND (category IS NULL OR category = '')`, true)
+	reindex(db)
 	return db, nil
+}
+
+// searchIndexVersion changes whenever search.IndexText does; posts are then reindexed once.
+const searchIndexVersion = "2"
+
+func reindex(db *gorm.DB) {
+	var s models.Setting
+	if db.First(&s, "key = ?", "search_index").Error == nil && s.Value == searchIndexVersion {
+		return
+	}
+	var pins []models.Pin
+	db.Select("id", "title", "description", "tags", "category").FindInBatches(&pins, 500, func(tx *gorm.DB, _ int) error {
+		for _, p := range pins {
+			tx.Model(&models.Pin{}).Where("id = ?", p.ID).UpdateColumn("search_text", search.IndexText(p.Title, p.Description, p.Tags, p.Category))
+		}
+		return nil
+	})
+	db.Save(&models.Setting{Key: "search_index", Value: searchIndexVersion})
 }
