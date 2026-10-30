@@ -40,11 +40,18 @@ class AuthRepository {
   /// Current user. `GET /me` is an alias of `/auth/me` that is not rate-limited.
   Future<Me> me() async => Me.fromJson(parseJson(await _api.get('/me')));
 
-  Future<Me> updateMe({String? name, String? bio, String? username}) async {
+  /// `PUT /me`. [category] is the profile craft slug; `""` clears it.
+  Future<Me> updateMe({
+    String? name,
+    String? bio,
+    String? username,
+    String? category,
+  }) async {
     final body = <String, Object?>{
       'name': ?name,
       'bio': ?bio,
       'username': ?username,
+      'category': ?category,
     };
     return Me.fromJson(parseJson(await _api.put('/me', data: body)));
   }

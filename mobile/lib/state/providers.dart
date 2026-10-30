@@ -98,6 +98,21 @@ final businessCategoriesProvider = FutureProvider<List<Category>>((ref) async {
   ];
 });
 
+/// Profile crafts (`GET /profile-categories`), with the built-in list as a
+/// fallback while loading or offline.
+final profileCategoriesProvider = FutureProvider<List<Category>>((ref) async {
+  try {
+    final list = await ref
+        .watch(businessRepositoryProvider)
+        .profileCategories();
+    if (list.isNotEmpty) return list;
+  } catch (_) {}
+  return [
+    for (final e in businessCategoryNames.entries)
+      Category(slug: e.key, name: e.value),
+  ];
+});
+
 /// Set to false in widget tests so no network images are requested.
 final networkImagesProvider = Provider<bool>((ref) => true);
 

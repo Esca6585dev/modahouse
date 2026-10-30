@@ -100,6 +100,32 @@ class BusinessRepository {
     BusinessCard.fromJson,
   );
 
+  /// Masters directory (`GET /masters`): every profile with a craft,
+  /// personal or business.
+  Future<Page<BusinessCard>> masters({
+    String? q,
+    String? category,
+    int page = 1,
+    int limit = AppConfig.pageSize,
+  }) async => Page.fromJson(
+    parseJson(
+      await _api.get(
+        '/masters',
+        query: {
+          'q': q?.trim(),
+          'category': category,
+          'page': page,
+          'limit': limit,
+        },
+      ),
+    ),
+    BusinessCard.fromJson,
+  );
+
+  /// `GET /profile-categories`: crafts any profile may show.
+  Future<List<Category>> profileCategories() async =>
+      parseList(await _api.get('/profile-categories'), Category.fromJson);
+
   /// `GET /business-categories`.
   Future<List<Category>> categories() async =>
       parseList(await _api.get('/business-categories'), Category.fromJson);

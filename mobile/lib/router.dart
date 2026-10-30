@@ -12,6 +12,7 @@ import 'screens/cart_screens.dart';
 import 'screens/chat_screens.dart';
 import 'screens/create_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/interests_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/orders_screens.dart';
 import 'screens/pin_detail_screen.dart';
@@ -112,6 +113,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const BlockedUsersScreen(),
       ),
       GoRoute(
+        path: '/settings/interests',
+        redirect: requireLogin,
+        builder: (_, _) => const MyInterestsScreen(),
+      ),
+      GoRoute(
+        path: '/interests',
+        redirect: requireLogin,
+        builder: (_, _) => const InterestsPickScreen(),
+      ),
+      GoRoute(
         path: '/chats',
         redirect: requireLogin,
         builder: (_, _) => const ChatsScreen(),
@@ -166,7 +177,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         redirect: requireLogin,
         builder: (_, _) => const BusinessSetupScreen(),
       ),
-      GoRoute(path: '/shops', builder: (_, _) => const ShopsScreen()),
+      GoRoute(
+        path: '/shops',
+        builder: (_, s) =>
+            ShopsScreen(masters: s.uri.queryParameters['tab'] == 'masters'),
+      ),
       GoRoute(
         path: '/story/new',
         redirect: requireLogin,

@@ -74,4 +74,21 @@ class UsersRepository {
 
   Future<List<UserBrief>> blocks() async =>
       parseList(await _api.get('/me/blocks'), UserBrief.fromJson);
+
+  /// `GET /me/interests`.
+  Future<Interests> interests() async =>
+      Interests.fromJson(parseJson(await _api.get('/me/interests')));
+
+  /// `PUT /me/interests` from the "what do you like?" screen.
+  Future<Interests> pickInterests(List<String> categories) async =>
+      Interests.fromJson(
+        parseJson(
+          await _api.put('/me/interests', data: {'categories': categories}),
+        ),
+      );
+
+  /// `DELETE /me/interests`: forgets everything learned.
+  Future<void> resetInterests() async {
+    await _api.delete('/me/interests');
+  }
 }

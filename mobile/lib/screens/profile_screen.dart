@@ -9,7 +9,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api_exception.dart';
 import '../core/format.dart';
-import '../core/labels.dart';
 import '../core/snack.dart';
 import '../core/theme.dart';
 import '../data/pins_repository.dart';
@@ -531,12 +530,13 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
             user: profile,
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
-          if (b != null && b.category.isNotEmpty)
+          if (profile.category.isNotEmpty || (b?.category ?? '').isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 1),
-              child: Text(
-                businessCategoryLabel(b.category),
-                style: TextStyle(color: p.muted, fontSize: 13.5),
+              padding: const EdgeInsets.only(top: 4),
+              child: CraftBadge(
+                slug: profile.category.isNotEmpty
+                    ? profile.category
+                    : b!.category,
               ),
             ),
           if (profile.bio.isNotEmpty) ...[

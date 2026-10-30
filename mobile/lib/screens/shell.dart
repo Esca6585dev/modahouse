@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
 import '../state/auth.dart';
+import '../state/interests.dart';
+import '../state/providers.dart';
 import '../widgets/avatar.dart';
 import '../widgets/states.dart';
 
@@ -19,10 +21,41 @@ class AppShell extends ConsumerWidget {
   static const createIndex = 2;
   static const profileIndex = 4;
 
+  /// After logging in or registering, asks once "Näme bilen
+  /// gyzyklanýarsyňyz?" while the server says nothing was picked.
+  static Future<void> _maybeAskInterests(
+    BuildContext context,
+    WidgetRef ref,
+    int userId,
+  ) async {
+    final ask = await shouldPromptInterests(
+      ref.read(usersRepositoryProvider),
+      userId,
+    );
+    if (!ask || !context.mounted) return;
+    final router = GoRouter.of(context);
+    // Let the login / register screen close first (it pops itself).
+    for (var i = 0; i < 20; i++) {
+      final path = router.state.uri.path;
+      if (!path.startsWith('/login') && !path.startsWith('/register')) break;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    if (!context.mounted || ref.read(currentUserIdProvider) != userId) return;
+    await router.push('/interests');
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = AppPalette.of(context);
     final me = ref.watch(authProvider.select((s) => s.user));
+    // A sign-in in this session (not the startup restore of a stored token).
+    ref.listen(authProvider, (prev, next) {
+      final id = next.user?.id;
+      if (prev == null || !prev.ready || prev.user != null || id == null) {
+        return;
+      }
+      _maybeAskInterests(context, ref, id);
+    });
 
     Widget profileIcon(bool active) {
       if (me == null) {

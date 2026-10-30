@@ -4,15 +4,22 @@ import 'user.dart';
 /// Business category slugs (`GET /business-categories`) with their Turkmen
 /// names, used until the server list is loaded.
 const businessCategoryNames = <String, String>{
-  'dress': 'Köýnek dükany',
   'tailor': 'Tikinçi',
+  'kurte': 'Kürte tikinçi',
   'atelier': 'Atelýe',
+  'designer': 'Dizaýner',
+  'embroidery': 'El keşdeçi',
+  'dress': 'Köýnek dükany',
+  'boutique': 'Butik',
   'bridal': 'Gelin salony',
   'rental': 'Kärende salony',
-  'boutique': 'Butik',
-  'designer': 'Dizaýner',
-  'jewelry': 'Şaý-sep ussasy',
+  'fata': 'Fata satyjy',
   'beauty': 'Gözellik salony',
+  'hair': 'Saç ussasy',
+  'makeup': 'Makiýažçy',
+  'lashes': 'Kirpikçi',
+  'nails': 'Dyrnakçy',
+  'jewelry': 'Şaý-sep ussasy',
   'accessories': 'Aksessuarlar',
 };
 
@@ -94,7 +101,7 @@ class BusinessCard extends UserBrief {
     super.avatarUrl,
     super.isBusiness = true,
     super.verified,
-    this.category = '',
+    super.category,
     this.city = '',
     this.rating = 0,
     this.reviewsCount = 0,
@@ -123,7 +130,6 @@ class BusinessCard extends UserBrief {
     isFollowing: asBool(j['isFollowing']),
   );
 
-  final String category;
   final String city;
   final double rating;
   final int reviewsCount;

@@ -40,10 +40,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final category = _category;
     final mode = _mode;
     final posts = ref.read(feedViewProvider) == FeedView.instagram;
+    // Signed-in users get the personal ranking (`feed=foryou`); guests keep
+    // the newest-first feed.
+    final personal =
+        mode == FeedMode.forYou && ref.read(authProvider).isLoggedIn;
     return PagedController(
       (page) => repo.list(
         category: category,
         following: mode == FeedMode.following,
+        forYou: personal,
         type: mode == FeedMode.products ? PinType.products : PinType.any,
         withComments: posts,
         page: page,

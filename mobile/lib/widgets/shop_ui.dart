@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/format.dart';
 import '../core/labels.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
 import '../models/models.dart';
+import '../state/providers.dart';
 import 'avatar.dart';
 
 /// "450 TMT" in bold brand red, with the struck-through old price next to it.
@@ -669,6 +671,43 @@ class ChoiceChips<T> extends StatelessWidget {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small pill with the profile craft ("Tikinçi", "Kirpikçi"…), shown under
+/// the name on profiles.
+class CraftBadge extends ConsumerWidget {
+  const CraftBadge({super.key, required this.slug});
+
+  final String slug;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
+    final cats = ref.watch(profileCategoriesProvider).value;
+    return Container(
+      key: const Key('craft-badge'),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: p.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(businessCategoryIcon(slug), size: 14, color: p.muted),
+          const SizedBox(width: 5),
+          Text(
+            businessCategoryLabel(slug, cats),
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: p.text,
+            ),
+          ),
         ],
       ),
     );

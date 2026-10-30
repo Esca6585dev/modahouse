@@ -834,4 +834,34 @@ class S {
   static String yearsLater(int n) => '$n ýyldan';
   static const thousand = 'müň';
   static const million = 'mln';
+
+  // ---------- Crafts & interests (v7) ----------
+  static const craft = 'Hünäriňiz';
+  static const craftHelp =
+      'Tikinçi, kirpikçi, dyrnakçy… Profiliňizde adyňyzyň aşagynda görkeziler';
+  static const craftNone = 'Ýok';
+  static const craftBusinessHelp = 'Biznes hasabynyň hünäri bolmaly';
+  static const masters = 'Ussalar';
+  static const mastersEmpty = 'Ussa tapylmady';
+  static const interestsTitle = 'Näme bilen gyzyklanýarsyňyz?';
+  static const interestsText =
+      'Iň bolmanda birini saýlaň: baş sahypa size görä düzüler.';
+  static const interestsSkip = 'Geçmek';
+  static const interestsSaved = 'Gyzyklanmalaryňyz ýatda saklandy';
+  static String interestsContinue(int n) =>
+      n == 0 ? 'Dowam et' : 'Dowam et ($n)';
+  static const myInterests = 'Gyzyklanmalarym';
+  static const myInterestsText =
+      'Görýän, halaýan we ýatda saklaýan zatlaryňyza görä öwrenilýär.';
+  static const interestsEmpty = 'Entek gyzyklanma ýok';
+  static const interestsEmptyText =
+      'Bölümleri saýlaň ýa-da programmany ulanyň: biz özümiz öwreneris.';
+  static const interestsPick = 'Bölümleri saýla';
+  static const interestsReset = 'Arassala';
+  static const interestsResetConfirm = 'Gyzyklanmalar arassalansynmy?';
+  static const interestsResetText =
+      'Öwrenilen ähli zat pozular, «Saňa» lentasy täzeden düzüler.';
+  static const interestsResetDone = 'Gyzyklanmalar arassalandy';
+  static const interestCategory = 'Bölüm';
+  static const interestTag = 'Teg';
 }

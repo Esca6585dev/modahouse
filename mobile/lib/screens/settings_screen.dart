@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../core/api_exception.dart';
+import '../core/labels.dart';
 import '../core/snack.dart';
 import '../core/theme.dart';
 import '../l10n/strings.dart';
@@ -183,6 +184,7 @@ class _ProfileCardState extends ConsumerState<_ProfileCard> {
   late final _name = TextEditingController(text: widget.me.name);
   late final _username = TextEditingController(text: widget.me.username);
   late final _bio = TextEditingController(text: widget.me.bio);
+  late String _category = widget.me.category;
   bool _busy = false;
   String? _error;
 
@@ -207,6 +209,7 @@ class _ProfileCardState extends ConsumerState<_ProfileCard> {
             name: _name.text.trim(),
             username: _username.text.trim().toLowerCase(),
             bio: _bio.text.trim(),
+            category: _category == widget.me.category ? null : _category,
           );
       ref.read(authProvider.notifier).setUser(me);
       showSnack(S.profileUpdated);
@@ -261,6 +264,13 @@ class _ProfileCardState extends ConsumerState<_ProfileCard> {
               hintText: S.bioHint,
             ),
           ),
+          const SizedBox(height: 8),
+          CraftPicker(
+            value: _category,
+            allowNone: !widget.me.isBusiness,
+            enabled: !_busy,
+            onChanged: (v) => setState(() => _category = v),
+          ),
           if (_error != null) ...[
             const SizedBox(height: 8),
             FormErrorBox(message: _error!),
@@ -277,6 +287,64 @@ class _ProfileCardState extends ConsumerState<_ProfileCard> {
       ),
     ),
   );
+}
+
+/// "Hünäriňiz": the profile craft as chips (`GET /profile-categories`).
+/// [allowNone] adds "Ýok" (`""`); business accounts must keep a craft.
+class CraftPicker extends ConsumerWidget {
+  const CraftPicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.allowNone = true,
+    this.enabled = true,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+  final bool allowNone;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
+    final cats =
+        ref.watch(profileCategoriesProvider).value ??
+        [
+          for (final e in businessCategoryNames.entries)
+            Category(slug: e.key, name: e.value),
+        ];
+    Widget chip(String slug, String label) => ChoiceChip(
+      key: Key('craft-${slug.isEmpty ? 'none' : slug}'),
+      label: Text(label),
+      selected: value == slug,
+      showCheckmark: false,
+      onSelected: enabled ? (_) => onChanged(slug) : null,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(S.craft, style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Text(
+          allowNone ? S.craftHelp : S.craftBusinessHelp,
+          style: TextStyle(color: p.muted, fontSize: 12.5),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (allowNone) chip('', S.craftNone),
+            for (final c in cats) chip(c.slug, c.name),
+            // A craft the list no longer has: keep it visible.
+            if (value.isNotEmpty && !cats.any((c) => c.slug == value))
+              chip(value, businessCategoryLabel(value)),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 class _PasswordCard extends ConsumerStatefulWidget {
@@ -430,6 +498,7 @@ class _ShopLinksCard extends StatelessWidget {
           link(Icons.receipt_long_outlined, S.myOrders, '/orders'),
           link(Icons.shopping_bag_outlined, S.cart, '/cart'),
           link(Icons.block_rounded, S.blockedUsers, '/settings/blocked'),
+          link(Icons.interests_outlined, S.myInterests, '/settings/interests'),
         ],
       ),
     );

@@ -17,7 +17,17 @@ IconData businessCategoryIcon(String? slug) {
     case 'dress':
       return Icons.checkroom_rounded;
     case 'tailor':
+    case 'kurte':
       return Icons.content_cut_rounded;
+    case 'embroidery':
+      return Icons.gesture_rounded;
+    case 'fata':
+      return Icons.auto_awesome_outlined;
+    case 'hair':
+    case 'makeup':
+    case 'lashes':
+    case 'nails':
+      return Icons.face_retouching_natural_outlined;
     case 'atelier':
       return Icons.design_services_outlined;
     case 'bridal':

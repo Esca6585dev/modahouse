@@ -98,6 +98,7 @@ class PinsRepository {
     String? q,
     String? category,
     bool following = false,
+    bool forYou = false,
     PinType type = PinType.any,
     String? author,
     String? tag,
@@ -111,7 +112,11 @@ class PinsRepository {
         query: {
           'q': q?.trim(),
           'category': category,
-          'feed': following ? 'following' : null,
+          'feed': following
+              ? 'following'
+              : forYou
+              ? 'foryou'
+              : null,
           'type': type.value,
           'author': author,
           'tag': tag?.replaceFirst('#', ''),

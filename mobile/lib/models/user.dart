@@ -9,6 +9,7 @@ class UserBrief {
     this.avatarUrl = '',
     this.isBusiness = false,
     this.verified = false,
+    this.category = '',
   });
 
   factory UserBrief.fromJson(Json j) => UserBrief(
@@ -18,6 +19,7 @@ class UserBrief {
     avatarUrl: asString(j['avatarUrl']),
     isBusiness: asBool(j['isBusiness']),
     verified: asBool(j['verified']),
+    category: asString(j['category']),
   );
 
   final int id;
@@ -32,6 +34,10 @@ class UserBrief {
 
   /// Blue check next to the name.
   final bool verified;
+
+  /// Profile craft slug (`GET /profile-categories`), e.g. `tailor`;
+  /// empty when none is chosen.
+  final String category;
 
   String get displayName => name.isNotEmpty ? name : username;
 
@@ -51,6 +57,7 @@ class Profile extends UserBrief {
     super.avatarUrl,
     super.isBusiness,
     super.verified,
+    super.category,
     this.bio = '',
     this.followersCount = 0,
     this.followingCount = 0,
@@ -71,6 +78,7 @@ class Profile extends UserBrief {
     avatarUrl: asString(j['avatarUrl']),
     isBusiness: asBool(j['isBusiness']),
     verified: asBool(j['verified']),
+    category: asString(j['category']),
     bio: asString(j['bio']),
     followersCount: asInt(j['followersCount']),
     followingCount: asInt(j['followingCount']),
@@ -116,6 +124,7 @@ class Profile extends UserBrief {
     avatarUrl: avatarUrl,
     isBusiness: isBusiness,
     verified: verified,
+    category: category,
     bio: bio,
     followersCount: followersCount ?? this.followersCount,
     followingCount: followingCount,
@@ -138,6 +147,7 @@ class Me extends Profile {
     super.avatarUrl,
     super.isBusiness,
     super.verified,
+    super.category,
     super.bio,
     super.followersCount,
     super.followingCount,
@@ -161,6 +171,7 @@ class Me extends Profile {
       avatarUrl: p.avatarUrl,
       isBusiness: p.isBusiness,
       verified: p.verified,
+      category: p.category,
       bio: p.bio,
       followersCount: p.followersCount,
       followingCount: p.followingCount,

@@ -13,9 +13,13 @@ import '../widgets/app_image.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 
-/// `/shops`: every shop, filtered by business category.
+/// `/shops`: every shop, filtered by business category; "Ussalar" lists
+/// every profile with a craft (`GET /masters`), personal ones included.
 class ShopsScreen extends ConsumerStatefulWidget {
-  const ShopsScreen({super.key});
+  const ShopsScreen({super.key, this.masters = false});
+
+  /// Open on the "Ussalar" tab.
+  final bool masters;
 
   @override
   ConsumerState<ShopsScreen> createState() => _ShopsScreenState();
@@ -23,22 +27,33 @@ class ShopsScreen extends ConsumerStatefulWidget {
 
 class _ShopsScreenState extends ConsumerState<ShopsScreen> {
   String? _category;
+  late bool _masters = widget.masters;
   late PagedController<BusinessCard> _shops = _make();
 
   PagedController<BusinessCard> _make() {
     final repo = ref.read(businessRepositoryProvider);
     final c = _category;
-    return PagedController((page) => repo.list(category: c, page: page));
+    return _masters
+        ? PagedController((page) => repo.masters(category: c, page: page))
+        : PagedController((page) => repo.list(category: c, page: page));
+  }
+
+  void _reload() {
+    final old = _shops;
+    setState(() => _shops = _make());
+    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
   }
 
   void _setCategory(String? c) {
     if (c == _category) return;
-    final old = _shops;
-    setState(() {
-      _category = c;
-      _shops = _make();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+    _category = c;
+    _reload();
+  }
+
+  void _setMasters(bool v) {
+    if (v == _masters) return;
+    _masters = v;
+    _reload();
   }
 
   @override
@@ -49,7 +64,7 @@ class _ShopsScreenState extends ConsumerState<ShopsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text(S.shops)),
+    appBar: AppBar(title: Text(_masters ? S.masters : S.shops)),
     body: RefreshIndicator(
       color: AppPalette.accent,
       onRefresh: () => _shops.refresh(),
@@ -57,13 +72,45 @@ class _ShopsScreenState extends ConsumerState<ShopsScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
           SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppPalette.gutter,
+                4,
+                AppPalette.gutter,
+                12,
+              ),
+              child: SegmentedButton<bool>(
+                key: const Key('shops-mode'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    icon: Icon(Icons.storefront_outlined),
+                    label: Text(S.shops),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: Icon(Icons.content_cut_rounded),
+                    label: Text(S.masters),
+                  ),
+                ],
+                selected: {_masters},
+                onSelectionChanged: (s) => _setMasters(s.first),
+              ),
+            ),
+          ),
+          SliverToBoxAdapter(
             child: BusinessCategoryChips(
               selected: _category,
               onSelected: _setCategory,
+              crafts: _masters,
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 12)),
-          ShopListSliver(controller: _shops),
+          ShopListSliver(
+            controller: _shops,
+            emptyTitle: _masters ? S.mastersEmpty : S.shopsEmpty,
+          ),
         ],
       ),
     ),
@@ -76,15 +123,23 @@ class BusinessCategoryChips extends ConsumerWidget {
     super.key,
     required this.selected,
     required this.onSelected,
+    this.crafts = false,
   });
 
   final String? selected;
   final ValueChanged<String?> onSelected;
 
+  /// Profile crafts (`/profile-categories`) instead of business categories.
+  final bool crafts;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cats =
-        ref.watch(businessCategoriesProvider).value ??
+        ref
+            .watch(
+              crafts ? profileCategoriesProvider : businessCategoriesProvider,
+            )
+            .value ??
         [
           for (final e in businessCategoryNames.entries)
             Category(slug: e.key, name: e.value),
@@ -100,9 +155,14 @@ class BusinessCategoryChips extends ConsumerWidget {
 
 /// Paged list of [ShopCard]s with loading, empty and error states.
 class ShopListSliver extends StatelessWidget {
-  const ShopListSliver({super.key, required this.controller});
+  const ShopListSliver({
+    super.key,
+    required this.controller,
+    this.emptyTitle = S.shopsEmpty,
+  });
 
   final PagedController<BusinessCard> controller;
+  final String emptyTitle;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -128,11 +188,8 @@ class ShopListSliver extends StatelessWidget {
         );
       }
       if (items.isEmpty) {
-        return const SliverToBoxAdapter(
-          child: EmptyView(
-            icon: Icons.storefront_outlined,
-            title: S.shopsEmpty,
-          ),
+        return SliverToBoxAdapter(
+          child: EmptyView(icon: Icons.storefront_outlined, title: emptyTitle),
         );
       }
       return SliverPadding(
@@ -215,37 +272,43 @@ class ShopCard extends StatelessWidget {
                             style: TextStyle(color: p.muted, fontSize: 12.5),
                           ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star_rounded,
-                              size: 16,
-                              color: AppPalette.gold,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              b.reviewsCount > 0
-                                  ? '${formatRating(b.rating)} (${b.reviewsCount})'
-                                  : '–',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12.5,
+                        if (!b.isBusiness)
+                          Text(
+                            S.followersCount(compactCount(b.followersCount)),
+                            style: TextStyle(color: p.muted, fontSize: 12.5),
+                          )
+                        else
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: AppPalette.gold,
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Flexible(
-                              child: Text(
-                                '${S.followersCount(compactCount(b.followersCount))} · ${S.productsCount(compactCount(b.productsCount))}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: p.muted,
+                              const SizedBox(width: 2),
+                              Text(
+                                b.reviewsCount > 0
+                                    ? '${formatRating(b.rating)} (${b.reviewsCount})'
+                                    : '–',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 12.5,
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(width: 10),
+                              Flexible(
+                                child: Text(
+                                  '${S.followersCount(compactCount(b.followersCount))} · ${S.productsCount(compactCount(b.productsCount))}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: p.muted,
+                                    fontSize: 12.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),
