@@ -19,9 +19,10 @@ function ShopsView() {
   const q = params.get("q") ?? "";
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
-  useEffect(() => { document.title = "Dükanlar · ModaHouse"; }, []);
+  useEffect(() => { document.title = "Dükanlar we ussalar · ModaHouse"; }, []);
 
-  const paged = usePaged(ready ? `shops:${category}:${q}` : null, (page) => api.businesses({ q, category, page }));
+  // Every profile with a craft: shops and personal masters (lash, nail, embroidery…).
+  const paged = usePaged(ready ? `shops:${category}:${q}` : null, (page) => api.masters({ q, category, page }));
 
   const go = (changes: Record<string, string>) => {
     const next = new URLSearchParams(params.toString());
@@ -37,12 +38,12 @@ function ShopsView() {
     <div className="page shops-page">
       <div className="page-head">
         <div>
-          <h1 className="page-title">Dükanlar</h1>
-          <p className="muted">Köýnek dükanlary, tikinçiler, butikler we dizaýnerler</p>
+          <h1 className="page-title">Dükanlar we ussalar</h1>
+          <p className="muted">Tikinçiler, kürte tikinçiler, el keşdeçiler, kirpikçiler, dyrnakçylar, fata satyjylar we dükanlar</p>
         </div>
         <form className="search search-inline" role="search" onSubmit={(e) => { e.preventDefault(); go({ q: text.trim() }); }}>
           <SearchIcon />
-          <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Dükan gözle…" aria-label="Dükan gözle" />
+          <input type="search" value={text} onChange={(e) => setText(e.target.value)} placeholder="Dükan ýa-da ussa gözle…" aria-label="Dükan ýa-da ussa gözle" />
         </form>
       </div>
       <div className="chips" role="list">
@@ -64,9 +65,9 @@ function ShopsView() {
         </div>
       ) : paged.items.length === 0 ? (
         <div className="empty">
-          <h2>Dükan tapylmady</h2>
-          <p>{q || category ? "Başga söz ýa-da kategoriýa bilen synanyşyň." : "Entek dükan ýok. Ilkinji bolup biznes hasabyny açyň!"}</p>
-          <Link href="/settings#business" className="btn btn-primary">Biznes hasabyny aç</Link>
+          <h2>Hiç kim tapylmady</h2>
+          <p>{q || category ? "Başga söz ýa-da kategoriýa bilen synanyşyň." : "Entek hiç kim ýok. Sazlamalarda kärňizi saýlaň ýa-da biznes hasabyny açyň!"}</p>
+          <Link href="/settings" className="btn btn-primary">Kärimi saýla</Link>
         </div>
       ) : (
         <>

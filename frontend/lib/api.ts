@@ -6,6 +6,7 @@ import type {
   CommonsCategory, CommonsImportResult, DemoCounts, LikeState, Me, Message, MessagesPage,
   ListingType, Notification, Order, OrderInput, OrderStatus, Page, Pin, PinImage, Profile, ReportReason, Review, ReviewsPage,
   SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UrlCheck, UserBrief, VisualResult,
+  Analytics, Interest, Interests, StarterStatus,
 } from "./types";
 
 const TOKEN_KEY = "mh_token";
@@ -283,7 +284,7 @@ export const api = {
   me: () => request<Me>("/me").then(meRes),
 
   // current user
-  updateMe: (b: { name?: string; bio?: string; username?: string }) => request<Me>("/me", { method: "PUT", body: b }).then(meRes),
+  updateMe: (b: { name?: string; bio?: string; username?: string; category?: string }) => request<Me>("/me", { method: "PUT", body: b }).then(meRes),
   changePassword: (b: { currentPassword: string; newPassword: string }) =>
     // Revokes every older token; the response carries the new one.
     request<AuthResponse>("/me/password", { method: "PUT", body: b }).then(authRes),
@@ -294,6 +295,11 @@ export const api = {
   },
   deleteAvatar: () => request<Me>("/me/avatar", { method: "DELETE" }).then(meRes),
   myBoards: () => request<Board[]>("/me/boards"),
+  // v7: what the server learned the user likes; picked=false → ask on the welcome screen
+  interests: () => request<Interests>("/me/interests").then(normInterests),
+  pickInterests: (categories: string[]) =>
+    request<Interests>("/me/interests", { method: "PUT", body: { categories } }).then(normInterests),
+  resetInterests: () => request<void>("/me/interests", { method: "DELETE" }),
 
   // users
   user: (u: string) => request<Profile>(`/users/${enc(u)}`).then(normProfile),
@@ -350,6 +356,9 @@ export const api = {
   businessStats: (period: StatsPeriod) => request<BusinessStats>(`/business/stats${qs({ period })}`),
   businesses: (p: { q?: string; category?: string; page: number; limit?: number }) =>
     request<Page<BusinessCard>>(`/businesses${qs({ ...p, limit: p.limit ?? PAGE_SIZE })}`),
+  // v7: every profile with a craft, personal or business
+  masters: (p: { q?: string; category?: string; page: number; limit?: number }) =>
+    request<Page<BusinessCard>>(`/masters${qs({ ...p, limit: p.limit ?? PAGE_SIZE })}`),
   top: (p: { period: StatsPeriod; category?: string; limit?: number }) =>
     request<TopEntry[]>(`/top${qs({ ...p, limit: p.limit ?? 10 })}`),
 
@@ -457,8 +466,17 @@ export const api = {
     // v6: seed accounts and their posts
     demo: () => request<DemoCounts>("/admin/demo"),
     deleteDemo: () => request<DemoCounts>("/admin/demo", { method: "DELETE" }),
+    // v7: analytics and the licensed starter photos
+    analytics: (days: number) => request<Analytics>(`/admin/analytics${qs({ days })}`),
+    userInterests: (id: number) => request<{ items: Interest[] }>(`/admin/users/${id}/interests`).then((r) => r.items ?? []),
+    starterStatus: () => request<StarterStatus>("/admin/import/starter"),
+    startStarter: (total: number) => request<StarterStatus>("/admin/import/starter", { method: "POST", body: { total } }),
   },
 };
+
+function normInterests(r: Interests): Interests {
+  return { items: r.items ?? [], picked: !!r.picked };
+}
 
 function visualRes(r: VisualResult): VisualResult {
   return { ...r, items: (r.items ?? []).map(normPin), scores: r.scores ?? [], category: r.category ?? "" };

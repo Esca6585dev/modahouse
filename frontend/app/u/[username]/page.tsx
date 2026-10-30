@@ -293,6 +293,9 @@ function ProfileView() {
               )}
             </div>
           )}
+          {!biz && profile.category && (
+            <Link href={`/shops?category=${profile.category}`} className="ig-cat">{businessCategoryLabel(profile.category)}</Link>
+          )}
           {profile.bio && <p className="bio">{profile.bio}</p>}
           {biz && (
             <ul className="biz-info">

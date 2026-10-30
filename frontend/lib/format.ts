@@ -58,15 +58,22 @@ export function discountPercent(price: number, oldPrice: number): number {
 
 /** Fallback list; the live one comes from GET /business-categories (useBusinessCategories). */
 export const BUSINESS_CATEGORIES: { value: string; label: string }[] = [
-  { value: "dress", label: "Köýnek dükany" },
   { value: "tailor", label: "Tikinçi" },
+  { value: "kurte", label: "Kürte tikinçi" },
   { value: "atelier", label: "Atelýe" },
+  { value: "designer", label: "Dizaýner" },
+  { value: "embroidery", label: "El keşdeçi" },
+  { value: "dress", label: "Köýnek dükany" },
+  { value: "boutique", label: "Butik" },
   { value: "bridal", label: "Gelin salony" },
   { value: "rental", label: "Kärende salony" },
-  { value: "boutique", label: "Butik" },
-  { value: "designer", label: "Dizaýner" },
-  { value: "jewelry", label: "Şaý-sep ussasy" },
+  { value: "fata", label: "Fata satyjy" },
   { value: "beauty", label: "Gözellik salony" },
+  { value: "hair", label: "Saç ussasy" },
+  { value: "makeup", label: "Makiýažçy" },
+  { value: "lashes", label: "Kirpikçi" },
+  { value: "nails", label: "Dyrnakçy" },
+  { value: "jewelry", label: "Şaý-sep ussasy" },
   { value: "accessories", label: "Aksessuarlar" },
 ];
 

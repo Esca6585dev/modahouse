@@ -11,9 +11,11 @@ import { useStories } from "./StoryViewer";
 export default function ShopCard({ b }: { b: BusinessCard }) {
   const stories = useStories();
   const covers = b.covers.slice(0, 4);
+  // Personal masters (a lash or nail artist…) have posts, not products.
+  const href = b.isBusiness ? `/u/${b.username}?tab=products` : `/u/${b.username}`;
   return (
     <article className="shop-card">
-      <Link href={`/u/${b.username}?tab=products`} className={`shop-covers n${Math.max(1, covers.length)}`} aria-label={b.name}>
+      <Link href={href} className={`shop-covers n${Math.max(1, covers.length)}`} aria-label={b.name}>
         {covers.length === 0 && <span className="shop-cover-empty"><StoreIcon size={28} /></span>}
         {covers.map((c, i) => (
           // eslint-disable-next-line @next/next/no-img-element
@@ -34,10 +36,10 @@ export default function ShopCard({ b }: { b: BusinessCard }) {
         </span>
         <Stars value={b.rating} size={13} count={b.reviewsCount} />
         <div className="shop-stats">
-          <span><strong>{compact(b.productsCount)}</strong> haryt</span>
+          {b.isBusiness && <span><strong>{compact(b.productsCount)}</strong> haryt</span>}
           <span><strong>{compact(b.followersCount)}</strong> yzarlaýjy</span>
         </div>
-        <Link href={`/u/${b.username}?tab=products`} className="btn btn-secondary btn-sm btn-block">Dükana gir</Link>
+        <Link href={href} className="btn btn-secondary btn-sm btn-block">{b.isBusiness ? "Dükana gir" : "Profile gir"}</Link>
       </div>
     </article>
   );

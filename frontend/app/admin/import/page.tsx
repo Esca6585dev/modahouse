@@ -7,7 +7,7 @@ import { useToast } from "@/components/Toast";
 import { api, ApiError, errorMessage } from "@/lib/api";
 import { num } from "@/lib/format";
 import { useCategories } from "@/lib/hooks";
-import type { CommonsCategory, CommonsImportResult } from "@/lib/types";
+import type { CommonsCategory, CommonsImportResult, StarterStatus } from "@/lib/types";
 import { AdminHead } from "../shared";
 
 type Failure = { message: string; network: boolean };
@@ -36,6 +36,69 @@ function ErrorBox({ f, onRetry }: { f: Failure; onRetry?: () => void }) {
       </div>
       {onRetry && <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>Gaýtadan synanyş</button>}
     </div>
+  );
+}
+
+/** One click: ~200 openly licensed fashion photos posted as @modahouse, imported on the server. */
+function StarterCard() {
+  const [st, setSt] = useState<StarterStatus | null>(null);
+  const [total, setTotal] = useState(200);
+  const [error, setError] = useState<Failure | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = () => api.admin.starterStatus().then((s) => {
+      if (!alive) return;
+      setSt(s);
+      if (s.running) timer = setTimeout(poll, 2000);
+    }, () => {});
+    if (!st || st.running) poll();
+    return () => { alive = false; clearTimeout(timer); };
+  }, [st?.running]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const start = async () => {
+    setError(null);
+    try {
+      setSt(await api.admin.startStarter(total));
+    } catch (e) {
+      setError(failure(e));
+    }
+  };
+  const pct = st && st.target ? Math.min(100, Math.round((st.created / st.target) * 100)) : 0;
+
+  return (
+    <section className="card admin-form">
+      <h2><ImagesIcon size={20} /> Başlangyç fasonlar</h2>
+      <p className="muted">
+        Wikimedia Commons-dan türkmen we Merkezi Aziýa köýnekleri, gelin lybaslary, keşdeler, şaý-sepler, saç, makiýaž we dyrnak
+        suratlaryny <Link href="/u/modahouse">@modahouse</Link> hasabyna goşýar. Diňe hili gowy (500 px-den uly) we açyk
+        ygtyýarnamaly suratlar alynýar; her postda awtory görkezilýär.
+      </p>
+      {st?.running ? (
+        <>
+          <div className="starter-progress" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${pct}%` }} /></div>
+          <p className="muted small">{num(st.created)} / {num(st.target)} goşuldy{st.step ? ` · «${st.step}»` : ""}</p>
+        </>
+      ) : (
+        <>
+          {st?.finished && (
+            <p className="demo-done"><CheckIcon size={16} /> Soňky import: {num(st.created)} surat goşuldy, {num(st.skipped)} geçildi.</p>
+          )}
+          {st?.error && <ErrorBox f={{ message: st.error, network: true }} />}
+          {error && <ErrorBox f={error} onRetry={start} />}
+          <div className="form-actions">
+            <label className="inline-label">
+              Sany
+              <select value={total} onChange={(e) => setTotal(Number(e.target.value))}>
+                {[100, 200, 300, 400].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <button type="button" className="btn btn-primary" onClick={start}><PlusIcon size={18} /> Import et</button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -155,6 +218,7 @@ export default function AdminImport() {
   return (
     <>
       <AdminHead title="Suratlar importy" sub="Wikimedia Commons-dan açyk ygtyýarnamaly suratlar" />
+      <StarterCard />
       <div className="card admin-form imp-card">
         <div className="admin-note">
           <InfoIcon size={18} />

@@ -7,10 +7,13 @@ export type UserBrief = {
   avatarUrl: string;
   isBusiness: boolean;
   verified: boolean;
+  /** v7: the profile's craft (tailor, lashes, nails…), see /profile-categories; absent when none. */
+  category?: string;
 };
 
 export type BusinessCategory =
-  | "dress" | "tailor" | "atelier" | "bridal" | "rental" | "boutique" | "designer" | "jewelry" | "beauty" | "accessories";
+  | "tailor" | "kurte" | "atelier" | "designer" | "embroidery" | "dress" | "boutique" | "bridal" | "rental" | "fata"
+  | "beauty" | "hair" | "makeup" | "lashes" | "nails" | "jewelry" | "accessories";
 
 export type Business = {
   category: BusinessCategory;
@@ -400,3 +403,38 @@ export type MessagesPage = { items: Message[]; hasMore: boolean };
 export type CommonsCategory = { title: string; files: number };
 export type CommonsImportResult = { created: Pin[]; skipped: { title: string; reason: string }[] };
 export type DemoCounts = { users: number; pins: number };
+
+// ---------- v7: interests, analytics, starter pack ----------
+
+export type Interest = { kind: "category" | "tag"; key: string; name: string; score: number };
+export type Interests = { items: Interest[]; picked: boolean };
+
+export type AnalyticsDay = { day: string; newUsers: number; activeUsers: number; views: number; searches: number };
+export type InterestStat = { key: string; name: string; score: number; users: number };
+export type SearchStat = { query: string; count: number; results: number };
+
+export type Analytics = {
+  days: number;
+  activeUsers: number;
+  newUsers: number;
+  searches: number;
+  usersWithTaste: number;
+  daily: AnalyticsDay[];
+  categories: InterestStat[];
+  tags: InterestStat[];
+  topSearches: SearchStat[];
+  emptySearches: SearchStat[];
+  topPins: { id: number; title: string; imageUrl: string; category: string; views: number }[];
+  crafts: { slug: string; name: string; count: number }[];
+};
+
+export type StarterStatus = {
+  running: boolean;
+  target: number;
+  created: number;
+  skipped: number;
+  step: string;
+  error?: string;
+  started?: string;
+  finished?: string;
+};

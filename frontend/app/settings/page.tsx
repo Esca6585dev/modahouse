@@ -8,8 +8,8 @@ import BusinessSection from "@/components/BusinessForm";
 import { useToast } from "@/components/Toast";
 import { api, errorMessage, setToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useRequireAuth } from "@/lib/hooks";
-import type { UserBrief } from "@/lib/types";
+import { useBusinessCategories, useRequireAuth } from "@/lib/hooks";
+import type { Interest, UserBrief } from "@/lib/types";
 
 const USERNAME_RE = /^[a-z0-9._]{3,30}$/;
 const AVATAR_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -20,11 +20,13 @@ function ProfileForm() {
   const [name, setName] = useState(user?.name ?? "");
   const [username, setUsername] = useState(user?.username ?? "");
   const [bio, setBio] = useState(user?.bio ?? "");
+  const [craft, setCraft] = useState(user?.category ?? "");
+  const crafts = useBusinessCategories();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!user) return null;
 
-  const dirty = name !== user.name || username !== user.username || bio !== user.bio;
+  const dirty = name !== user.name || username !== user.username || bio !== user.bio || craft !== (user.category ?? "");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,11 +35,12 @@ function ProfileForm() {
     setBusy(true);
     setError(null);
     try {
-      const me = await api.updateMe({ name: name.trim(), username: username.trim(), bio: bio.trim() });
+      const me = await api.updateMe({ name: name.trim(), username: username.trim(), bio: bio.trim(), category: craft });
       setUser(me);
       setName(me.name);
       setUsername(me.username);
       setBio(me.bio);
+      setCraft(me.category ?? "");
       toast("Profil täzelendi");
     } catch (err) {
       setError(errorMessage(err));
@@ -61,6 +64,14 @@ function ProfileForm() {
         Barada
         <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} maxLength={300} placeholder="Özüňiz barada gysgaça ýazyň" />
         <small className="hint">{bio.length}/300</small>
+      </label>
+      <label>
+        Kärim
+        <select value={craft} onChange={(e) => setCraft(e.target.value)}>
+          {!user.isBusiness && <option value="">Görkezme</option>}
+          {crafts.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <small className="hint">Tikinçi, kirpikçi, dyrnakçy, el keşdeçi… Profiliňizde görner we «Ussalar» sahypasynda tapylarsyňyz.</small>
       </label>
       <label>
         E-poçta
@@ -124,6 +135,51 @@ function AvatarForm() {
         )}
       </div>
     </div>
+  );
+}
+
+function MyInterests() {
+  const toast = useToast();
+  const [items, setItems] = useState<Interest[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.interests().then((r) => setItems(r.items), () => setItems([]));
+  }, []);
+  if (!items) return <div className="skeleton" style={{ height: 56 }} />;
+  return (
+    <>
+      <p className="muted small">
+        «Saňa» lentasy siziň seredýän, halaýan we saklaýan postlaryňyza görä düzülýär.
+        {items.length === 0 && " Entek hiç zat öwrenilmedi."}
+      </p>
+      {items.length > 0 && (
+        <div className="chips interest-chips">
+          {items.slice(0, 16).map((i) => (
+            <span key={i.kind + i.key} className="chip">{i.kind === "tag" ? "#" : ""}{i.name}</span>
+          ))}
+        </div>
+      )}
+      {items.length > 0 && (
+        <button
+          className="btn btn-secondary btn-sm"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await api.resetInterests();
+              setItems([]);
+              toast("Gyzyklanmalar arassalandy");
+            } catch (e) {
+              toast(errorMessage(e), "error");
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          Arassala
+        </button>
+      )}
+    </>
   );
 }
 
@@ -265,6 +321,11 @@ export default function SettingsPage() {
       <section className="card" id="business">
         <h2>Biznes hasaby</h2>
         <BusinessSection key={`${user.id}:${user.isBusiness}`} />
+      </section>
+
+      <section className="card" id="interests">
+        <h2>Gyzyklanmalarym</h2>
+        <MyInterests />
       </section>
 
       <section className="card" id="blocked">

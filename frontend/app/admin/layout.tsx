@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChartIcon, FlagIcon, ImagesIcon, SettingsIcon, ShieldIcon, UploadIcon, UserIcon } from "@/components/Icons";
+import { ChartIcon, FlagIcon, ImagesIcon, SettingsIcon, ShieldIcon, SparkIcon, UploadIcon, UserIcon } from "@/components/Icons";
 import { api } from "@/lib/api";
 import { useRequireAuth } from "@/lib/hooks";
 import { AdminBadgeContext } from "./shared";
 
 const TABS = [
   { href: "/admin", label: "Umumy", icon: <ChartIcon size={18} /> },
+  { href: "/admin/analytics", label: "Analitika", icon: <SparkIcon size={18} /> },
   { href: "/admin/settings", label: "Sazlamalar", icon: <SettingsIcon size={18} /> },
   { href: "/admin/users", label: "Ulanyjylar", icon: <UserIcon size={18} /> },
   { href: "/admin/reports", label: "Şikaýatlar", icon: <FlagIcon size={18} />, badge: true },

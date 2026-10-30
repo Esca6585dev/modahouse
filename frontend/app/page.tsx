@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { MasonrySkeleton, PinFeed } from "@/components/Masonry";
 import { FEED_VIEWS, PostFeed, ViewSwitch } from "@/components/FeedViews";
+import InterestPicker from "@/components/InterestPicker";
 import StoriesBar from "@/components/StoriesBar";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -36,7 +37,8 @@ function Feed() {
   const key = ready ? JSON.stringify({ q, c, following, products, insta, u: user?.id ?? 0 }) : null;
   const paged = usePaged(key, (page) =>
     api.pins({
-      q, category: c, feed: following ? "following" : undefined, type: products ? "products" : undefined, page,
+      // Signed-in users get "Saňa" ranked by what they like; guests see the newest.
+      q, category: c, feed: following ? "following" : user && !products ? "foryou" : undefined, type: products ? "products" : undefined, page,
       withComments: insta, limit: insta ? 12 : undefined,
     }));
 
@@ -45,6 +47,7 @@ function Feed() {
   return (
     <div className="page">
       {!q && <StoriesBar />}
+      <InterestPicker onDone={paged.reload} />
       <div className="home-bar">
       <div className="home-tabs">
       <div className="feed-toggle" role="tablist" aria-label="Lenta">
