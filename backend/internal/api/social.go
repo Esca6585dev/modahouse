@@ -75,7 +75,9 @@ func (h *Handler) hidePin(c fiber.Ctx) error {
 	if h.db.Model(&models.Pin{}).Where("id = ?", id).Count(&n); n == 0 {
 		return notFound(c)
 	}
-	h.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.HiddenPin{UserID: viewerID(c), PinID: id})
+	if res := h.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&models.HiddenPin{UserID: viewerID(c), PinID: id}); res.RowsAffected > 0 {
+		h.trackPin(viewerID(c), id, weightHide)
+	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
 

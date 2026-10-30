@@ -148,6 +148,7 @@ func (h *Handler) addToCart(c fiber.Ctx) error {
 		h.db.Save(&existing)
 	} else {
 		h.db.Create(&models.CartItem{UserID: me, PinID: r.PinID, Color: r.Color, Size: r.Size, Quantity: r.Quantity})
+		h.trackPin(me, r.PinID, weightCart)
 	}
 	return c.JSON(h.cartDTO(me))
 }

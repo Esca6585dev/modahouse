@@ -300,7 +300,7 @@ type PinFeature struct {
 func All() []any {
 	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{},
 		&Business{}, &PinImage{}, &PinView{}, &CartItem{}, &Order{}, &OrderItem{}, &Review{}, &Story{}, &StoryView{},
-		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}, &Chat{}, &Message{}}
+		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}, &Chat{}, &Message{}, &Interest{}, &SearchLog{}}
 }
 
 // Setting is an admin-editable key/value pair (see api.AppConfig).
@@ -344,4 +344,25 @@ type Message struct {
 	ClientID  string `gorm:"size:64"`
 	Deleted   bool
 	CreatedAt time.Time
+}
+
+// Interest is how much a user cares about a category or a tag, learned from
+// what they view, like, save, buy and search. Scores fade with a 30-day half-life.
+type Interest struct {
+	UserID    uint   `gorm:"primaryKey"`
+	Kind      string `gorm:"primaryKey;size:10"` // category, tag
+	Key       string `gorm:"primaryKey;size:60;index"`
+	User      User   `gorm:"constraint:OnDelete:CASCADE"`
+	Score     float64
+	UpdatedAt time.Time
+}
+
+// SearchLog keeps the text searches for admin analytics.
+type SearchLog struct {
+	ID        uint   `gorm:"primaryKey"`
+	UserID    *uint  `gorm:"index"`
+	User      *User  `gorm:"constraint:OnDelete:SET NULL"`
+	Query     string `gorm:"size:100;index"`
+	Results   int
+	CreatedAt time.Time `gorm:"index"`
 }

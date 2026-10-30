@@ -183,8 +183,11 @@ func (h *Handler) savePin(c fiber.Ctx) error {
 	if res.Error != nil {
 		return res.Error
 	}
-	if res.RowsAffected > 0 && !b.IsPrivate {
-		h.notify(p.UserID, b.UserID, models.NotifySave, &p.ID)
+	if res.RowsAffected > 0 {
+		h.trackPin(b.UserID, p.ID, weightSave)
+		if !b.IsPrivate {
+			h.notify(p.UserID, b.UserID, models.NotifySave, &p.ID)
+		}
 	}
 	p, _ = h.loadPin(p.ID)
 	return c.JSON(h.enrichPins([]models.Pin{p}, b.UserID)[0])

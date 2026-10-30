@@ -62,6 +62,7 @@ func (h *Handler) addComment(c fiber.Ctx) error {
 		return err
 	}
 	h.notifyComment(pin.UserID, me, pin.ID, cm.ID)
+	h.trackPin(me, pin.ID, weightComment)
 	h.db.Preload("User").First(&cm, cm.ID)
 	return c.Status(fiber.StatusCreated).JSON(commentDTO(cm, me, pin.UserID))
 }

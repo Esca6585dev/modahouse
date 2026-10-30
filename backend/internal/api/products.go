@@ -327,6 +327,7 @@ func (h *Handler) viewPin(c fiber.Ctx) error {
 	if res.Error == nil && res.RowsAffected > 0 {
 		h.db.Model(&models.Pin{}).Where("id = ?", p.ID).UpdateColumn("views_count", gorm.Expr("views_count + 1"))
 		p.ViewsCount++
+		h.trackPin(viewerID(c), p.ID, weightView)
 	}
 	return c.JSON(fiber.Map{"viewsCount": p.ViewsCount})
 }

@@ -166,6 +166,14 @@ func (h *Handler) listPins(c fiber.Ctx) error {
 		q = q.Where(`(',' || pins.tags || ',') LIKE ? ESCAPE '\'`, "%,"+escapeLike(tag)+",%")
 	}
 	q = h.viewerFilter(q, viewerID(c))
+	if term := strings.TrimSpace(c.Query("q")); term != "" && c.Query("page", "1") == "1" {
+		var n int64
+		h.db.Table("(?) AS found", q.Session(&gorm.Session{}).Select("pins.id").Limit(1000)).Count(&n)
+		h.trackSearch(viewerID(c), term, int(n))
+	}
+	if c.Query("feed") == "foryou" {
+		return h.forYouFeed(c, q)
+	}
 	if c.Query("feed") == "following" {
 		me := viewerID(c)
 		if me == 0 {
@@ -506,6 +514,7 @@ func (h *Handler) likePin(c fiber.Ctx) error {
 	}
 	if res.RowsAffected > 0 {
 		h.notify(p.UserID, me, models.NotifyLike, &p.ID)
+		h.trackPin(me, p.ID, weightLike)
 	}
 	return h.likeState(c, p.ID)
 }
