@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	_ "embed"
 	"crypto/rand"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
