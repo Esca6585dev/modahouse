@@ -194,4 +194,15 @@ Saýt `robots.txt`, `sitemap.xml` we ýörite `/fasonlar` sahypasyny özi berý�
 2. [Google Search Console](https://search.google.com/search-console)-da domeni goşuň, DNS arkaly tassyklaň we `https://DOMAIN/sitemap.xml` faýlyny iberiň.
 3. `/fasonlar` sahypasyny Instagram, TikTok we Telegram profilleriňizde salgy hökmünde goýuň: daşky salgylanmalar Google-da ýokary çykmaga kömek edýär.
 
+Tema sahypalary üç dilde bar we biri-birine `hreflang` bilen baglanyşykly:
+
+| Türkmençe | Русский | English |
+|---|---|---|
+| `/fasonlar` | `/ru` | `/en` |
+| `/fasonlar/koynekler`, `/fasonlar/gelin-koynekleri`, `/fasonlar/toy-koynekleri`, `/fasonlar/milli-koynekler`, `/fasonlar/stapel`, `/fasonlar/kurte`, `/fasonlar/bukja`, `/fasonlar/yaka-fasonlary`, `/fasonlar/el-keshdeleri`, `/fasonlar/gundelik`, `/fasonlar/dyrnak`, `/fasonlar/sac`, `/fasonlar/makiyaj`, `/fasonlar/shay-sepler`, `/fasonlar/fata` | `/ru/<şol bir at>` | `/en/<şol bir at>` |
+
+Temalar we olaryň sözleri `frontend/lib/topics.ts` faýlynda. Saýtdaky gözleg hem üç dilde işleýär: «платье», «dress», «koynek» we «köýnek» şol bir postlary tapýar (`backend/internal/search`).
+
+Postsyz tema sahypasy Google-da ýokary çykmaýar: kürte, bukja, ştapel we fata barada post goşuň.
+
 Google täze saýty birnäçe günden birnäçe hepdä çenli indeksleýär.

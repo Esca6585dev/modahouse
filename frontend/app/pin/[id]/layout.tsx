@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { absolute, getPin, siteUrl, SITE_NAME, snippet } from "@/lib/seo";
+import { LANGS, TOPICS } from "@/lib/topics";
 
 // The page itself renders in the browser; this gives search engines and link previews its title and photo.
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -12,7 +13,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title: `${pin.title} · ${SITE_NAME}`,
     description,
-    keywords: [...tags, "fasonlar", "fason", "köýnek"],
+    // Words people search for in Turkmen, Russian and English for this kind of post.
+    keywords: [...tags, ...topicWords(pin.category), "fasonlar", "фасоны", "dress styles"],
     alternates: { canonical: `${base}/pin/${pin.id}` },
     openGraph: {
       type: "article", siteName: SITE_NAME, title: pin.title, description, url: `${base}/pin/${pin.id}`,
@@ -20,6 +22,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     },
     twitter: { card: "summary_large_image", title: pin.title, description, images: [image] },
   };
+}
+
+function topicWords(category: string): string[] {
+  const t = TOPICS.find((x) => x.category === category);
+  return t ? LANGS.flatMap((l) => t.text[l].keywords.slice(0, 2)) : [];
 }
 
 export default function PinLayout({ children }: { children: React.ReactNode }) {

@@ -8,7 +8,11 @@ export const metadata: Metadata = {
   description:
     "Fasonlar we köýnek fasonlary: milli köýnekler, ştapel fasonlar, gelin we toý köýnekleri, ýaka fasonlary, el keşdeleri. " +
     "Tikinçiler, el keşdeçiler, kirpikçiler we dyrnakçylar bir ýerde.",
-  keywords: ["fasonlar", "köýnek fasonlary", "ştapel fasonlar", "milli köýnekler", "türkmen fasonlar", "gelin köýnekleri", "tikinçi", "ModaHouse"],
+  keywords: [
+    "fasonlar", "köýnek fasonlary", "ştapel fasonlar", "milli köýnekler", "türkmen fasonlar", "gelin köýnekleri", "kürte", "bukja", "dyrnak", "tikinçi",
+    "фасоны платьев", "туркменские платья", "свадебные платья", "маникюр",
+    "dress styles", "turkmen dress", "wedding dresses", "nail art", "ModaHouse",
+  ],
   applicationName: "ModaHouse",
   openGraph: { siteName: "ModaHouse", locale: "tk_TM", type: "website" },
 };

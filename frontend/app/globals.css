@@ -2323,3 +2323,6 @@ a.detail-credit:hover { color: var(--text); text-decoration: underline; }
 .fason-title { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fason-pager { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 24px 0 40px; }
 @media (max-width: 600px) { .fason-grid { columns: 2; column-gap: 10px; } .fason-grid li { margin-bottom: 10px; } }
+.fason-langs { display: flex; gap: 6px; margin-bottom: 12px; font-size: 13px; font-weight: 700; }
+.fason-langs a { padding: 4px 10px; border-radius: 999px; color: var(--muted); }
+.fason-langs a.active { background: var(--surface); color: var(--text); }

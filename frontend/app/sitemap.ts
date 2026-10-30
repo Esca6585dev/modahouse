@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { backendGet, getPins, siteUrl } from "@/lib/seo";
-import type { Category } from "@/lib/types";
+import { getPins, siteUrl } from "@/lib/seo";
+import { LANGS, topicPath, TOPICS } from "@/lib/topics";
 
 export const dynamic = "force-dynamic";
 
@@ -11,13 +11,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const out: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${base}/fasonlar`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/shops`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${base}/reels`, lastModified: now, changeFrequency: "daily", priority: 0.5 },
   ];
-  const cats = (await backendGet<Category[]>("/categories", 3600)) ?? [];
-  for (const c of cats) {
-    out.push({ url: `${base}/fasonlar?c=${encodeURIComponent(c.slug)}`, lastModified: now, changeFrequency: "daily", priority: 0.7 });
+  // Topic pages in Turkmen, Russian and English, linked to each other as alternates.
+  for (const t of TOPICS) {
+    const languages = Object.fromEntries(LANGS.map((l) => [l, `${base}${topicPath(l, t.slug)}`]));
+    for (const l of LANGS) {
+      out.push({
+        url: `${base}${topicPath(l, t.slug)}`, lastModified: now, changeFrequency: "daily",
+        priority: t.slug === "fasonlar" ? 0.9 : 0.8, alternates: { languages },
+      });
+    }
   }
   const authors = new Set<string>();
   for (let page = 1; page <= PIN_PAGES; page++) {
