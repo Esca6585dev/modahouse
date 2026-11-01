@@ -2326,3 +2326,67 @@ a.detail-credit:hover { color: var(--text); text-decoration: underline; }
 .fason-langs { display: flex; gap: 6px; margin-bottom: 12px; font-size: 13px; font-weight: 700; }
 .fason-langs a { padding: 4px 10px; border-radius: 999px; color: var(--muted); }
 .fason-langs a.active { background: var(--surface); color: var(--text); }
+
+/* ---------- v8: Top 10 pill (red, white text, no icon) ---------- */
+.top-pill {
+  display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 14px; border-radius: 999px;
+  background: var(--brand); color: #fff; font-size: 14px; font-weight: 800; letter-spacing: 0.01em; white-space: nowrap; flex-shrink: 0; place-items: center;
+}
+.top-pill:hover { background: var(--brand-hover); color: #fff; }
+.top-pill.current { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--brand); }
+.nav .top-pill { align-self: center; height: 38px; margin: 0 6px; }
+
+/* ---------- v8: boosts and teňňe ---------- */
+.promo-chip { position: absolute; left: 10px; bottom: 10px; z-index: 2; padding: 3px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.62); color: #fff; font-size: 11px; font-weight: 800; }
+.boost-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0; padding: 14px 16px; border-radius: 18px; background: var(--brand-soft); }
+.boost-box > div { display: grid; gap: 2px; }
+.boost-box .muted { display: inline-flex; align-items: center; gap: 4px; }
+.boost-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 12px 0; }
+.boost-option { display: grid; gap: 4px; justify-items: center; padding: 18px 10px; border-radius: 18px; background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--border); transition: transform 0.12s; }
+.boost-option strong { font-size: 18px; }
+.boost-option span { color: var(--brand); font-weight: 800; }
+.boost-option:not(:disabled):hover { transform: translateY(-2px); box-shadow: inset 0 0 0 2px var(--brand); }
+.boost-option:disabled { opacity: 0.45; cursor: not-allowed; }
+.coin-amount { color: var(--brand); }
+.coin-balance { display: flex; align-items: baseline; gap: 8px; font-size: 40px; font-weight: 900; color: var(--brand); }
+.coin-balance span { font-size: 16px; color: var(--muted); font-weight: 700; }
+.coin-packages { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 12px 0; }
+.coin-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; }
+.coin-history li { display: flex; justify-content: space-between; gap: 12px; }
+.coin-plus { color: #138a4a; font-weight: 800; }
+.coin-minus { color: var(--danger); font-weight: 800; }
+.pay-info { white-space: pre-wrap; padding: 12px 14px; border-radius: 14px; background: var(--surface); }
+.boost-option.chosen { box-shadow: inset 0 0 0 2.5px var(--brand); background: var(--brand-soft); }
+
+/* ---------- v8: contests ---------- */
+.contest-list { display: grid; gap: 14px; }
+.contest-card { display: grid; gap: 6px; padding: 18px 20px; border-radius: 22px; background: var(--surface); }
+.contest-card h2 { margin: 0; font-size: 20px; }
+.contest-card.active { background: var(--brand-soft); box-shadow: inset 0 0 0 1.5px var(--brand); }
+.contest-status { justify-self: start; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; background: var(--surface-2); }
+.contest-status.active { background: var(--brand); color: #fff; }
+.contest-prize { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; color: var(--brand); margin: 0; }
+.contest-head { display: grid; gap: 8px; margin: 12px 0 20px; }
+.contest-head p { margin: 0; }
+.contest-rule { padding: 8px 12px; border-radius: 12px; background: var(--surface); }
+.contest-winner { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 16px; border-radius: 18px; background: #fff6d6; color: #5c4400; }
+.contest-winner > div { display: grid; flex: 1; }
+.contest-entries { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.contest-entry { display: grid; grid-template-columns: 32px 96px 1fr; gap: 12px; align-items: center; padding: 10px; border-radius: 18px; background: var(--surface); }
+.contest-entry.lead { box-shadow: inset 0 0 0 2px var(--brand); }
+.contest-rank { font-size: 20px; font-weight: 900; text-align: center; }
+.contest-entry-img img { width: 96px; height: 120px; object-fit: cover; border-radius: 14px; display: block; }
+.contest-entry-body { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.contest-votes { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; color: var(--brand); }
+.contest-voted { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #138a4a; font-size: 13px; }
+.contest-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.contest-pick-item { display: grid; gap: 4px; text-align: left; font-size: 13px; font-weight: 700; }
+.contest-pick-item img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 14px; }
+@media (prefers-color-scheme: dark) { .contest-winner { background: #3a2f0b; color: #ffe7a0; } }
+
+.promo-strip { margin: 4px 0 20px; display: grid; gap: 8px; }
+.promo-strip h2 { margin: 0; font-size: 17px; }
+.promo-row { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+.promo-item { flex: 0 0 120px; display: grid; gap: 4px; font-size: 12px; font-weight: 700; }
+.promo-item img { width: 120px; height: 150px; object-fit: cover; border-radius: 14px; }
+.promo-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

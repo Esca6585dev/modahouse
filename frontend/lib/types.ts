@@ -55,6 +55,8 @@ export type Me = Profile & {
   email: string;
   /** v4: may open the admin panel (/admin). */
   isAdmin: boolean;
+  /** v8: teňňe balance. */
+  coins: number;
 };
 
 export type ColorOption = { name: string; hex: string };
@@ -120,6 +122,10 @@ export type Pin = {
   savedBoardIds: number[];
   /** v6: photo credit of an imported, openly licensed photo ("" otherwise); `link` then points to the source. */
   credit: string;
+  /** v8: boosted with teňňe, shown at the top of a feed. */
+  promoted?: boolean;
+  /** v8: owner only, end of the running boost. */
+  boostedUntil?: string;
   createdAt: string;
 };
 
@@ -325,6 +331,9 @@ export type AppConfig = {
   registrationOpen: boolean;
   /** v5: stamp the ModaHouse logo on images of new posts when they are saved (default true). */
   watermarkUploads: boolean;
+  /** v8: manat for 1 teňňe and how to pay for teňňe. */
+  coinRate: string;
+  coinPayment: string;
   /** ISO time of the last settings change ("" if never changed). */
   updatedAt: string;
 };
@@ -438,3 +447,29 @@ export type StarterStatus = {
   started?: string;
   finished?: string;
 };
+
+// ---------- v8: teňňe, boosts, contests ----------
+
+export type CoinRequest = {
+  id: number; user: UserBrief; coins: number; price: string; note: string;
+  status: "pending" | "approved" | "rejected"; createdAt: string; decidedAt: string | null;
+};
+export type CoinTx = { id: number; amount: number; kind: "topup" | "boost" | "prize" | "admin"; note: string; pinId: number | null; createdAt: string };
+export type BoostOption = { days: number; coins: number };
+export type Wallet = {
+  balance: number; rate: string; paymentInfo: string;
+  packages: { coins: number; price: string }[]; boostOptions: BoostOption[];
+  history: CoinTx[]; requests: CoinRequest[];
+};
+
+export type ContestStatus = "upcoming" | "active" | "finished";
+export type ContestEntry = { pin: Pin; votes: number; rank: number };
+export type Contest = {
+  id: number; title: string; description: string; category: string; prize: string; prizeCoins: number;
+  startsAt: string; endsAt: string; status: ContestStatus; entriesCount: number; votesCount: number;
+  winner: ContestEntry | null; myVotePinId: number | null; myEntryPinId: number | null;
+};
+export type ContestInput = {
+  title: string; description?: string; category?: string; prize?: string; prizeCoins?: number; startsAt: string; endsAt: string;
+};
+export type TopSort = "score" | "likes" | "views" | "orders" | "rating";

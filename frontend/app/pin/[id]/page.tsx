@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import BoostBox from "@/components/BoostBox";
 import Carousel from "@/components/Carousel";
 import Comments from "@/components/Comments";
 import FollowButton from "@/components/FollowButton";
@@ -473,6 +474,7 @@ export default function PinPage() {
             {textBlock}
             <span className="muted small">{timeAgo(pin.createdAt)} goşuldy</span>
             {authorCard}
+            {isOwner && <BoostBox pin={pin} onBoosted={(boostedUntil) => setPin((p) => (p ? { ...p, boostedUntil } : p))} />}
             {comments}
           </div>
         </article>
@@ -581,6 +583,7 @@ export default function PinPage() {
               <Link href={`/?c=${encodeURIComponent(pin.category)}`} className="text-link">{categoryName(pin.category, cats)}</Link> · {timeAgo(pin.createdAt)} goşuldy
             </span>
             {authorCard}
+            {isOwner && <BoostBox pin={pin} onBoosted={(boostedUntil) => setPin((p) => (p ? { ...p, boostedUntil } : p))} />}
           </section>
           <section className="panel">{comments}</section>
         </div>

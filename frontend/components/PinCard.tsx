@@ -92,6 +92,7 @@ export default function PinCard({ pin, action }: { pin: Pin; action?: PinCardAct
         <Link href={href} aria-label={pin.title}>
           <PinImage pin={pin} />
         </Link>
+        {pin.promoted && <span className="promo-chip">Öňe çykarylan</span>}
         {product && (isForSale(product) ? <Badge badge={out ? "" : product.badge} className="pin-badge" /> : <ListingChip type={product.listingType} className="pin-badge" />)}
         {out && <span className="pbadge pbadge-out pin-badge">Gutardy</span>}
         {isVideo ? (

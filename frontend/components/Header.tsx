@@ -8,7 +8,7 @@ import { useCart } from "@/lib/cart";
 import Avatar from "./Avatar";
 import {
   BagIcon, BellIcon, CartIcon, ChartIcon, ChevronDownIcon, HeartIcon, HomeIcon, LogoutIcon, PlusIcon, ReelsIcon, SearchIcon,
-  SendIcon, SettingsIcon, ShieldIcon, StoreIcon, TrophyIcon, UserIcon,
+  CashIcon, CrownIcon, SendIcon, SettingsIcon, ShieldIcon, StoreIcon, UserIcon,
 } from "./Icons";
 import { useChat } from "./chat/ChatProvider";
 import { LogoWordmark } from "./Logo";
@@ -60,6 +60,8 @@ function UserMenu() {
           <Link role="menuitem" href={`/u/${user.username}`} className="menu-item"><UserIcon size={18} /> Profil</Link>
           <Link role="menuitem" href={`/u/${user.username}?tab=liked`} className="menu-item"><HeartIcon size={18} /> Halanlarym</Link>
           <Link role="menuitem" href="/orders" className="menu-item"><BagIcon size={18} /> Sargytlarym</Link>
+          <Link role="menuitem" href="/coins" className="menu-item"><CashIcon size={18} /> Teňňelerim{user ? ` · ${user.coins}` : ""}</Link>
+          <Link role="menuitem" href="/contests" className="menu-item"><CrownIcon size={18} /> Ýaryşlar</Link>
           {user.isBusiness ? (
             <Link role="menuitem" href="/business" className="menu-item"><ChartIcon size={18} /> Biznes paneli</Link>
           ) : (
@@ -118,7 +120,8 @@ export default function Header() {
   const nav = [
     { href: "/", label: "Baş sahypa" },
     { href: "/reels", label: "Reels" },
-    { href: "/top", label: "Top 10" },
+    { href: "/top", label: "Top 10", pill: true },
+    { href: "/contests", label: "Ýaryşlar" },
     { href: "/shops", label: "Dükanlar" },
     { href: "/create", label: "Döret" },
   ];
@@ -133,7 +136,7 @@ export default function Header() {
         </Link>
         <nav className="nav" aria-label="Esasy menýu">
           {nav.map((n) => (
-            <Link key={n.href} href={n.href} className={`nav-link ${isActive(n.href) ? "active" : ""}`}>
+            <Link key={n.href} href={n.href} className={n.pill ? `top-pill ${isActive(n.href) ? "current" : ""}` : `nav-link ${isActive(n.href) ? "active" : ""}`}>
               {n.label}
             </Link>
           ))}
@@ -155,13 +158,13 @@ export default function Header() {
                 <BellIcon />
                 {unread > 0 && <span className="badge">{unread > 99 ? "99+" : unread}</span>}
               </Link>
-              <Link href="/top" className={`icon-btn show-sm ${path === "/top" ? "current" : ""}`} aria-label="Top 10"><TrophyIcon size={22} /></Link>
+              <Link href="/top" className={`top-pill show-sm ${path === "/top" ? "current" : ""}`}>Top 10</Link>
               <CartLink path={path} />
               <span className="hide-sm"><UserMenu /></span>
             </>
           ) : (
             <>
-              <Link href="/top" className={`icon-btn show-sm ${path === "/top" ? "current" : ""}`} aria-label="Top 10"><TrophyIcon size={22} /></Link>
+              <Link href="/top" className={`top-pill show-sm ${path === "/top" ? "current" : ""}`}>Top 10</Link>
               <Link href={loginHref} className="btn btn-secondary btn-sm">Giriş</Link>
               <Link href="/register" className="btn btn-primary btn-sm hide-sm">Hasaba al</Link>
             </>

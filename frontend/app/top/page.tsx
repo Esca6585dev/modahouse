@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { BagIcon, CrownIcon, EyeIcon, HeartIcon, InfoIcon, SlidersIcon, UserIcon, VerifiedIcon } from "@/components/Icons";
+import PinImage from "@/components/PinImage";
 import Stars from "@/components/Stars";
 import StoryAvatar from "@/components/StoryAvatar";
 import { useStories } from "@/components/StoryViewer";
@@ -11,7 +12,7 @@ import { api, errorMessage } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { businessCategoryLabel, num, PERIODS } from "@/lib/format";
 import { useBusinessCategories } from "@/lib/hooks";
-import type { StatsPeriod, TopEntry } from "@/lib/types";
+import type { Pin, StatsPeriod, TopEntry, TopSort } from "@/lib/types";
 
 function Medal({ rank }: { rank: number }) {
   return <span className={`medal medal-${rank <= 3 ? rank : "n"}`} aria-label={`${rank}-nji orun`}>{rank}</span>;
@@ -62,6 +63,14 @@ function TopCard({ e }: { e: TopEntry }) {
   );
 }
 
+const SORTS: { value: TopSort; label: string }[] = [
+  { value: "score", label: "Awtomat" },
+  { value: "likes", label: "Halanlar" },
+  { value: "views", label: "Görülişler" },
+  { value: "orders", label: "Sargytlar" },
+  { value: "rating", label: "Reýting" },
+];
+
 function TopView() {
   const bizCats = useBusinessCategories();
   const params = useSearchParams();
@@ -69,6 +78,8 @@ function TopView() {
   const { ready } = useAuth();
   const period = (["week", "month", "all"].includes(params.get("period") ?? "") ? params.get("period") : "week") as StatsPeriod;
   const category = params.get("category") ?? "";
+  const sort = (SORTS.some((s) => s.value === params.get("sort")) ? params.get("sort") : "score") as TopSort;
+  const [promoted, setPromoted] = useState<Pin[]>([]);
   const [entries, setEntries] = useState<TopEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -82,12 +93,16 @@ function TopView() {
     let alive = true;
     setEntries(null);
     setError(null);
-    api.top({ period, category: category || undefined }).then(
+    api.top({ period, category: category || undefined, sort: sort === "score" ? undefined : sort }).then(
       (r) => alive && setEntries(Array.isArray(r) ? r : []),
       (e) => alive && setError(errorMessage(e)),
     );
     return () => { alive = false; };
-  }, [period, category, ready, nonce]);
+  }, [period, category, sort, ready, nonce]);
+
+  useEffect(() => {
+    api.promoted().then(setPromoted, () => setPromoted([]));
+  }, []);
 
   useEffect(() => {
     if (!filterOpen) return;
@@ -143,6 +158,28 @@ function TopView() {
           )}
         </div>
       </div>
+      <div className="chips" role="tablist" aria-label="Tertip">
+        {SORTS.map((s) => (
+          <button key={s.value} role="tab" aria-selected={sort === s.value} className={`chip ${sort === s.value ? "active" : ""}`} onClick={() => go({ sort: s.value === "score" ? "" : s.value })}>
+            {s.label}
+          </button>
+        ))}
+        <Link href="/contests" className="chip">Ýaryşlar</Link>
+      </div>
+      {promoted.length > 0 && (
+        <section className="promo-strip" aria-label="Öňe çykarylanlar">
+          <h2>Öňe çykarylanlar</h2>
+          <div className="promo-row">
+            {promoted.map((p) => (
+              <Link key={p.id} href={`/pin/${p.id}`} className="promo-item">
+                <PinImage pin={p} />
+                <span>{p.title}</span>
+              </Link>
+            ))}
+          </div>
+          <Link href="/coins" className="muted small">Postuňyzy öňe çykaryň →</Link>
+        </section>
+      )}
       {category && (
         <p className="result-note">Kategoriýa: <strong>{businessCategoryLabel(category)}</strong> · <button className="link-btn" onClick={() => go({ category: "" })}>Aýyr</button></p>
       )}

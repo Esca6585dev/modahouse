@@ -7,6 +7,7 @@ import type {
   ListingType, Notification, Order, OrderInput, OrderStatus, Page, Pin, PinImage, Profile, ReportReason, Review, ReviewsPage,
   SearchResult, StatsPeriod, Story, StoryGroup, Suggestion, TopEntry, UrlCheck, UserBrief, VisualResult,
   Analytics, Interest, Interests, StarterStatus,
+  BoostOption, CoinRequest, Contest, ContestEntry, ContestInput, TopSort, Wallet,
 } from "./types";
 
 const TOKEN_KEY = "mh_token";
@@ -227,12 +228,12 @@ export function normProfile<T extends Profile>(p: T): T {
 
 const pinPage = (pg: Page<Pin>): Page<Pin> => ({ ...pg, items: (pg.items ?? []).map(normPin) });
 const userPage = (pg: Page<UserBrief>): Page<UserBrief> => ({ ...pg, items: (pg.items ?? []).map(normUser) });
-const meRes = (m: Me): Me => ({ ...normProfile(m), isAdmin: !!m.isAdmin });
+const meRes = (m: Me): Me => ({ ...normProfile(m), isAdmin: !!m.isAdmin, coins: m.coins ?? 0 });
 const authRes = (r: AuthResponse): AuthResponse => ({ ...r, user: meRes(r.user) });
 
 function normConfig(c: Partial<AppConfig>): AppConfig {
   return { apiUrl: c.apiUrl ?? "", webUrl: c.webUrl ?? "", registrationOpen: c.registrationOpen ?? true,
-    watermarkUploads: c.watermarkUploads ?? true, updatedAt: c.updatedAt ?? "" };
+    watermarkUploads: c.watermarkUploads ?? true, coinRate: c.coinRate || "1", coinPayment: c.coinPayment ?? "", updatedAt: c.updatedAt ?? "" };
 }
 
 function normAdminUser(u: AdminUser): AdminUser {
@@ -359,8 +360,25 @@ export const api = {
   // v7: every profile with a craft, personal or business
   masters: (p: { q?: string; category?: string; page: number; limit?: number }) =>
     request<Page<BusinessCard>>(`/masters${qs({ ...p, limit: p.limit ?? PAGE_SIZE })}`),
-  top: (p: { period: StatsPeriod; category?: string; limit?: number }) =>
+  top: (p: { period: StatsPeriod; category?: string; sort?: TopSort; limit?: number }) =>
     request<TopEntry[]>(`/top${qs({ ...p, limit: p.limit ?? 10 })}`),
+
+  // v8: teňňe, boosts, contests
+  wallet: () => request<Wallet>("/me/coins").then((w) => ({
+    ...w, packages: w.packages ?? [], boostOptions: w.boostOptions ?? [], history: w.history ?? [], requests: (w.requests ?? []).map(normCoinRequest),
+  })),
+  requestCoins: (coins: number, note?: string) =>
+    request<CoinRequest>("/me/coins/requests", { method: "POST", body: { coins, note: note || undefined } }).then(normCoinRequest),
+  boost: (pinId: number, days: BoostOption["days"]) =>
+    request<{ boostedUntil: string; balance: number }>(`/pins/${pinId}/boost`, { method: "POST", body: { days } }),
+  promoted: () => request<Pin[]>("/pins/promoted").then((l) => (l ?? []).map(normPin)),
+  contests: (status?: string) => request<Contest[]>(`/contests${qs({ status })}`).then((l) => (l ?? []).map(normContest)),
+  contest: (id: number | string) =>
+    request<{ contest: Contest; entries: ContestEntry[] }>(`/contests/${enc(String(id))}`)
+      .then((r) => ({ contest: normContest(r.contest), entries: (r.entries ?? []).map((e) => ({ ...e, pin: normPin(e.pin) })) })),
+  enterContest: (id: number, pinId: number) => request<Contest>(`/contests/${id}/entries`, { method: "POST", body: { pinId } }).then(normContest),
+  leaveContest: (id: number) => request<Contest>(`/contests/${id}/entries`, { method: "DELETE" }).then(normContest),
+  vote: (id: number, pinId: number) => request<Contest>(`/contests/${id}/vote`, { method: "POST", body: { pinId } }).then(normContest),
 
   // cart
   cart: () => request<Cart>("/cart"),
@@ -440,7 +458,7 @@ export const api = {
   admin: {
     stats: () => request<AdminStats>("/admin/stats"),
     settings: () => request<AppConfig>("/admin/settings").then(normConfig),
-    updateSettings: (b: Partial<Pick<AppConfig, "apiUrl" | "webUrl" | "registrationOpen" | "watermarkUploads">>) =>
+    updateSettings: (b: Partial<Pick<AppConfig, "apiUrl" | "webUrl" | "registrationOpen" | "watermarkUploads" | "coinRate" | "coinPayment">>) =>
       request<AppConfig>("/admin/settings", { method: "PUT", body: b }).then(normConfig),
     checkUrl: (url: string) => request<UrlCheck>("/admin/check-url", { method: "POST", body: { url } }),
     users: (p: { q?: string; filter?: AdminUserFilter; page: number; limit?: number }) =>
@@ -470,9 +488,31 @@ export const api = {
     analytics: (days: number) => request<Analytics>(`/admin/analytics${qs({ days })}`),
     userInterests: (id: number) => request<{ items: Interest[] }>(`/admin/users/${id}/interests`).then((r) => r.items ?? []),
     starterStatus: () => request<StarterStatus>("/admin/import/starter"),
+    // v8
+    coinRequests: (status: string, page: number) =>
+      request<Page<CoinRequest>>(`/admin/coin-requests${qs({ status, page, limit: 30 })}`)
+        .then((pg) => ({ ...pg, items: (pg.items ?? []).map(normCoinRequest) })),
+    decideCoinRequest: (id: number, approve: boolean) =>
+      request<CoinRequest>(`/admin/coin-requests/${id}/${approve ? "approve" : "reject"}`, { method: "POST" }).then(normCoinRequest),
+    giveCoins: (userId: number, amount: number, note?: string) =>
+      request<{ balance: number }>(`/admin/users/${userId}/coins`, { method: "POST", body: { amount, note: note || undefined } }),
+    createContest: (b: ContestInput) => request<Contest>("/admin/contests", { method: "POST", body: b }).then(normContest),
+    updateContest: (id: number, b: Partial<ContestInput>) => request<Contest>(`/admin/contests/${id}`, { method: "PUT", body: b }).then(normContest),
+    deleteContest: (id: number) => request<void>(`/admin/contests/${id}`, { method: "DELETE" }),
     startStarter: (total: number) => request<StarterStatus>("/admin/import/starter", { method: "POST", body: { total } }),
   },
 };
+
+function normCoinRequest(r: CoinRequest): CoinRequest {
+  return { ...r, user: normUser(r.user ?? ({} as UserBrief)), note: r.note ?? "", decidedAt: r.decidedAt ?? null };
+}
+
+function normContest(c: Contest): Contest {
+  return {
+    ...c, description: c.description ?? "", category: c.category ?? "", prize: c.prize ?? "", prizeCoins: c.prizeCoins ?? 0,
+    winner: c.winner ? { ...c.winner, pin: normPin(c.winner.pin) } : null, myVotePinId: c.myVotePinId ?? null, myEntryPinId: c.myEntryPinId ?? null,
+  };
+}
 
 function normInterests(r: Interests): Interests {
   return { items: r.items ?? [], picked: !!r.picked };

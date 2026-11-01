@@ -323,6 +323,12 @@ export default function SettingsPage() {
         <BusinessSection key={`${user.id}:${user.isBusiness}`} />
       </section>
 
+      <section className="card">
+        <h2>Teňňelerim</h2>
+        <p className="muted small">Balans: <strong>{user.coins} teňňe</strong>. Teňňe bilen postlaryňyzy öňe çykaryp bilersiňiz.</p>
+        <Link href="/coins" className="btn btn-secondary btn-sm">Teňňelerim</Link>
+      </section>
+
       <section className="card" id="interests">
         <h2>Gyzyklanmalarym</h2>
         <MyInterests />
