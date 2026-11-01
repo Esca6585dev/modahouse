@@ -38,6 +38,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 		proxies: newProxyTrust(cfg.TrustedProxies), hub: newHub(), starter: &starterJob{}}
 	if !opts.Quiet {
 		logVisualStart(h.visual) // background indexing; tests index on demand
+		h.runContestTimer()
 	}
 
 	app := fiber.New(fiber.Config{
@@ -109,6 +110,8 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	me.Get("/interests", h.myInterests)
 	me.Put("/interests", h.pickInterests)
 	me.Delete("/interests", h.resetInterests)
+	me.Get("/coins", h.myCoins)
+	me.Post("/coins/requests", h.requestCoins)
 	me.Post("/business", h.openBusiness)
 	me.Put("/business", h.updateBusiness)
 	me.Delete("/business", h.closeBusiness)
@@ -127,6 +130,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 
 	pins := api.Group("/pins")
 	pins.Get("/", h.listPins)
+	pins.Get("/promoted", h.promotedPins)
 	pins.Post("/", requireAuth, h.createPin)
 	pins.Get("/:id", h.getPin)
 	pins.Put("/:id", requireAuth, h.updatePin)
@@ -136,6 +140,7 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	pins.Get("/:id/download", h.downloadPin)
 	pins.Get("/:id/share-card", h.shareCard)
 	pins.Post("/:id/view", h.viewPin)
+	pins.Post("/:id/boost", requireAuth, h.boostPin)
 	pins.Post("/:id/report", requireAuth, h.reportPin)
 	pins.Post("/:id/hide", requireAuth, h.hidePin)
 	pins.Delete("/:id/hide", requireAuth, h.unhidePin)
@@ -170,6 +175,12 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	api.Get("/ai/status", h.aiStatus)
 	api.Post("/ai/suggest", requireAuth, aiLimit, h.aiSuggest)
 	api.Get("/top", h.top)
+	contests := api.Group("/contests")
+	contests.Get("/", h.listContests)
+	contests.Get("/:id", h.getContest)
+	contests.Post("/:id/entries", requireAuth, h.enterContest)
+	contests.Delete("/:id/entries", requireAuth, h.leaveContest)
+	contests.Post("/:id/vote", requireAuth, h.voteContest)
 	biz := api.Group("/business", requireAuth)
 	biz.Get("/stats", h.businessStats)
 	biz.Get("/orders", h.businessOrders)
@@ -228,6 +239,13 @@ func New(db *gorm.DB, store *storage.Storage, cfg config.Config, opts Options) *
 	admin.Put("/users/:id", h.adminUpdateUser)
 	admin.Get("/users/:id/interests", h.adminUserInterests)
 	admin.Get("/analytics", h.adminAnalytics)
+	admin.Post("/users/:id/coins", h.adminGiveCoins)
+	admin.Get("/coin-requests", h.adminCoinRequests)
+	admin.Post("/coin-requests/:id/approve", h.adminDecideCoinRequest(true))
+	admin.Post("/coin-requests/:id/reject", h.adminDecideCoinRequest(false))
+	admin.Post("/contests", h.adminCreateContest)
+	admin.Put("/contests/:id", h.adminUpdateContest)
+	admin.Delete("/contests/:id", h.adminDeleteContest)
 	admin.Get("/reports", h.adminReports)
 	admin.Delete("/reports/:pinId", h.adminDismissReports)
 	admin.Delete("/pins/:id", h.adminDeletePin)

@@ -120,13 +120,22 @@ func (h *Handler) productScope(q *gorm.DB) *gorm.DB {
 
 // pagePins runs q (already filtered/ordered) for the requested page.
 func (h *Handler) pagePins(c fiber.Ctx, q *gorm.DB, defLimit int) error {
+	return h.pagePinsWith(c, q, defLimit, false)
+}
+
+// pagePinsWith can open the first page with boosted posts (see withPromoted).
+func (h *Handler) pagePinsWith(c fiber.Ctx, q *gorm.DB, defLimit int, promote bool) error {
 	page, limit, offset := paging(c, defLimit)
+	var promoted []uint
+	if promote {
+		promoted = h.promotedFor(c, q)
+	}
 	var pins []models.Pin
 	if err := q.Preload("User").Offset(offset).Limit(limit + 1).Find(&pins).Error; err != nil {
 		return err
 	}
 	pins, more := trimPage(pins, limit)
-	items := h.enrichPins(pins, viewerID(c))
+	items := h.withPromoted(c, promoted, h.enrichPins(pins, viewerID(c)))
 	if c.Query("withComments") == "1" {
 		h.attachComments(items, viewerID(c))
 	}
@@ -188,8 +197,10 @@ func (h *Handler) listPins(c fiber.Ctx) error {
 			return fail(c, fiber.StatusUnauthorized, "Ilki ulgama giriň")
 		}
 		q = q.Where("pins.user_id IN (?)", h.db.Model(&models.Follow{}).Select("following_id").Where("follower_id = ?", me))
+		return h.pagePins(c, q, 24)
 	}
-	return h.pagePins(c, q, 24)
+	// Boosted posts open the main feeds, not a profile or a hashtag.
+	return h.pagePinsWith(c, q, 24, c.Query("author") == "" && c.Query("tag") == "")
 }
 
 func (h *Handler) loadPin(id uint) (models.Pin, error) {
@@ -207,7 +218,11 @@ func (h *Handler) getPin(c fiber.Ctx) error {
 	if err != nil {
 		return notFound(c)
 	}
-	return c.JSON(h.enrichPins([]models.Pin{p}, viewerID(c))[0])
+	dto := h.enrichPins([]models.Pin{p}, viewerID(c))[0]
+	if p.UserID == viewerID(c) {
+		dto.BoostedUntil = h.boostedUntil(p.ID)
+	}
+	return c.JSON(dto)
 }
 
 // similarPins: same category first, then everything else, newest first.

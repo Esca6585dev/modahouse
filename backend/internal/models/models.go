@@ -18,6 +18,7 @@ type User struct {
 	IsBusiness   bool   `gorm:"index"`
 	// Category is the profile's craft, e.g. tailor, lashes, nails (see api.ProfileCategories).
 	Category  string `gorm:"size:20;index"`
+	Coins     int    // teňňe balance, spent on boosts
 	Verified  bool
 	IsAdmin   bool `gorm:"index"`
 	Suspended bool `gorm:"index"` // cannot log in; tokens are rejected
@@ -300,7 +301,8 @@ type PinFeature struct {
 func All() []any {
 	return []any{&User{}, &Pin{}, &Board{}, &BoardPin{}, &Like{}, &Comment{}, &Follow{}, &Notification{},
 		&Business{}, &PinImage{}, &PinView{}, &CartItem{}, &Order{}, &OrderItem{}, &Review{}, &Story{}, &StoryView{},
-		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}, &Chat{}, &Message{}, &Interest{}, &SearchLog{}}
+		&Report{}, &HiddenPin{}, &Block{}, &PinFeature{}, &Setting{}, &Chat{}, &Message{}, &Interest{}, &SearchLog{},
+		&CoinTx{}, &CoinRequest{}, &Boost{}, &Contest{}, &ContestEntry{}, &ContestVote{}}
 }
 
 // Setting is an admin-editable key/value pair (see api.AppConfig).
@@ -365,4 +367,82 @@ type SearchLog struct {
 	Query     string `gorm:"size:100;index"`
 	Results   int
 	CreatedAt time.Time `gorm:"index"`
+}
+
+// CoinTx is one change of a user's teňňe balance.
+type CoinTx struct {
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"index;not null"`
+	User      User   `gorm:"constraint:OnDelete:CASCADE"`
+	Amount    int    // positive: received, negative: spent
+	Kind      string `gorm:"size:12"` // topup, boost, prize, admin
+	Note      string `gorm:"size:200"`
+	PinID     *uint
+	CreatedAt time.Time `gorm:"index"`
+}
+
+const (
+	CoinRequestPending  = "pending"
+	CoinRequestApproved = "approved"
+	CoinRequestRejected = "rejected"
+)
+
+// CoinRequest asks to buy teňňe; an admin approves it after receiving the payment.
+type CoinRequest struct {
+	ID        uint   `gorm:"primaryKey"`
+	UserID    uint   `gorm:"index;not null"`
+	User      User   `gorm:"constraint:OnDelete:CASCADE"`
+	Coins     int    `gorm:"not null"`
+	Price     string `gorm:"size:20"` // manat at request time, for the admin
+	Note      string `gorm:"size:300"`
+	Status    string `gorm:"size:10;index"`
+	CreatedAt time.Time
+	DecidedAt *time.Time
+}
+
+// Boost puts a post above the others ("Öňe çykarylan") until EndsAt.
+type Boost struct {
+	ID        uint `gorm:"primaryKey"`
+	PinID     uint `gorm:"index;not null"`
+	Pin       Pin  `gorm:"constraint:OnDelete:CASCADE"`
+	UserID    uint `gorm:"index;not null"`
+	Coins     int
+	StartsAt  time.Time
+	EndsAt    time.Time `gorm:"index"`
+	CreatedAt time.Time
+}
+
+// Contest: posts compete for votes between StartsAt and EndsAt; each user has one vote.
+type Contest struct {
+	ID          uint   `gorm:"primaryKey"`
+	Title       string `gorm:"size:100;not null"`
+	Description string `gorm:"size:1000"`
+	Category    string `gorm:"size:30"` // "" = any post
+	Prize       string `gorm:"size:200"`
+	PrizeCoins  int
+	StartsAt    time.Time `gorm:"index"`
+	EndsAt      time.Time `gorm:"index"`
+	WinnerPinID *uint
+	WinnerID    *uint
+	Finished    bool `gorm:"index"`
+	CreatedAt   time.Time
+}
+
+type ContestEntry struct {
+	ContestID uint    `gorm:"primaryKey"`
+	PinID     uint    `gorm:"primaryKey"`
+	UserID    uint    `gorm:"index;not null"`
+	Contest   Contest `gorm:"constraint:OnDelete:CASCADE"`
+	Pin       Pin     `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time
+}
+
+// ContestVote: one vote per user per contest.
+type ContestVote struct {
+	ContestID uint    `gorm:"primaryKey"`
+	UserID    uint    `gorm:"primaryKey"`
+	PinID     uint    `gorm:"index;not null"`
+	Contest   Contest `gorm:"constraint:OnDelete:CASCADE"`
+	User      User    `gorm:"constraint:OnDelete:CASCADE"`
+	CreatedAt time.Time
 }

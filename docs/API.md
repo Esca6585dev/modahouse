@@ -737,3 +737,54 @@ It searches Wikimedia Commons for Turkmen and Central Asian dresses,
 wedding dresses, embroidery, jewellery, hair, makeup and nails, keeps only
 photos at least 500 px wide under CC0 / CC BY / CC BY-SA, and posts them
 as `@modahouse` with the author and licence in `credit`.
+
+# v8: Teňňe, boosts, contests and Top 10 sorting
+
+## Teňňe (coins) 🔒
+
+`Me` gains `coins` (balance). `AppConfig` gains `coinRate` (manat for 1 teňňe, default `"1"`) and `coinPayment` (how to pay, set by an admin in `PUT /admin/settings`).
+
+There is no online payment: a user pays by the way in `coinPayment`, sends a request, and an admin approves it.
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/me/coins` | | `{balance, rate, paymentInfo, packages: {coins, price}[], boostOptions: {days, coins}[], history: {id, amount, kind: topup\|boost\|prize\|admin, note, pinId, createdAt}[], requests: CoinRequest[]}` |
+| POST | `/me/coins/requests` | `{coins (10–100000), note?}` | 201 `CoinRequest {id, user, coins, price, note, status: pending\|approved\|rejected, createdAt, decidedAt}`; at most 3 pending |
+
+## Boosts ("Öňe çykarylan")
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| POST 🔒 | `/pins/:id/boost` | `{days: 1\|3\|7\|30}` (owner only) | `{boostedUntil, balance}`; 402 when teňňe are short. A running boost is extended |
+| GET | `/pins/promoted` | | `Pin[]` boosted right now (random order) |
+
+Boosted posts open page 1 of the main feeds (`/pins` without `author`/`tag`, `feed=foryou`) with `promoted: true`, at most two per page, matching the feed's filters. `GET /pins/:id` returns `boostedUntil` to the owner.
+
+## Contests (ýaryşlar)
+
+Users enter one own post per contest; everyone else has **one vote per contest**, which also likes the post. You cannot vote for your own post, votes are final, and accounts younger than 24 hours cannot vote. When the time is up the contest finishes by itself (checked every minute and on every read): the post with the most votes wins (a tie goes to the earlier entry) and `prizeCoins` go to its author.
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/contests` | `?status=active\|upcoming\|finished` | `Contest[]` (running first) |
+| GET | `/contests/:id` | | `{contest: Contest, entries: {pin: Pin, votes, rank}[]}` |
+| POST 🔒 | `/contests/:id/entries` | `{pinId}` | 201 `Contest`; 409 if you already entered |
+| DELETE 🔒 | `/contests/:id/entries` | | `Contest`; withdraws your entry and frees its votes |
+| POST 🔒 | `/contests/:id/vote` | `{pinId}` | `Contest`; 409 if you already voted |
+
+`Contest`: `{id, title, description, category ("" = any), prize, prizeCoins, startsAt, endsAt, status: upcoming|active|finished, entriesCount, votesCount, winner: {pin, votes, rank}|null, myVotePinId, myEntryPinId}`.
+
+## Top 10 sorting
+
+`GET /top` takes `sort=score|likes|views|orders|rating` (default `score`, the automatic mix of views, likes, orders and rating).
+
+## Admin 🔒
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/admin/coin-requests` | `?status=pending\|approved\|rejected\|all&page` | `Page<CoinRequest>` |
+| POST | `/admin/coin-requests/:id/approve` / `reject` | | `CoinRequest`; approving adds the teňňe once (409 if already decided) |
+| POST | `/admin/users/:id/coins` | `{amount (negative takes back), note?}` | `{balance}` |
+| POST | `/admin/contests` | `{title, description?, category?, prize?, prizeCoins?, startsAt, endsAt}` | 201 `Contest` |
+| PUT | `/admin/contests/:id` | same, all optional | `Contest` |
+| DELETE | `/admin/contests/:id` | | 204 |

@@ -188,8 +188,9 @@ func (h *Handler) forYouFeed(c fiber.Ctx, q *gorm.DB) error {
 		top = math.Max(top, it.Score)
 	}
 	if me == 0 || top == 0 {
-		return h.pagePins(c, q, 24)
+		return h.pagePinsWith(c, q, 24, true)
 	}
+	promoted := h.promotedFor(c, q)
 	var cands []models.Pin
 	if err := q.Session(&gorm.Session{}).Select("pins.id", "pins.user_id", "pins.category", "pins.tags", "pins.created_at", "pins.views_count").
 		Where("pins.user_id <> ?", me).Limit(forYouCandidates).Find(&cands).Error; err != nil {
@@ -244,7 +245,7 @@ func (h *Handler) forYouFeed(c fiber.Ctx, q *gorm.DB) error {
 		pos[id] = i
 	}
 	sort.Slice(pins, func(a, b int) bool { return pos[pins[a].ID] < pos[pins[b].ID] })
-	items := h.enrichPins(pins, me)
+	items := h.withPromoted(c, promoted, h.enrichPins(pins, me))
 	if c.Query("withComments") == "1" {
 		h.attachComments(items, me)
 	}

@@ -304,7 +304,8 @@ func (h *Handler) metrics(since time.Time, bounded bool, ids []uint) periodMetri
 	return m
 }
 
-// top: GET /top?period=week|month|all&category=&limit=10
+// top: GET /top?period=week|month|all&category=&sort=score|likes|views|orders|rating&limit=10
+// The default "score" mixes views, likes, orders and rating; the others sort by one of them.
 func (h *Handler) top(c fiber.Ctx) error {
 	limit := fiber.Query[int](c, "limit", 10)
 	if limit < 1 || limit > 10 {
@@ -346,8 +347,17 @@ func (h *Handler) top(c fiber.Ctx) error {
 		s := 25*float64(m.views[u.ID])/vMax + 25*float64(m.likes[u.ID])/lMax + 35*float64(m.orders[u.ID])/oMax + 15*ratings[u.ID]/5
 		list[i] = scored{u, int(s + 0.5)}
 	}
+	metric := map[string]func(uint) float64{
+		"likes":  func(id uint) float64 { return float64(m.likes[id]) },
+		"views":  func(id uint) float64 { return float64(m.views[id]) },
+		"orders": func(id uint) float64 { return float64(m.orders[id]) },
+		"rating": func(id uint) float64 { return ratings[id] },
+	}[c.Query("sort")]
 	sort.SliceStable(list, func(a, b int) bool {
 		x, y := list[a], list[b]
+		if metric != nil && metric(x.user.ID) != metric(y.user.ID) {
+			return metric(x.user.ID) > metric(y.user.ID)
+		}
 		if x.score != y.score {
 			return x.score > y.score
 		}

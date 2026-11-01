@@ -122,5 +122,5 @@ func (h *Handler) getMe(c fiber.Ctx) error {
 }
 
 func (h *Handler) me(u models.User) Me {
-	return Me{Profile: h.profile(u, u.ID), Email: u.Email, IsAdmin: u.IsAdmin}
+	return Me{Profile: h.profile(u, u.ID), Email: u.Email, IsAdmin: u.IsAdmin, Coins: u.Coins}
 }

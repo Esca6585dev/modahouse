@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,6 +26,8 @@ const (
 	settingWebURL       = "web_url"
 	settingRegistration = "registration_open"
 	settingWatermark    = "watermark_uploads"
+	settingCoinRate     = "coin_rate"    // manat for 1 teňňe
+	settingCoinPayment  = "coin_payment" // how to pay for teňňe, shown to users
 )
 
 // AppConfig is the public client configuration (GET /api/config).
@@ -33,6 +36,8 @@ type AppConfig struct {
 	WebURL           string `json:"webUrl"`
 	RegistrationOpen bool   `json:"registrationOpen"`
 	WatermarkUploads bool   `json:"watermarkUploads"`
+	CoinRate         string `json:"coinRate"`    // manat for 1 teňňe, e.g. "1" or "0.5"
+	CoinPayment      string `json:"coinPayment"` // payment instructions for buying teňňe
 	UpdatedAt        string `json:"updatedAt"`
 }
 
@@ -52,7 +57,7 @@ func normalizeOrigin(raw string) (string, bool) {
 }
 
 func (h *Handler) appConfig() AppConfig {
-	cfg := AppConfig{RegistrationOpen: true, WatermarkUploads: true}
+	cfg := AppConfig{RegistrationOpen: true, WatermarkUploads: true, CoinRate: "1"}
 	cfg.APIURL, _ = normalizeOrigin(h.cfg.PublicAPIURL)
 	cfg.WebURL, _ = normalizeOrigin(h.cfg.PublicWebURL)
 	var rows []models.Setting
@@ -68,6 +73,10 @@ func (h *Handler) appConfig() AppConfig {
 			cfg.RegistrationOpen = r.Value != "false"
 		case settingWatermark:
 			cfg.WatermarkUploads = r.Value != "false"
+		case settingCoinRate:
+			cfg.CoinRate = r.Value
+		case settingCoinPayment:
+			cfg.CoinPayment = r.Value
 		default:
 			continue // internal bookkeeping such as the search index version
 		}
@@ -108,6 +117,8 @@ type settingsReq struct {
 	WebURL           *string `json:"webUrl"`
 	RegistrationOpen *bool   `json:"registrationOpen"`
 	WatermarkUploads *bool   `json:"watermarkUploads"`
+	CoinRate         *string `json:"coinRate"`
+	CoinPayment      *string `json:"coinPayment"`
 }
 
 func (h *Handler) adminUpdateSettings(c fiber.Ctx) error {
@@ -130,6 +141,20 @@ func (h *Handler) adminUpdateSettings(c fiber.Ctx) error {
 			return badRequest(c, "Salga nädogry: http:// ýa-da https:// bilen başlamaly, meselem https://api.modahouse.tm")
 		}
 		updates[key] = &v
+	}
+	if req.CoinRate != nil {
+		v := strings.ReplaceAll(strings.TrimSpace(*req.CoinRate), ",", ".")
+		if f, err := strconv.ParseFloat(v, 64); err != nil || f <= 0 || f > 10000 {
+			return badRequest(c, "Teňňäniň bahasy nädogry, meselem 1 ýa-da 0.5")
+		}
+		updates[settingCoinRate] = &v
+	}
+	if req.CoinPayment != nil {
+		v := clean(*req.CoinPayment, 500)
+		updates[settingCoinPayment] = &v
+		if v == "" {
+			updates[settingCoinPayment] = nil
+		}
 	}
 	for key, b := range map[string]*bool{settingRegistration: req.RegistrationOpen, settingWatermark: req.WatermarkUploads} {
 		if b != nil {

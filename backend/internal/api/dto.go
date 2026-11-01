@@ -110,10 +110,13 @@ type Me struct {
 	Profile
 	Email   string `json:"email"`
 	IsAdmin bool   `json:"isAdmin"`
+	Coins   int    `json:"coins"` // teňňe balance
 }
 
 type PinDTO struct {
 	ID             uint          `json:"id"`
+	Promoted       bool          `json:"promoted,omitempty"`     // boosted with teňňe ("Öňe çykarylan")
+	BoostedUntil   *time.Time    `json:"boostedUntil,omitempty"` // owner only
 	Title          string        `json:"title"`
 	Description    string        `json:"description"`
 	Link           string        `json:"link"`
