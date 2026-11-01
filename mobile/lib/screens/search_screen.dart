@@ -14,6 +14,7 @@ import '../state/providers.dart';
 import '../widgets/avatar.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/pin_grid.dart';
+import '../widgets/promo_ui.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 import 'shops_screen.dart';
@@ -204,11 +205,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        tooltip: S.top10Title,
-                        onPressed: () => context.push('/top'),
-                        icon: const Icon(Icons.emoji_events_outlined),
-                      ),
+                      const SizedBox(width: 4),
+                      const Top10Button(),
                     ],
                   ),
                 ),

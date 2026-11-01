@@ -154,6 +154,18 @@ enum StatsPeriod {
   final String value;
 }
 
+/// `sort` of `GET /top`.
+enum TopSort {
+  score('score'),
+  likes('likes'),
+  views('views'),
+  orders('orders'),
+  rating('rating');
+
+  const TopSort(this.value);
+  final String value;
+}
+
 /// One place of `GET /top`.
 class TopEntry {
   const TopEntry({

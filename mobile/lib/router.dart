@@ -10,6 +10,8 @@ import 'screens/board_screen.dart';
 import 'screens/business_screens.dart';
 import 'screens/cart_screens.dart';
 import 'screens/chat_screens.dart';
+import 'screens/coins_screen.dart';
+import 'screens/contests_screens.dart';
 import 'screens/create_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/interests_screen.dart';
@@ -87,6 +89,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(path: '/top', builder: (_, _) => const TopScreen()),
+      GoRoute(path: '/contests', builder: (_, _) => const ContestsScreen()),
+      GoRoute(
+        path: '/contests/:id',
+        builder: (_, s) => ContestDetailScreen(
+          key: ValueKey('contest-${s.pathParameters['id']}'),
+          id: _intParam(s, 'id') ?? 0,
+        ),
+      ),
+      GoRoute(
+        path: '/coins',
+        redirect: requireLogin,
+        builder: (_, _) => const CoinsScreen(),
+      ),
       GoRoute(
         path: '/tag/:tag',
         builder: (_, s) => TagScreen(

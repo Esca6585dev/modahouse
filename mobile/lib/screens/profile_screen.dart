@@ -335,6 +335,12 @@ class _ProfileViewState extends ConsumerState<ProfileView> {
         actions: [
           if (profile.isMe) ...[
             IconButton(
+              key: const Key('profile-coins'),
+              tooltip: S.myCoins,
+              onPressed: () => context.push('/coins'),
+              icon: const Icon(Icons.toll_outlined),
+            ),
+            IconButton(
               tooltip: S.create,
               onPressed: () => context.go('/create'),
               icon: const Icon(Icons.add_box_outlined),

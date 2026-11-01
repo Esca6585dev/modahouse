@@ -133,12 +133,18 @@ class BusinessRepository {
   /// Top 10 ranking.
   Future<List<TopEntry>> top({
     StatsPeriod period = StatsPeriod.week,
+    TopSort sort = TopSort.score,
     String? category,
     int limit = 10,
   }) async => parseList(
     await _api.get(
       '/top',
-      query: {'period': period.value, 'category': category, 'limit': limit},
+      query: {
+        'period': period.value,
+        'sort': sort.value,
+        'category': category,
+        'limit': limit,
+      },
     ),
     TopEntry.fromJson,
   );

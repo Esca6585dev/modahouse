@@ -10,6 +10,7 @@ import 'app_image.dart';
 import 'avatar.dart';
 import 'cart_flow.dart';
 import 'pin_menu.dart';
+import 'promo_ui.dart';
 import 'shop_ui.dart';
 import 'video_view.dart';
 
@@ -41,9 +42,12 @@ class PinCard extends ConsumerWidget {
         ref.watch(pinUpdatesProvider.select((u) => u.updated[pin.id])) ?? pin;
     final placeholder = parseHexColor(current.color, p.surface);
     final product = current.product;
+    // The feed's flag (an updated copy from GET /pins/:id does not carry it).
+    final promoted = pin.promoted || current.promoted;
     if (product != null) {
       return _ProductTile(
         pin: current,
+        promoted: promoted,
         product: product,
         placeholder: placeholder,
         onTap: onTap,
@@ -110,6 +114,11 @@ class PinCard extends ConsumerWidget {
             ],
           ),
         ),
+        if (promoted)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(6, 0, 0, 2),
+            child: PromotedLabel(),
+          ),
       ],
     );
   }
@@ -120,6 +129,7 @@ class _ProductTile extends ConsumerWidget {
     required this.pin,
     required this.product,
     required this.placeholder,
+    this.promoted = false,
     this.onTap,
     this.onLongPress,
     this.onAuthorTap,
@@ -128,6 +138,7 @@ class _ProductTile extends ConsumerWidget {
   final Pin pin;
   final Product product;
   final Color placeholder;
+  final bool promoted;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onAuthorTap;
@@ -238,6 +249,10 @@ class _ProductTile extends ConsumerWidget {
                         oldPrice: product.oldPrice,
                         listingType: product.listingType,
                       ),
+                      if (promoted) ...[
+                        const SizedBox(height: 3),
+                        const PromotedLabel(),
+                      ],
                     ],
                   ),
                 ),

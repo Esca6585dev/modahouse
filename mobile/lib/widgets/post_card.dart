@@ -13,6 +13,7 @@ import 'app_image.dart';
 import 'caption.dart';
 import 'pin_actions.dart';
 import 'pin_menu.dart';
+import 'promo_ui.dart';
 import 'save_sheet.dart';
 import 'share_sheet.dart';
 import 'shop_ui.dart';
@@ -125,7 +126,9 @@ class _PostCardState extends ConsumerState<PostCard>
                               fontSize: 14,
                             ),
                           ),
-                          if (pin.category.isNotEmpty)
+                          if (widget.pin.promoted || pin.promoted)
+                            const PromotedLabel(fontSize: 12)
+                          else if (pin.category.isNotEmpty)
                             Text(
                               categoryName(pin.category, cats),
                               maxLines: 1,

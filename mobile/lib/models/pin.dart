@@ -30,6 +30,8 @@ class Pin {
     this.mediaType = 'image',
     this.latestComments = const [],
     this.credit = '',
+    this.promoted = false,
+    this.boostedUntil,
   });
 
   factory Pin.fromJson(Json j) => Pin(
@@ -65,6 +67,8 @@ class Pin {
       (e) => Comment.fromJson(asJson(e)),
     ),
     credit: asString(j['credit']),
+    promoted: asBool(j['promoted']),
+    boostedUntil: asDate(j['boostedUntil']),
   );
 
   final int id;
@@ -114,6 +118,12 @@ class Pin {
   /// A. Author · CC BY-SA 4.0 · Wikimedia Commons"); [link] is the source.
   final String credit;
 
+  /// Boosted with teňňe and shown at the top of a feed ("Öňe çykarylan").
+  final bool promoted;
+
+  /// End of the running boost (sent to the owner only).
+  final DateTime? boostedUntil;
+
   bool get isSaved => savedBoardIds.isNotEmpty;
 
   bool get isVideo => mediaType == 'video';
@@ -145,6 +155,7 @@ class Pin {
     int? viewsCount,
     double? rating,
     int? reviewsCount,
+    DateTime? boostedUntil,
   }) => Pin(
     id: id,
     title: title ?? this.title,
@@ -171,6 +182,8 @@ class Pin {
     mediaType: mediaType,
     latestComments: latestComments,
     credit: credit,
+    promoted: promoted,
+    boostedUntil: boostedUntil ?? this.boostedUntil,
   );
 }
 

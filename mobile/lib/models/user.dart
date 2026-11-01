@@ -160,6 +160,7 @@ class Me extends Profile {
     super.business,
     this.email = '',
     this.isAdmin = false,
+    this.coins = 0,
   });
 
   factory Me.fromJson(Json j) {
@@ -184,6 +185,7 @@ class Me extends Profile {
       business: p.business,
       email: asString(j['email']),
       isAdmin: asBool(j['isAdmin']),
+      coins: asInt(j['coins']),
     );
   }
 
@@ -191,6 +193,32 @@ class Me extends Profile {
 
   /// Can open the web admin panel.
   final bool isAdmin;
+
+  /// Teňňe balance.
+  final int coins;
+
+  /// The same account with a new teňňe balance.
+  Me withCoins(int coins) => Me(
+    id: id,
+    username: username,
+    name: name,
+    avatarUrl: avatarUrl,
+    isBusiness: isBusiness,
+    verified: verified,
+    category: category,
+    bio: bio,
+    followersCount: followersCount,
+    followingCount: followingCount,
+    pinsCount: pinsCount,
+    isFollowing: isFollowing,
+    createdAt: createdAt,
+    hasStory: hasStory,
+    storySeen: storySeen,
+    business: business,
+    email: email,
+    isAdmin: isAdmin,
+    coins: coins,
+  );
 }
 
 class AuthResponse {

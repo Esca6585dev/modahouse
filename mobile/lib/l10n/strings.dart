@@ -864,4 +864,96 @@ class S {
   static const interestsResetDone = 'Gyzyklanmalar arassalandy';
   static const interestCategory = 'Bölüm';
   static const interestTag = 'Teg';
+
+  // ---------- v8: Top 10 sorting, teňňe, boosts, contests ----------
+  static const top10Button = 'Top 10';
+  static const sortAuto = 'Awtomat';
+  static const sortLikes = 'Halanlar';
+  static const sortViews = 'Görülişler';
+  static const sortOrders = 'Sargytlar';
+  static const sortRating = 'Reýting';
+  static const promotedTitle = 'Öňe çykarylanlar';
+  static const promoted = 'Öňe çykarylan';
+
+  static const myCoins = 'Teňňelerim';
+  static const coins = 'Teňňe';
+  static String coinsCount(int n) => '$n teňňe';
+  static const coinsBalance = 'Balansyňyz';
+  static String coinRate(String rate) => '1 teňňe = $rate manat';
+  static const coinsHowToPay = 'Nädip tölemeli';
+  static const paymentInfoCopied = 'Töleg maglumaty göçürildi';
+  static const coinsHowToPayEmpty =
+      'Töleg usuly entek görkezilmedi. Administrator bilen habarlaşyň.';
+  static const coinsSteps =
+      'Bukjany saýlaň, görkezilen usul bilen töläň we haýyş iberiň. '
+      'Administrator tölegi barlap, teňňeleri goşar.';
+  static const coinPackages = 'Bukjalar';
+  static String manat(String price) => '$price manat';
+  static String buyCoinsTitle(int n) => '$n teňňe satyn almak';
+  static String buyCoinsText(String price) =>
+      'Ilki $price manat töläň, soňra haýyşy iberiň.';
+  static const coinNote = 'Bellik (islege görä)';
+  static const coinNoteHint = 'Mysal: töleg eden telefon belgiňiz';
+  static const sendRequest = 'Haýyş iber';
+  static const coinRequestSent =
+      'Haýyş iberildi. Administrator barlandan soň teňňeler goşular.';
+  static const coinRequests = 'Haýyşlarym';
+  static const coinRequestPending = 'Garaşylýar';
+  static const coinRequestApproved = 'Tassyklandy';
+  static const coinRequestRejected = 'Ret edildi';
+  static const coinHistory = 'Taryh';
+  static const coinHistoryEmpty = 'Entek hereket ýok';
+  static const coinKindTopup = 'Doldurmak';
+  static const coinKindBoost = 'Öňe çykarmak';
+  static const coinKindPrize = 'Ýaryş baýragy';
+  static const coinKindAdmin = 'Administrator';
+
+  static const boost = 'Öňe çykar';
+  static const boostTitle = 'Posty öňe çykar';
+  static const boostText =
+      'Postuňyz baş sahypanyň we lentalaryň ýokarsynda «Öňe çykarylan» '
+      'bellik bilen görkeziler.';
+  static String boostDays(int n) => '$n gün';
+  static String boostedUntil(String date) => 'Öňe çykarylan: $date çenli';
+  static String boostDone(String date) => 'Post $date çenli öňe çykaryldy';
+  static const boostExtendNote =
+      'Işleýän öňe çykarmak bar bolsa, möhleti uzaldylýar.';
+  static const notEnoughCoins = 'Teňňe ýeterlik däl';
+  static const buyCoins = 'Teňňe al';
+
+  static const contests = 'Ýaryşlar';
+  static const contestsEmpty = 'Entek ýaryş ýok';
+  static const contestsEmptyText = 'Täze ýaryşlar şu ýerde görkeziler.';
+  static const contestActive = 'Dowam edýär';
+  static const contestUpcoming = 'Ýakynda';
+  static const contestFinished = 'Tamamlandy';
+  static const contestPrize = 'Baýrak';
+  static String contestEnds(String date) => 'Gutarýar: $date';
+  static String contestStarts(String date) => 'Başlanýar: $date';
+  static String contestEnded(String date) => 'Gutardy: $date';
+  static String entriesCount(int n) => '$n gatnaşyjy';
+  static String votesCount(int n) => '$n ses';
+  static const vote = 'Ses ber';
+  static const voted = 'Ses berildi';
+  static const yourVote = 'Siziň sesiňiz';
+  static const voteConfirmTitle = 'Ses bermelimi?';
+  static const voteConfirmText =
+      'Her ýaryşda diňe bir ses berip bilersiňiz we ony üýtgedip bolmaýar.';
+  static const voteDone = 'Sesiňiz kabul edildi';
+  static const enterContest = 'Gatnaş';
+  static const leaveContest = 'Çykmak';
+  static const leaveContestConfirm = 'Ýaryşdan çykmalymy?';
+  static const leaveContestText = 'Postuňyza berlen sesler pozular.';
+  static const contestEntered = 'Postuňyz ýaryşa goşuldy';
+  static const contestLeft = 'Ýaryşdan çykdyňyz';
+  static const pickPostForContest = 'Ýaryşa post saýlaň';
+  static String contestCategoryOnly(String c) =>
+      'Diňe «$c» bölüminiň postlary goşulýar';
+  static const noPostsForContest = 'Goşup boljak postuňyz ýok';
+  static const yourEntry = 'Siziň postuňyz';
+  static const contestWinner = 'Ýeňiji';
+  static const contestNoEntries = 'Entek gatnaşyjy ýok';
+  static const contestNoEntriesText = 'Ilkinji bolup postuňyzy goşuň!';
+  static String contestActiveBanner(String title) =>
+      'Ýaryş dowam edýär: $title';
 }

@@ -496,6 +496,7 @@ class _ShopLinksCard extends StatelessWidget {
       child: Column(
         children: [
           link(Icons.receipt_long_outlined, S.myOrders, '/orders'),
+          link(Icons.toll_rounded, S.myCoins, '/coins'),
           link(Icons.shopping_bag_outlined, S.cart, '/cart'),
           link(Icons.block_rounded, S.blockedUsers, '/settings/blocked'),
           link(Icons.interests_outlined, S.myInterests, '/settings/interests'),

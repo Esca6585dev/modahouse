@@ -293,6 +293,18 @@ class PinsRepository {
     Pin.fromJson,
   );
 
+  /// "Öňe çykar": spends teňňe to boost my post for [days] (402 when the
+  /// balance is short; a running boost is extended).
+  Future<BoostResult> boost(int id, int days) async => BoostResult.fromJson(
+    parseJson(await _api.post('/pins/$id/boost', data: {'days': days})),
+  );
+
+  /// `GET /pins/promoted`: every post boosted right now.
+  Future<List<Pin>> promoted() async => parseList(
+    await _api.get('/pins/promoted'),
+    (j) => Pin.fromJson({...j, 'promoted': true}),
+  );
+
   Future<LikeState> like(int id) async =>
       LikeState.fromJson(parseJson(await _api.post('/pins/$id/like')));
 

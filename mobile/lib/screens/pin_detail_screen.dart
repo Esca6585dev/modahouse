@@ -18,6 +18,7 @@ import '../state/pin_updates.dart';
 import '../state/providers.dart';
 import '../widgets/app_image.dart';
 import '../widgets/avatar.dart';
+import '../widgets/boost_sheet.dart';
 import '../widgets/cart_flow.dart';
 import '../widgets/chat_launch.dart';
 import '../widgets/contact_sheet.dart';
@@ -444,6 +445,10 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               ),
               const SizedBox(height: 10),
               _authorRow(pin, isOwner, compact: true),
+              if (isOwner) ...[
+                const SizedBox(height: 12),
+                BoostSection(pin: pin),
+              ],
               const SizedBox(height: 12),
               if (pin.category.isNotEmpty)
                 InkWell(
@@ -963,6 +968,10 @@ class _PinDetailScreenState extends ConsumerState<PinDetailScreen> {
               ],
               const SizedBox(height: 22),
               _authorRow(pin, isOwner),
+              if (isOwner) ...[
+                const SizedBox(height: 12),
+                BoostSection(pin: pin),
+              ],
               const SizedBox(height: 24),
               ReviewsSection(key: ValueKey('reviews-${pin.id}'), pin: pin),
               const SizedBox(height: 24),

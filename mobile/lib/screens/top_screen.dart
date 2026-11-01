@@ -9,13 +9,26 @@ import '../l10n/strings.dart';
 import '../models/models.dart';
 import '../state/providers.dart';
 import '../widgets/app_image.dart';
+import '../widgets/promo_ui.dart';
 import '../widgets/shop_ui.dart';
 import '../widgets/states.dart';
 import '../widgets/top_actions.dart';
+import 'contests_screens.dart';
 
-final topProvider = FutureProvider.family<List<TopEntry>, StatsPeriod>(
-  (ref, period) => ref.watch(businessRepositoryProvider).top(period: period),
+typedef TopQuery = ({StatsPeriod period, TopSort sort});
+
+final topProvider = FutureProvider.family<List<TopEntry>, TopQuery>(
+  (ref, q) =>
+      ref.watch(businessRepositoryProvider).top(period: q.period, sort: q.sort),
 );
+
+String topSortLabel(TopSort s) => switch (s) {
+  TopSort.score => S.sortAuto,
+  TopSort.likes => S.sortLikes,
+  TopSort.views => S.sortViews,
+  TopSort.orders => S.sortOrders,
+  TopSort.rating => S.sortRating,
+};
 
 /// "Top 10 köýnekçi": the best shops by views, likes and orders.
 class TopScreen extends ConsumerStatefulWidget {
@@ -27,10 +40,13 @@ class TopScreen extends ConsumerStatefulWidget {
 
 class _TopScreenState extends ConsumerState<TopScreen> {
   StatsPeriod _period = StatsPeriod.week;
+  TopSort _sort = TopSort.score;
+
+  TopQuery get _query => (period: _period, sort: _sort);
 
   @override
   Widget build(BuildContext context) {
-    final top = ref.watch(topProvider(_period));
+    final top = ref.watch(topProvider(_query));
     final p = AppPalette.of(context);
 
     final List<Widget> list;
@@ -39,7 +55,7 @@ class _TopScreenState extends ConsumerState<TopScreen> {
         SliverToBoxAdapter(
           child: ErrorView(
             error: top.error!,
-            onRetry: () => ref.invalidate(topProvider(_period)),
+            onRetry: () => ref.invalidate(topProvider(_query)),
           ),
         ),
       ];
@@ -112,7 +128,11 @@ class _TopScreenState extends ConsumerState<TopScreen> {
       body: RefreshIndicator(
         color: AppPalette.accent,
         edgeOffset: 64,
-        onRefresh: () => ref.refresh(topProvider(_period).future),
+        onRefresh: () {
+          ref.invalidate(promotedPinsProvider);
+          ref.invalidate(activeContestsProvider);
+          return ref.refresh(topProvider(_query).future);
+        },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -122,9 +142,18 @@ class _TopScreenState extends ConsumerState<TopScreen> {
               toolbarHeight: 60,
               titleSpacing: AppPalette.gutter,
               title: const LogoWordmark(height: 42),
-              actions: topActions(),
+              actions: [
+                IconButton(
+                  key: const Key('contests-button'),
+                  tooltip: S.contests,
+                  onPressed: () => context.push('/contests'),
+                  icon: const Icon(Icons.how_to_vote_outlined),
+                ),
+                ...topActions(),
+              ],
             ),
             const SliverToBoxAdapter(child: _TopBanner()),
+            const SliverToBoxAdapter(child: ActiveContestBanner()),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(0, 14, 8, 12),
@@ -148,6 +177,19 @@ class _TopScreenState extends ConsumerState<TopScreen> {
                 ),
               ),
             ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: ChoiceChips<TopSort>(
+                  key: const Key('top-sort'),
+                  values: TopSort.values,
+                  selected: _sort,
+                  label: topSortLabel,
+                  onSelected: (v) => setState(() => _sort = v),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: PromotedStrip()),
             ...list,
           ],
         ),

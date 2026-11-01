@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 import '../data/pins_repository.dart';
@@ -15,6 +14,7 @@ import '../state/server.dart';
 import '../state/shop_state.dart';
 import '../widgets/category_chips.dart';
 import '../widgets/pin_grid.dart';
+import '../widgets/promo_ui.dart';
 import '../widgets/states.dart';
 import '../widgets/stories_row.dart';
 import '../widgets/top_actions.dart';
@@ -160,11 +160,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         : Icons.dashboard_outlined,
                   ),
                 ),
-                IconButton(
-                  tooltip: S.top10Title,
-                  onPressed: () => context.push('/top'),
-                  icon: const Icon(Icons.emoji_events_outlined),
-                ),
+                const Top10Button(),
                 const NotificationsButton(),
                 const ChatsButton(),
                 const CartButton(),
